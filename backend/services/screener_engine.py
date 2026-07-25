@@ -1,0 +1,164 @@
+from typing import Dict, Any, List, Optional
+from services.data_fetcher import get_company_profile, PRESET_STOCKS
+
+# Universe of sample NSE stocks for stock screener
+NSE_UNIVERSE = [
+    "RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ICICIBANK.NS",
+    "TATAMOTORS.NS", "BHARTIARTL.NS", "ITC.NS", "SBIN.NS", "LT.NS",
+    "HINDUNILVR.NS", "AXISBANK.NS", "BAJFINANCE.NS", "MARUTI.NS", "SUNPHARMA.NS"
+]
+
+PRESET_SCREENS = {
+    "quality_compounders": {
+        "name": "Quality Compounders",
+        "description": "High ROE & ROCE companies with low debt and steady growth",
+        "filters": {"min_roe": 15.0, "min_roce": 15.0, "max_debt_equity": 0.5, "min_revenue_growth": 10.0}
+    },
+    "deep_value": {
+        "name": "Deep Value",
+        "description": "Stocks trading at attractive P/E and P/B valuation multiples",
+        "filters": {"max_pe": 20.0, "max_pb": 3.0, "min_div_yield": 1.0}
+    },
+    "high_dividend": {
+        "name": "High Dividend Yield",
+        "description": "Companies providing generous dividend payouts with strong profitability",
+        "filters": {"min_div_yield": 1.5, "min_roe": 10.0}
+    },
+    "low_debt_growth": {
+        "name": "Low Debt + High Growth",
+        "description": "Virtually debt-free companies expanding profits rapidly",
+        "filters": {"max_debt_equity": 0.15, "min_eps_growth": 12.0}
+    },
+    "zero_pledge": {
+        "name": "Zero Promoter Pledge",
+        "description": "Clean promoter ownership with zero pledged shares",
+        "filters": {"max_pledged": 0.0, "min_promoter": 45.0}
+    },
+    "sector_leaders": {
+        "name": "Sector Leaders",
+        "description": "Large-cap industry market leaders with robust ROCE",
+        "filters": {"min_market_cap": 500000000000, "min_roce": 14.0}
+    },
+    "garp": {
+        "name": "GARP (Growth at Reasonable Price)",
+        "description": "Reasonable valuation combined with solid profit growth",
+        "filters": {"max_pe": 30.0, "min_eps_growth": 12.0, "min_roe": 14.0}
+    },
+    "cash_flow_kings": {
+        "name": "Cash Flow Kings",
+        "description": "Highly capital efficient businesses generating surplus returns",
+        "filters": {"min_roce": 18.0, "max_debt_equity": 0.4}
+    }
+}
+
+def get_all_screener_stocks() -> List[Dict[str, Any]]:
+    stocks = []
+    for ticker in NSE_UNIVERSE:
+        try:
+            profile = get_company_profile(ticker)
+            stocks.append(profile)
+        except Exception:
+            continue
+    return stocks
+
+def filter_stocks(filters: Dict[str, Any]) -> List[Dict[str, Any]]:
+    all_stocks = get_all_screener_stocks()
+    filtered = []
+
+    min_pe = filters.get("min_pe")
+    max_pe = filters.get("max_pe")
+    min_pb = filters.get("min_pb")
+    max_pb = filters.get("max_pb")
+    min_roe = filters.get("min_roe")
+    min_roce = filters.get("min_roce")
+    max_debt_equity = filters.get("max_debt_equity")
+    min_div_yield = filters.get("min_div_yield")
+    min_rev_growth = filters.get("min_revenue_growth")
+    min_eps_growth = filters.get("min_eps_growth")
+    min_promoter = filters.get("min_promoter")
+    max_pledged = filters.get("max_pledged")
+    min_market_cap = filters.get("min_market_cap")
+    sector_filter = filters.get("sector")
+
+    for s in all_stocks:
+        f = s["fundamentals"]
+
+        if sector_filter and s["sector"].lower() != sector_filter.lower():
+            continue
+        if min_pe is not None and f["pe"] < float(min_pe):
+            continue
+        if max_pe is not None and f["pe"] > float(max_pe):
+            continue
+        if min_pb is not None and f["pb"] < float(min_pb):
+            continue
+        if max_pb is not None and f["pb"] > float(max_pb):
+            continue
+        if min_roe is not None and f["roe"] < float(min_roe):
+            continue
+        if min_roce is not None and f["roce"] < float(min_roce):
+            continue
+        if max_debt_equity is not None and f["debt_equity"] > float(max_debt_equity):
+            continue
+        if min_div_yield is not None and f["div_yield"] < float(min_div_yield):
+            continue
+        if min_rev_growth is not None and f["revenue_growth_3yr"] < float(min_rev_growth):
+            continue
+        if min_eps_growth is not None and f["eps_growth_3yr"] < float(min_eps_growth):
+            continue
+        if min_promoter is not None and f["promoter_holding"] < float(min_promoter):
+            continue
+        if max_pledged is not None and f["pledged_shares_pct"] > float(max_pledged):
+            continue
+        if min_market_cap is not None and f["market_cap"] < float(min_market_cap):
+            continue
+
+        filtered.append(s)
+
+    return filtered
+
+def get_peers(ticker: str) -> List[Dict[str, Any]]:
+    profile = get_company_profile(ticker)
+    target_sector = profile["sector"]
+    all_stocks = get_all_screener_stocks()
+
+    peers = [s for s in all_stocks if s["sector"] == target_sector and s["ticker"] != profile["ticker"]]
+    if not peers:
+        # If no same-sector peers found in sample universe, return top market cap peers
+        peers = [s for s in all_stocks if s["ticker"] != profile["ticker"]][:4]
+
+    return peers
+
+def get_sector_heatmap() -> List[Dict[str, Any]]:
+    all_stocks = get_all_screener_stocks()
+    sectors: Dict[str, Dict[str, Any]] = {}
+
+    for s in all_stocks:
+        sec = s["sector"]
+        if sec not in sectors:
+            sectors[sec] = {
+                "sector": sec,
+                "total_market_cap": 0,
+                "weighted_day_change_pct": 0.0,
+                "stock_count": 0,
+                "stocks": []
+            }
+        mcap = s["fundamentals"]["market_cap"]
+        change = s["fundamentals"]["day_change_pct"]
+        sectors[sec]["total_market_cap"] += mcap
+        sectors[sec]["weighted_day_change_pct"] += change
+        sectors[sec]["stock_count"] += 1
+        sectors[sec]["stocks"].append({"ticker": s["ticker"], "name": s["name"], "change_pct": change})
+
+    result = []
+    for sec, data in sectors.items():
+        avg_change = data["weighted_day_change_pct"] / max(1, data["stock_count"])
+        result.append({
+            "sector": sec,
+            "total_market_cap": data["total_market_cap"],
+            "avg_change_pct": round(avg_change, 2),
+            "stock_count": data["stock_count"],
+            "top_stocks": data["stocks"]
+        })
+
+    result.sort(key=lambda x: x["total_market_cap"], reverse=True)
+    return result
