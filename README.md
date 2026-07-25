@@ -1,4 +1,4 @@
-# Nivesh (निवेश) — NSE Equity Research, NL Backtester & Trading Psychology Platform
+# Nivesh — NSE Equity Research, NL Backtester & Trading Psychology Platform
 
 [![Next.js 14](https://img.shields.io/badge/Frontend-Next.js%2014-000000?style=flat&logo=nextdotjs)](https://nextjs.org/)
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI%200.109-009688?style=flat&logo=fastapi)](https://fastapi.tiangolo.com/)
