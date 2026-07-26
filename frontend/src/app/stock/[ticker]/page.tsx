@@ -7,6 +7,9 @@ import StockChart from "@/components/StockChart";
 import DCFCalculator from "@/components/DCFCalculator";
 import ResearchDigestCard from "@/components/ResearchDigestCard";
 import GlossaryTooltip from "@/components/GlossaryTooltip";
+import { FinancialStatements } from "@/components/FinancialStatements";
+import { ShareholdingChart } from "@/components/ShareholdingChart";
+import { PeerComparison } from "@/components/PeerComparison";
 import { CheckCircle2, XCircle, Clock, TrendingUp, DollarSign, Activity, FileText, AlertCircle, Share2, Download } from "lucide-react";
 
 interface CompanyProfile {
@@ -56,91 +59,35 @@ interface ChartBar {
 
 export default function StockDashboardPage() {
   const params = useParams();
-  const ticker = (params?.ticker as string) || "RELIANCE.NS";
+  const rawTicker = (params?.ticker as string) || "RELIANCE.NS";
+  const ticker = decodeURIComponent(rawTicker).toUpperCase().trim();
 
   const [company, setCompany] = useState<CompanyProfile | null>(null);
   const [chartBars, setChartBars] = useState<ChartBar[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("overview");
 
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
+      setErrorMsg(null);
       try {
-        const profileRes = await fetch(`http://localhost:8000/api/companies/${ticker}`);
-        if (!profileRes.ok) throw new Error("Backend offline");
+        const profileRes = await fetch(`http://localhost:8000/api/companies/${encodeURIComponent(ticker)}`);
+        if (!profileRes.ok) {
+          const errData = await profileRes.json().catch(() => ({}));
+          throw new Error(errData.detail || `Stock profile unavailable for ${ticker}`);
+        }
         const profileData: CompanyProfile = await profileRes.json();
         setCompany(profileData);
 
-        const chartRes = await fetch(`http://localhost:8000/api/companies/${ticker}/chart`);
+        const chartRes = await fetch(`http://localhost:8000/api/companies/${encodeURIComponent(ticker)}/chart`);
         if (chartRes.ok) {
           const chartData = await chartRes.json();
           setChartBars(chartData.bars || []);
         }
-      } catch (err) {
-        setCompany({
-          ticker: ticker.toUpperCase(),
-          name: ticker.replace(".NS", "").toUpperCase(),
-          sector: "Diversified",
-          industry: "Core Industry",
-          isin: "INE000000000",
-          fundamentals: {
-            pe: 24.5,
-            pb: 3.2,
-            roe: 16.5,
-            roce: 18.2,
-            debt_equity: 0.35,
-            div_yield: 1.45,
-            revenue_growth_3yr: 14.2,
-            eps_growth_3yr: 16.8,
-            promoter_holding: 51.2,
-            pledged_shares_pct: 0.0,
-            market_cap: 1850000000000,
-            current_price: 2980.5,
-            day_change: 36.8,
-            day_change_pct: 1.25,
-          },
-          snowflake_scores: {
-            value: 4,
-            future: 5,
-            past: 5,
-            health: 6,
-            dividend: 3,
-          },
-          pros_cons: {
-            pros: [
-              { text: "Company is virtually debt-free", rule_id: "DEBT_FREE" },
-              { text: "Good track record of Return on Equity (ROE): 3yr ROE 16.5%", rule_id: "HIGH_ROE" },
-              { text: "High promoter holding of 51.2%", rule_id: "HIGH_PROMOTER" },
-            ],
-            cons: [
-              { text: "Stock is trading at a high valuation P/E of 24.5x", rule_id: "HIGH_PE" },
-            ],
-          },
-          delayed_badge: true,
-        });
-
-        const bars: ChartBar[] = [];
-        let price = 2800;
-        const now = new Date();
-        for (let i = 250; i >= 0; i--) {
-          const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-          const dateStr = d.toISOString().split("T")[0];
-          const change = (Math.random() - 0.49) * 40;
-          price = Math.max(100, price + change);
-          const open = price - (Math.random() - 0.5) * 15;
-          const high = Math.max(open, price) + Math.random() * 15;
-          const low = Math.min(open, price) - Math.random() * 15;
-          bars.push({
-            time: dateStr,
-            open: Math.round(open * 100) / 100,
-            high: Math.round(high * 100) / 100,
-            low: Math.round(low * 100) / 100,
-            close: Math.round(price * 100) / 100,
-            volume: Math.floor(Math.random() * 1500000) + 500000,
-          });
-        }
-        setChartBars(bars);
+      } catch (err: any) {
+        setErrorMsg(err.message || `Unable to fetch live market data for ${ticker}`);
       } finally {
         setLoading(false);
       }
@@ -149,15 +96,49 @@ export default function StockDashboardPage() {
     fetchData();
   }, [ticker]);
 
-  const handleShareReportCard = () => {
-    alert(`Report card snapshot generated for ${ticker}! (SimplyWall.st-style shareable card feature)`);
+  const getScoreColor = (score: number) => {
+    if (score >= 5) return "text-positive";
+    if (score >= 3) return "text-secondary";
+    return "text-negative";
   };
 
-  if (loading || !company) {
+  const handleShareReportCard = () => {
+    if (typeof window !== "undefined") {
+      navigator.clipboard.writeText(window.location.href);
+      alert(`Copied share link for ${ticker} to clipboard!`);
+    }
+  };
+
+
+  if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
         <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
         <p className="text-mutedText text-sm font-medium">Fetching stock data for {ticker}...</p>
+      </div>
+    );
+  }
+
+  if (errorMsg || !company) {
+    return (
+      <div className="bg-surface border border-red-500/30 rounded-card p-8 text-center space-y-4 max-w-2xl mx-auto my-12">
+        <div className="w-12 h-12 rounded-full bg-red-500/20 text-negative flex items-center justify-center mx-auto">
+          <AlertCircle className="w-6 h-6" />
+        </div>
+        <h2 className="font-heading font-bold text-xl text-neutralText">
+          Unable to Fetch Market Data for "{ticker}"
+        </h2>
+        <p className="text-xs text-mutedText leading-relaxed">
+          {errorMsg || "The symbol may be invalid on the National Stock Exchange (NSE) or real-time data is currently unavailable."}
+        </p>
+        <div className="pt-2">
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-primary hover:bg-primary/90 text-white font-semibold text-xs px-5 py-2.5 rounded-lg transition-colors"
+          >
+            Retry Request
+          </button>
+        </div>
       </div>
     );
   }
@@ -167,6 +148,17 @@ export default function StockDashboardPage() {
 
   return (
     <div className="space-y-6">
+      {/* Fallback Warning Banner if offline/fallback */}
+      {(company as any).data_source === "fallback" && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-card p-3 flex items-center justify-between text-xs text-amber-300">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+            <span><strong>Sample Mode:</strong> Live market connection unavailable — displaying estimated profile data.</span>
+          </div>
+          <span className="font-semibold px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">Estimated</span>
+        </div>
+      )}
+
       {/* Top Header Card */}
       <div className="bg-surface border border-border rounded-card p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2">
@@ -207,7 +199,7 @@ export default function StockDashboardPage() {
               onClick={handleShareReportCard}
               className="bg-bg hover:bg-border text-neutralText border border-border text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors font-medium"
             >
-              <Share2 className="w-3.5 h-3.5 text-secondary" /> Share Report Card
+              <Share2 className="w-3.5 h-3.5 text-secondary" /> Copy Link
             </button>
             <span className="inline-flex items-center gap-1 text-xs text-mutedText bg-bg px-2.5 py-1 rounded-full border border-border">
               <Clock className="w-3.5 h-3.5 text-secondary" /> Delayed ~15 min
@@ -237,26 +229,27 @@ export default function StockDashboardPage() {
           <div className="grid grid-cols-5 gap-1 text-center mt-4 pt-4 border-t border-border text-[11px]">
             <div>
               <div className="text-mutedText">VAL</div>
-              <div className="font-bold text-positive">{snowflake_scores.value}/6</div>
+              <div className={`font-bold ${getScoreColor(snowflake_scores.value)}`}>{snowflake_scores.value}/6</div>
             </div>
             <div>
               <div className="text-mutedText">FUT</div>
-              <div className="font-bold text-positive">{snowflake_scores.future}/6</div>
+              <div className={`font-bold ${getScoreColor(snowflake_scores.future)}`}>{snowflake_scores.future}/6</div>
             </div>
             <div>
               <div className="text-mutedText">PAS</div>
-              <div className="font-bold text-positive">{snowflake_scores.past}/6</div>
+              <div className={`font-bold ${getScoreColor(snowflake_scores.past)}`}>{snowflake_scores.past}/6</div>
             </div>
             <div>
               <div className="text-mutedText">HEA</div>
-              <div className="font-bold text-positive">{snowflake_scores.health}/6</div>
+              <div className={`font-bold ${getScoreColor(snowflake_scores.health)}`}>{snowflake_scores.health}/6</div>
             </div>
             <div>
               <div className="text-mutedText">DIV</div>
-              <div className="font-bold text-positive">{snowflake_scores.dividend}/6</div>
+              <div className={`font-bold ${getScoreColor(snowflake_scores.dividend)}`}>{snowflake_scores.dividend}/6</div>
             </div>
           </div>
         </div>
+
 
         {/* Stock Candlestick Chart */}
         <div className="lg:col-span-2 bg-surface border border-border rounded-card p-6 space-y-4">
@@ -342,6 +335,15 @@ export default function StockDashboardPage() {
           </ul>
         </div>
       </div>
+
+      {/* 5-Year Historical Financial Statements */}
+      <FinancialStatements ticker={company.ticker} />
+
+      {/* Shareholding Pattern Stacked Bar Chart */}
+      <ShareholdingChart ticker={company.ticker} />
+
+      {/* Sector Peer Benchmarking Matrix */}
+      <PeerComparison currentTicker={company.ticker} />
 
       {/* Feature Tabs (Overview vs Pseudo-Brain AI Research Digest) */}
       <div className="bg-surface border border-border rounded-card p-6 space-y-4">

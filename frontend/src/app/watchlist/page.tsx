@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Star, Bell, Plus, Trash2, ArrowUpRight, ArrowDownRight, ShieldCheck, AlertCircle } from "lucide-react";
+import StockSearchInput from "@/components/StockSearchInput";
+
 
 interface WatchlistItem {
   ticker: string;
@@ -72,14 +74,14 @@ export default function WatchlistPage() {
     fetchAlerts();
   }, []);
 
-  const handleAddStock = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTicker.trim()) return;
+  const handleAddStock = async (tickerToAdd?: string) => {
+    const symbol = tickerToAdd || newTicker;
+    if (!symbol.trim()) return;
     try {
       await fetch("http://localhost:8000/api/watchlist/item", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ticker: newTicker.trim() }),
+        body: JSON.stringify({ ticker: symbol.trim() }),
       });
       setNewTicker("");
       fetchWatchlist();
@@ -88,21 +90,50 @@ export default function WatchlistPage() {
     }
   };
 
+  const handleRemoveStock = async (tickerToRemove: string) => {
+    try {
+      await fetch(`http://localhost:8000/api/watchlist/item?ticker=${encodeURIComponent(tickerToRemove)}`, {
+        method: "DELETE",
+      });
+      setItems((prev) => prev.filter((i) => i.ticker !== tickerToRemove));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleCreateAlert = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!alertTicker.trim() || !alertThreshold) return;
     try {
-      await fetch("http://localhost:8000/api/watchlist/alerts", {
+      const res = await fetch("http://localhost:8000/api/watchlist/alerts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ticker: alertTicker,
+          ticker: alertTicker.trim().toUpperCase(),
           condition: alertCondition,
           threshold: parseFloat(alertThreshold),
         }),
       });
-      fetchAlerts();
+      if (res.ok) {
+        const data = await res.json();
+        if (data.alert) {
+          setAlerts((prev) => [data.alert, ...prev]);
+        } else {
+          fetchAlerts();
+        }
+      } else {
+        // Optimistic update
+        setAlerts((prev) => [
+          { id: `alert-${Date.now()}`, ticker: alertTicker.trim().toUpperCase(), condition: alertCondition, threshold: parseFloat(alertThreshold), active: true },
+          ...prev,
+        ]);
+      }
+      setAlertTicker("");
     } catch (err) {
-      console.error(err);
+      setAlerts((prev) => [
+        { id: `alert-${Date.now()}`, ticker: alertTicker.trim().toUpperCase(), condition: alertCondition, threshold: parseFloat(alertThreshold), active: true },
+        ...prev,
+      ]);
     }
   };
 
@@ -110,7 +141,7 @@ export default function WatchlistPage() {
     <div className="space-y-8">
       {/* Header */}
       <div className="bg-surface border border-border rounded-card p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-2">
+        <div className="space-y-2 max-w-xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 text-positive text-xs font-semibold">
             <Star className="w-3.5 h-3.5" />
             Watchlist & Custom Trigger Alerts
@@ -124,21 +155,14 @@ export default function WatchlistPage() {
         </div>
 
         {/* Add Ticker Form */}
-        <form onSubmit={handleAddStock} className="flex gap-2">
-          <input
-            type="text"
-            placeholder="Add ticker (e.g. INFY)..."
-            value={newTicker}
-            onChange={(e) => setNewTicker(e.target.value)}
-            className="bg-bg border border-border rounded-lg px-3 py-2 text-xs text-neutralText focus:outline-none focus:border-primary"
+        <div className="w-full md:w-80">
+          <label className="text-xs text-mutedText font-semibold mb-1 block">Add Stock to Watchlist</label>
+          <StockSearchInput
+            placeholder="Type symbol to add (e.g. INFY)..."
+            buttonText="Add"
+            onSelectTicker={(ticker) => handleAddStock(ticker)}
           />
-          <button
-            type="submit"
-            className="bg-primary hover:bg-primary/90 text-white font-semibold text-xs px-4 py-2 rounded-lg flex items-center gap-1 transition-colors"
-          >
-            <Plus className="w-4 h-4" /> Add
-          </button>
-        </form>
+        </div>
       </div>
 
       {/* Grid: Watchlist Table + Create Alert Panel */}
@@ -150,7 +174,7 @@ export default function WatchlistPage() {
           </h2>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
+            <table className="w-full text-left border-collapse text-xs min-w-[650px]">
               <thead>
                 <tr className="border-b border-border text-mutedText uppercase text-[11px] font-semibold">
                   <th className="py-3 px-3">Stock</th>
@@ -183,10 +207,17 @@ export default function WatchlistPage() {
                       </td>
                       <td className="py-3.5 px-3 text-neutralText">{stk.pe}x</td>
                       <td className="py-3.5 px-3 font-semibold text-positive">{stk.roe}%</td>
-                      <td className="py-3.5 px-3 text-right">
+                      <td className="py-3.5 px-3 text-right space-x-3">
                         <Link href={`/stock/${stk.ticker}`} className="text-xs text-primary font-medium hover:underline">
                           View →
                         </Link>
+                        <button
+                          onClick={() => handleRemoveStock(stk.ticker)}
+                          className="text-xs text-negative hover:underline"
+                          title="Remove from Watchlist"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 inline" />
+                        </button>
                       </td>
                     </tr>
                   );
@@ -211,9 +242,11 @@ export default function WatchlistPage() {
                 <label className="text-mutedText block mb-1 font-semibold">Stock Ticker</label>
                 <input
                   type="text"
+                  placeholder="e.g. INFY.NS or RELIANCE.NS"
                   value={alertTicker}
+                  onFocus={(e) => e.target.select()}
                   onChange={(e) => setAlertTicker(e.target.value)}
-                  className="w-full bg-bg border border-border rounded-lg p-2 text-neutralText focus:outline-none focus:border-primary"
+                  className="w-full bg-bg border border-border rounded-lg p-2 text-neutralText focus:outline-none focus:border-primary font-mono"
                 />
               </div>
 
@@ -233,18 +266,19 @@ export default function WatchlistPage() {
               </div>
 
               <div>
-                <label className="text-mutedText block mb-1 font-semibold">Threshold Value</label>
+                <label className="text-mutedText block mb-1 font-semibold font-mono">Threshold Value</label>
                 <input
                   type="number"
+                  placeholder="Threshold numeric value..."
                   value={alertThreshold}
                   onChange={(e) => setAlertThreshold(e.target.value)}
-                  className="w-full bg-bg border border-border rounded-lg p-2 text-neutralText focus:outline-none focus:border-primary"
+                  className="w-full bg-bg border border-border rounded-lg p-2 text-neutralText focus:outline-none focus:border-primary font-mono"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 shadow"
               >
                 <Bell className="w-4 h-4" /> Create Alert Trigger
               </button>
@@ -254,11 +288,11 @@ export default function WatchlistPage() {
           {/* Active Alerts List */}
           <div className="pt-4 border-t border-border space-y-2">
             <div className="text-xs font-semibold text-mutedText">Active Trigger List</div>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 max-h-48 overflow-y-auto">
               {alerts.map((al) => (
                 <div key={al.id} className="flex items-center justify-between p-2 rounded bg-bg text-xs border border-border">
                   <div>
-                    <strong className="text-neutralText">{al.ticker}</strong>
+                    <strong className="text-neutralText font-mono">{al.ticker}</strong>
                     <div className="text-[10px] text-mutedText">{al.condition} {al.threshold}</div>
                   </div>
                   <span className="w-2 h-2 rounded-full bg-positive animate-pulse" />
@@ -268,6 +302,7 @@ export default function WatchlistPage() {
           </div>
         </div>
       </div>
+
     </div>
   );
 }

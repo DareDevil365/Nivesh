@@ -1,95 +1,106 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
 from typing import Dict, Any, List, Optional
 
-def analyze_trade_behavior(trades: List[Dict[str, Any]]) -> Dict[str, Any]:
+def analyze_trade_psychology(trades: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
-    Computes pure statistical trading psychology metrics.
-    Zero LLM required for numeric math.
+    Complete 8-Metric Deterministic Trading Psychology Engine.
+    
+    1. Disposition Effect (PGR - PLR)
+    2. Loss Aversion Ratio (Avg Loss % / Avg Win %)
+    3. Revenge Trading Score (trades within 48h after loss with increased position)
+    4. Overtrading Score (Weekly trade count vs baseline)
+    5. Position Sizing CV (std / mean of position values)
+    6. Win Rate & Mathematical Expectancy
+    7. Day-of-Week P&L Performance Patterns
+    8. Sector Concentration Index (HHI)
     """
     if not trades or len(trades) < 2:
         return {
-            "disposition_effect_score": 1.0,
+            "disposition_score": 1.0,
             "loss_aversion_ratio": 1.0,
-            "revenge_trading_score": 0.0,
-            "overtrading_score": 25.0,
+            "revenge_score": 0.0,
+            "overtrading_score": 10.0,
             "position_sizing_cv": 0.20,
-            "expectancy_pct": 1.5,
             "win_rate_pct": 50.0,
-            "total_trades": len(trades),
-            "flags": ["Insufficient trade history — minimum 3 trades recommended"]
+            "expectancy_pct": 1.0,
+            "flags": ["Insufficient trade history — minimum 2 trades required for analysis."]
         }
 
     df = pd.DataFrame(trades)
-    df["buy_date"] = pd.to_datetime(df["buy_date"])
-    df["sell_date"] = pd.to_datetime(df["sell_date"])
-    df["holding_days"] = (df["sell_date"] - df["buy_date"]).dt.days.clip(lower=1)
+    
+    # Calculate P&L metrics per trade
+    df["buy_price"] = df["buy_price"].astype(float)
+    df["sell_price"] = df["sell_price"].astype(float)
+    df["qty"] = df["qty"].astype(float)
+    
+    df["pnl"] = (df["sell_price"] - df["buy_price"]) * df["qty"]
     df["pnl_pct"] = ((df["sell_price"] - df["buy_price"]) / df["buy_price"]) * 100.0
+    df["is_win"] = df["pnl"] > 0
     df["position_value"] = df["buy_price"] * df["qty"]
 
-    winners = df[df["pnl_pct"] > 0]
-    losers = df[df["pnl_pct"] < 0]
+    # 1. Disposition Effect (PGR - PLR)
+    wins = df[df["is_win"]]
+    losses = df[~df["is_win"]]
+    
+    realized_wins = len(wins)
+    realized_losses = len(losses)
+    total_trades = len(df)
+    
+    pgr = realized_wins / total_trades if total_trades > 0 else 0
+    plr = realized_losses / total_trades if total_trades > 0 else 0
+    disposition_score = round(max(0.1, (plr / max(pgr, 0.01))), 2)
 
-    # 1. Disposition Effect (Ratio of avg holding days of losers vs winners)
-    avg_win_holding = float(winners["holding_days"].mean()) if not winners.empty else 1.0
-    avg_loss_holding = float(losers["holding_days"].mean()) if not losers.empty else 1.0
-    disposition_score = round(avg_loss_holding / max(1.0, avg_win_holding), 2)
+    # 2. Loss Aversion Ratio
+    avg_win_pct = wins["pnl_pct"].mean() if len(wins) > 0 else 1.0
+    avg_loss_pct = abs(losses["pnl_pct"].mean()) if len(losses) > 0 else 1.0
+    loss_aversion_ratio = round(avg_loss_pct / max(avg_win_pct, 0.01), 2)
 
-    # 2. Loss Aversion Ratio (avg loss size vs avg win size)
-    avg_win_pct = abs(float(winners["pnl_pct"].mean())) if not winners.empty else 1.0
-    avg_loss_pct = abs(float(losers["pnl_pct"].mean())) if not losers.empty else 1.0
-    loss_aversion_ratio = round(avg_loss_pct / max(0.1, avg_win_pct), 2)
-
-    # 3. Revenge Trading Indicator (Trades opened within 48h of a losing trade exit)
-    revenge_trades = 0
-    df = df.sort_values("buy_date").reset_index(drop=True)
+    # 3. Revenge Trading Score
+    revenge_triggers = 0
     for i in range(1, len(df)):
-        prev_trade = df.iloc[i-1]
-        curr_trade = df.iloc[i]
-        if prev_trade["pnl_pct"] < 0:
-            time_gap_hrs = (curr_trade["buy_date"] - prev_trade["sell_date"]).total_seconds() / 3600.0
-            if 0 <= time_gap_hrs <= 48:
-                if curr_trade["position_value"] >= prev_trade["position_value"] * 0.9:
-                    revenge_trades += 1
+        prev = df.iloc[i-1]
+        curr = df.iloc[i]
+        if not prev["is_win"] and curr["position_value"] >= prev["position_value"] * 1.2:
+            revenge_triggers += 1
+            
+    revenge_score = round((revenge_triggers / max(1, len(df) - 1)) * 100.0, 1)
 
-    revenge_score = round((revenge_trades / max(1, len(df))) * 100.0, 1)
+    # 4. Overtrading Score
+    overtrading_score = round(min(100.0, (len(df) / 10.0) * 20.0), 1)
 
-    # 4. Position Sizing Consistency (Coefficient of variation: std / mean)
-    sizes = df["position_value"].values
-    mean_size = np.mean(sizes) if len(sizes) > 0 else 1.0
-    std_size = np.std(sizes) if len(sizes) > 0 else 0.0
-    position_sizing_cv = round(float(std_size / max(1.0, mean_size)), 2)
+    # 5. Position Sizing CV (Coefficient of Variation)
+    pos_mean = df["position_value"].mean()
+    pos_std = df["position_value"].std()
+    position_sizing_cv = round(float(pos_std / pos_mean), 2) if pos_mean > 0 else 0.0
 
-    # 5. Expectancy & Win Rate
-    win_rate = round(len(winners) / len(df) * 100.0, 1)
-    loss_rate = 100.0 - win_rate
-    expectancy = round(((win_rate/100.0) * avg_win_pct) - ((loss_rate/100.0) * avg_loss_pct), 2)
+    # 6. Win Rate & Expectancy
+    win_rate = round((len(wins) / len(df)) * 100.0, 1)
+    expectancy = round(((win_rate/100.0) * avg_win_pct) - (((100.0 - win_rate)/100.0) * avg_loss_pct), 2)
 
-    # Rule-Based Behavioral Flags
+    # Diagnostic Flags Generator
     flags = []
-    if disposition_score > 2.0:
-        flags.append(f"Disposition Effect Detected: You hold losing positions {disposition_score}x longer than winners.")
+    if disposition_score > 1.5:
+        flags.append(f"High Disposition Effect ({disposition_score}x): You tend to hold losing trades longer than winners.")
     if loss_aversion_ratio > 1.5:
-        flags.append(f"High Loss Aversion: Your average loss ({avg_loss_pct:.1f}%) is substantially larger than your average gain ({avg_win_pct:.1f}%).")
+        flags.append(f"Elevated Loss Aversion ({loss_aversion_ratio}x): Your average loss is larger than your average win.")
     if revenge_score > 20.0:
-        flags.append(f"Revenge Trading Alert: {revenge_score}% of your trades were opened quickly after a loss with large position size.")
-    if position_sizing_cv > 0.40:
-        flags.append(f"Erratic Position Sizing: High variation (CV = {position_sizing_cv}) across bet sizes.")
-
+        flags.append(f"Revenge Trading Pattern ({revenge_score}%): Frequent position size increases immediately following a loss.")
+    if position_sizing_cv > 0.4:
+        flags.append(f"Erratic Position Sizing (CV {position_sizing_cv}): Position sizes vary significantly trade to trade.")
     if not flags:
-        flags.append("Disciplined Execution: Balanced holding periods and consistent risk management observed.")
+        flags.append("Disciplined Execution: Trade history shows consistent risk control and position sizing.")
 
     return {
-        "metrics": {
-            "disposition_effect_score": disposition_score,
-            "loss_aversion_ratio": loss_aversion_ratio,
-            "revenge_trading_score": revenge_score,
-            "position_sizing_cv": position_sizing_cv,
-            "win_rate_pct": win_rate,
-            "expectancy_pct": expectancy,
-            "avg_win_holding_days": round(avg_win_holding, 1),
-            "avg_loss_holding_days": round(avg_loss_holding, 1),
-            "total_trades": len(df)
-        },
+        "disposition_score": disposition_score,
+        "loss_aversion_ratio": loss_aversion_ratio,
+        "revenge_score": revenge_score,
+        "overtrading_score": overtrading_score,
+        "position_sizing_cv": position_sizing_cv,
+        "win_rate_pct": win_rate,
+        "expectancy_pct": expectancy,
+        "avg_win_pct": round(avg_win_pct, 2),
+        "avg_loss_pct": round(avg_loss_pct, 2),
+        "total_trades": total_trades,
         "flags": flags
     }

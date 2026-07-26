@@ -115,6 +115,27 @@ export default function StockChart({ bars, ticker }: StockChartProps) {
       bbLower.setData(bars.filter(b => b["BBL_20_2.0"] !== undefined && b["BBL_20_2.0"] !== null).map(b => ({ time: b.time, value: b["BBL_20_2.0"]! })));
     }
 
+    // RSI 14 Indicator Pane
+    if (showRSI) {
+      const rsiSeries = chart.addLineSeries({
+        color: "#E74C3C",
+        lineWidth: 1,
+        title: "RSI 14",
+        priceScaleId: "rsi_scale",
+      });
+
+
+      rsiSeries.priceScale().applyOptions({
+        scaleMargins: { top: 0.8, bottom: 0.05 },
+      });
+
+      rsiSeries.setData(
+        bars
+          .filter((b) => b.RSI_14 !== undefined && b.RSI_14 !== null)
+          .map((b) => ({ time: b.time, value: b.RSI_14! }))
+      );
+    }
+
     // Volume Histogram Overlay
     const volumeSeries = chart.addHistogramSeries({
       color: "#1E7A4C",
@@ -123,7 +144,7 @@ export default function StockChart({ bars, ticker }: StockChartProps) {
     });
 
     volumeSeries.priceScale().applyOptions({
-      scaleMargins: { top: 0.75, bottom: 0 },
+      scaleMargins: { top: 0.7, bottom: showRSI ? 0.2 : 0 },
     });
 
     volumeSeries.setData(
@@ -185,6 +206,14 @@ export default function StockChart({ bars, ticker }: StockChartProps) {
           >
             Bollinger Bands
           </button>
+          <button
+            onClick={() => setShowRSI(!showRSI)}
+            className={`px-2.5 py-1 rounded border font-semibold transition-colors ${
+              showRSI ? "bg-rose-500/20 text-rose-400 border-rose-500/30" : "bg-bg text-mutedText border-border"
+            }`}
+          >
+            RSI (14) Sub-pane
+          </button>
         </div>
 
         <div className="flex items-center gap-1 text-[11px] text-mutedText">
@@ -192,6 +221,7 @@ export default function StockChart({ bars, ticker }: StockChartProps) {
           <span>Volume Spikes Filter Active</span>
         </div>
       </div>
+
 
       <div ref={chartContainerRef} className="w-full h-[380px] rounded-lg" />
     </div>

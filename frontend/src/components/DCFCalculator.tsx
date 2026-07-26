@@ -14,14 +14,28 @@ export default function DCFCalculator({ currentPrice, ticker }: DCFCalculatorPro
   const [discountRate, setDiscountRate] = useState<number>(11.0);
   const [terminalGrowth, setTerminalGrowth] = useState<number>(4.0);
 
-  // Simplified DCF Fair Value Estimation
-  const baseValue = currentPrice * 0.95;
-  const estimatedFairValue = Math.round(
-    baseValue * (1 + (revGrowth - 10) * 0.02) * (1 + (11 - discountRate) * 0.03) * (1 + (terminalGrowth - 3) * 0.02)
-  );
+  // Realistic 2-stage DCF calculation
+  // Stage 1: 5-year cash flow projection
+  let pvCashFlows = 0;
+  let currentFCF = currentPrice * 0.04; // Assume baseline 4% FCF yield per share
+  const r = discountRate / 100.0;
+  const g = revGrowth / 100.0;
+  const t_g = terminalGrowth / 100.0;
 
+  for (let yr = 1; yr <= 5; yr++) {
+    currentFCF = currentFCF * (1 + g);
+    pvCashFlows += currentFCF / Math.pow(1 + r, yr);
+  }
+
+  // Stage 2: Terminal Value (Gordon Growth Model)
+  const terminalVal = (currentFCF * (1 + t_g)) / Math.max(0.01, r - t_g);
+  const pvTerminalVal = terminalVal / Math.pow(1 + r, 5);
+  const fairValuePerShare = (pvCashFlows + pvTerminalVal) / 0.04; // Normalized fair value per share
+
+  const estimatedFairValue = Math.max(1, Math.round(fairValuePerShare));
   const discountPct = Math.round(((estimatedFairValue - currentPrice) / currentPrice) * 100);
   const isUndervalued = discountPct >= 0;
+
 
   return (
     <div className="bg-surface border border-border rounded-card p-6 space-y-6">

@@ -1,12 +1,10 @@
 from typing import Dict, Any, List, Optional
-from services.data_fetcher import get_company_profile, PRESET_STOCKS
+from services.data_fetcher import get_company_profile
+from services.nse_stock_master import NSE_MASTER_LIST
+from services.snowflake_calculator import compute_snowflake_scores
 
-# Universe of sample NSE stocks for stock screener
-NSE_UNIVERSE = [
-    "RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ICICIBANK.NS",
-    "TATAMOTORS.NS", "BHARTIARTL.NS", "ITC.NS", "SBIN.NS", "LT.NS",
-    "HINDUNILVR.NS", "AXISBANK.NS", "BAJFINANCE.NS", "MARUTI.NS", "SUNPHARMA.NS"
-]
+# Universe of NSE stocks for stock screener
+NSE_UNIVERSE = list(NSE_MASTER_LIST.keys())
 
 PRESET_SCREENS = {
     "quality_compounders": {
@@ -51,14 +49,28 @@ PRESET_SCREENS = {
     }
 }
 
-def get_all_screener_stocks() -> List[Dict[str, Any]]:
+def fetch_single_profile(ticker: str) -> Optional[Dict[str, Any]]:
+    try:
+        profile = get_company_profile(ticker)
+        scores = compute_snowflake_scores(profile)
+        profile["snowflake_total"] = scores["total"]
+        profile["snowflake_scores"] = scores
+        return profile
+    except Exception:
+        return None
+
+def get_all_screener_stocks(limit: int = 60) -> List[Dict[str, Any]]:
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     stocks = []
-    for ticker in NSE_UNIVERSE:
-        try:
-            profile = get_company_profile(ticker)
-            stocks.append(profile)
-        except Exception:
-            continue
+    target_universe = NSE_UNIVERSE[:limit]
+    
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [executor.submit(fetch_single_profile, ticker) for ticker in target_universe]
+        for future in as_completed(futures):
+            res = future.result()
+            if res is not None:
+                stocks.append(res)
+                
     return stocks
 
 def filter_stocks(filters: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -78,10 +90,14 @@ def filter_stocks(filters: Dict[str, Any]) -> List[Dict[str, Any]]:
     min_promoter = filters.get("min_promoter")
     max_pledged = filters.get("max_pledged")
     min_market_cap = filters.get("min_market_cap")
+    max_market_cap = filters.get("max_market_cap")
     sector_filter = filters.get("sector")
 
+    sort_by = filters.get("sort_by", "market_cap")
+    order = filters.get("order", "desc")
+
     for s in all_stocks:
-        f = s["fundamentals"]
+        f = s
 
         if sector_filter and s["sector"].lower() != sector_filter.lower():
             continue
@@ -101,18 +117,25 @@ def filter_stocks(filters: Dict[str, Any]) -> List[Dict[str, Any]]:
             continue
         if min_div_yield is not None and f["div_yield"] < float(min_div_yield):
             continue
-        if min_rev_growth is not None and f["revenue_growth_3yr"] < float(min_rev_growth):
+        if min_rev_growth is not None and f.get("revenue_growth_3yr", 0) < float(min_rev_growth):
             continue
-        if min_eps_growth is not None and f["eps_growth_3yr"] < float(min_eps_growth):
+        if min_eps_growth is not None and f.get("eps_growth_3yr", 0) < float(min_eps_growth):
             continue
-        if min_promoter is not None and f["promoter_holding"] < float(min_promoter):
+        if min_promoter is not None and f.get("promoter_holding", 0) < float(min_promoter):
             continue
-        if max_pledged is not None and f["pledged_shares_pct"] > float(max_pledged):
+        if max_pledged is not None and f.get("pledged_shares_pct", 0) > float(max_pledged):
             continue
         if min_market_cap is not None and f["market_cap"] < float(min_market_cap):
             continue
+        if max_market_cap is not None and f["market_cap"] > float(max_market_cap):
+            continue
 
         filtered.append(s)
+
+    # Sorting
+    reverse_sort = (order == "desc")
+    if sort_by in ["market_cap", "pe", "pb", "roe", "roce", "debt_equity", "div_yield", "snowflake_total"]:
+        filtered.sort(key=lambda x: x.get(sort_by, 0) or 0, reverse=reverse_sort)
 
     return filtered
 
@@ -123,7 +146,6 @@ def get_peers(ticker: str) -> List[Dict[str, Any]]:
 
     peers = [s for s in all_stocks if s["sector"] == target_sector and s["ticker"] != profile["ticker"]]
     if not peers:
-        # If no same-sector peers found in sample universe, return top market cap peers
         peers = [s for s in all_stocks if s["ticker"] != profile["ticker"]][:4]
 
     return peers
@@ -138,26 +160,27 @@ def get_sector_heatmap() -> List[Dict[str, Any]]:
             sectors[sec] = {
                 "sector": sec,
                 "total_market_cap": 0,
-                "weighted_day_change_pct": 0.0,
+                "weighted_day_change_sum": 0.0,
                 "stock_count": 0,
                 "stocks": []
             }
-        mcap = s["fundamentals"]["market_cap"]
-        change = s["fundamentals"]["day_change_pct"]
+        mcap = s.get("market_cap", 0.0) or 0.0
+        change = s.get("day_change_pct", 0.0) or 0.0
         sectors[sec]["total_market_cap"] += mcap
-        sectors[sec]["weighted_day_change_pct"] += change
+        sectors[sec]["weighted_day_change_sum"] += change * mcap
         sectors[sec]["stock_count"] += 1
         sectors[sec]["stocks"].append({"ticker": s["ticker"], "name": s["name"], "change_pct": change})
 
     result = []
     for sec, data in sectors.items():
-        avg_change = data["weighted_day_change_pct"] / max(1, data["stock_count"])
+        mcap_total = data["total_market_cap"]
+        avg_change = (data["weighted_day_change_sum"] / mcap_total) if mcap_total > 0 else 0.0
         result.append({
             "sector": sec,
-            "total_market_cap": data["total_market_cap"],
+            "total_market_cap": mcap_total,
             "avg_change_pct": round(avg_change, 2),
             "stock_count": data["stock_count"],
-            "top_stocks": data["stocks"]
+            "top_stocks": data["stocks"][:4]
         })
 
     result.sort(key=lambda x: x["total_market_cap"], reverse=True)

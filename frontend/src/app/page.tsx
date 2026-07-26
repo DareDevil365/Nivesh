@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Search, Activity, TrendingUp, ShieldCheck, Brain, ArrowRight, ShieldAlert, Sparkles } from "lucide-react";
+import StockSearchInput from "@/components/StockSearchInput";
 
 const FEATURED_STOCKS = [
   { ticker: "RELIANCE.NS", name: "Reliance Industries", sector: "Energy & Oil", price: "₹2,980.50", change: "+1.25%" },
@@ -15,19 +16,6 @@ const FEATURED_STOCKS = [
 ];
 
 export default function HomePage() {
-  const [tickerInput, setTickerInput] = useState("");
-  const router = useRouter();
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!tickerInput.trim()) return;
-    let ticker = tickerInput.trim().toUpperCase();
-    if (!ticker.endsWith(".NS") && !ticker.endsWith(".BO")) {
-      ticker = `${ticker}.NS`;
-    }
-    router.push(`/stock/${ticker}`);
-  };
-
   return (
     <div className="space-y-12">
       {/* Hero Banner */}
@@ -48,27 +36,16 @@ export default function HomePage() {
             Analyze Indian stocks with 5-axis Snowflake visual radar charts, backtest trading strategies in plain English, and diagnose your trading psychology habits — 100% deterministic, backed by code, not LLM hallucinations.
           </p>
 
-          {/* Quick Search */}
-          <form onSubmit={handleSearch} className="flex gap-3 max-w-xl">
-            <div className="relative flex-1">
-              <input
-                type="text"
-                placeholder="Enter stock symbol (e.g. RELIANCE, TCS, INFY)..."
-                value={tickerInput}
-                onChange={(e) => setTickerInput(e.target.value)}
-                className="w-full bg-bg border border-border rounded-lg pl-10 pr-4 py-3 text-sm text-neutralText placeholder:text-mutedText focus:outline-none focus:border-primary transition-colors"
-              />
-              <Search className="w-5 h-5 text-mutedText absolute left-3 top-3.5" />
-            </div>
-            <button
-              type="submit"
-              className="bg-primary hover:bg-primary/90 text-white font-medium px-6 py-3 rounded-lg text-sm transition-colors flex items-center gap-2"
-            >
-              Analyze <ArrowRight className="w-4 h-4" />
-            </button>
-          </form>
+          {/* Quick Search with Autocomplete Typeahead */}
+          <div className="max-w-xl">
+            <StockSearchInput
+              placeholder="Search symbol or company (e.g. RELIANCE, TCS, INFY, BAJAJ-AUTO, WIPRO)..."
+              buttonText="Analyze Stock"
+            />
+          </div>
         </div>
       </div>
+
 
       {/* Featured Stock Cards */}
       <div className="space-y-4">

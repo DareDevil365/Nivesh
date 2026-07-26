@@ -1,174 +1,185 @@
+import math
+import logging
+from typing import Dict, Any, List
 import pandas as pd
 import numpy as np
-from datetime import datetime
-from typing import Dict, Any, List, Optional
 from services.data_fetcher import get_chart_data
-from services.indicators import compute_indicators
+from services.indicators import compute_indicators_df
 
-def run_backtest(strategy_json: Dict[str, Any]) -> Dict[str, Any]:
+logger = logging.getLogger(__name__)
+
+def run_indicator_backtest(
+    ticker: str,
+    entry_rule: Dict[str, Any],
+    exit_rule: Dict[str, Any],
+    initial_capital: float = 100000.0,
+    stop_loss_pct: float = 5.0,
+    take_profit_pct: Optional[float] = None,
+    start_date: Optional[str] = None,
+    period: str = "5y"
+) -> Dict[str, Any]:
     """
-    Executes a deterministic, vectorized strategy backtest using pure pandas/numpy.
-    Zero LLM involvement in calculation.
+    Deterministic vectorized strategy simulation engine with compounding portfolio math,
+    correct CAGR, Sharpe ratio, and Max Drawdown calculations.
     """
-    ticker = strategy_json.get("ticker", "RELIANCE.NS")
-    date_range = strategy_json.get("date_range", {})
-    start_date = date_range.get("start", "2020-01-01")
-    end_date = date_range.get("end", "2020-12-31")
+    chart_res = get_chart_data(ticker, period=period, interval="1d")
+    bars = chart_res.get("bars", [])
     
-    entry_rule = strategy_json.get("entry_rule", {})
-    exit_rule = strategy_json.get("exit_rule", {})
-    stop_loss_pct = strategy_json.get("stop_loss_pct")
-    take_profit_pct = strategy_json.get("take_profit_pct")
-    initial_capital = strategy_json.get("position_sizing", {}).get("amount", 100000.0)
+    if not bars or len(bars) < 10:
+        return {"error": f"Insufficient price data available to backtest {ticker}."}
 
-    # 1. Fetch OHLCV data
-    chart_bars = get_chart_data(ticker, period="5y", interval="1d")
-    if not chart_bars:
-        raise ValueError(f"No price data found for {ticker}")
-
-    df = pd.DataFrame(chart_bars)
+    df = pd.DataFrame(bars)
     df["time"] = pd.to_datetime(df["time"])
-    df = df.sort_values("time").reset_index(drop=True)
+    df.sort_values("time", inplace=True)
+    df.reset_index(drop=True, inplace=True)
 
-    # Filter date range
-    start_dt = pd.to_datetime(start_date)
-    end_dt = pd.to_datetime(end_date)
-    df = df[(df["time"] >= start_dt) & (df["time"] <= end_dt)].reset_index(drop=True)
-
+    # Filter date range if specified
+    if start_date:
+        df = df[df["time"] >= pd.to_datetime(start_date)]
+    if end_date:
+        df = df[df["time"] <= pd.to_datetime(end_date)]
+        
+    df.reset_index(drop=True, inplace=True)
     if len(df) < 10:
-        # Fallback to last 250 bars if range is too small in sample data
-        df = pd.DataFrame(chart_bars).tail(250).reset_index(drop=True)
-        df["time"] = pd.to_datetime(df["time"])
+        return {"error": "Date range contains insufficient trading bars for backtest."}
 
-    # 2. Compute Technical Indicators
-    df = compute_indicators(df)
+    # Compute technical indicators
+    df = compute_indicators_df(df)
 
-    # 3. Simulate Signal Conditions
-    entry_indicator = entry_rule.get("indicator", "RSI")
+    # Parse indicators
+    entry_ind = entry_rule.get("indicator", "RSI").upper()
     entry_cond = entry_rule.get("condition", "crosses_below")
     entry_val = float(entry_rule.get("value", 30))
 
-    exit_indicator = exit_rule.get("indicator", "RSI")
+    exit_ind = exit_rule.get("indicator", "RSI").upper()
     exit_cond = exit_rule.get("condition", "crosses_above")
     exit_val = float(exit_rule.get("value", 70))
 
-    # Determine indicator column names
-    entry_col = "RSI_14" if entry_indicator == "RSI" else "SMA_20"
-    exit_col = "RSI_14" if exit_indicator == "RSI" else "SMA_50"
-
-    trades = []
+    cash = initial_capital
+    shares = 0
     in_position = False
     entry_price = 0.0
-    entry_idx = 0
-    cash = float(initial_capital)
-    portfolio_values = []
+    entry_date = ""
 
-    for i in range(1, len(df)):
+    trade_log = []
+    equity_curve = []
+    peak_portfolio_val = initial_capital
+    max_drawdown_pct = 0.0
+
+    for i in range(len(df)):
         row = df.iloc[i]
-        prev_row = df.iloc[i-1]
         curr_price = float(row["close"])
-        date_str = str(row["time"]).split("T")[0].split(" ")[0]
+        curr_date = row["time"].strftime("%Y-%m-%d")
 
-        # Check Entry Signal
+        # Evaluate Signals
+        entry_signal = False
+        exit_signal = False
+
+        # Entry logic
         if not in_position:
-            is_entry = False
-            if entry_cond == "crosses_below":
-                is_entry = (prev_row[entry_col] >= entry_val) and (row[entry_col] < entry_val)
-            elif entry_cond == "crosses_above":
-                is_entry = (prev_row[entry_col] <= entry_val) and (row[entry_col] > entry_val)
-            elif entry_cond == "less_than":
-                is_entry = row[entry_col] < entry_val
-            elif entry_cond == "greater_than":
-                is_entry = row[entry_col] > entry_val
+            if entry_ind == "RSI" and "RSI_14" in row:
+                rsi_val = row["RSI_14"]
+                if not pd.isna(rsi_val):
+                    if entry_cond == "crosses_below" and rsi_val < entry_val:
+                        entry_signal = True
+                    elif entry_cond == "crosses_above" and rsi_val > entry_val:
+                        entry_signal = True
+            elif entry_ind == "SMA_CROSS" and "SMA_20" in row and "SMA_50" in row:
+                if row["SMA_20"] > row["SMA_50"]:
+                    entry_signal = True
 
-            if is_entry:
-                in_position = True
-                entry_price = curr_price
-                entry_idx = i
+        # Exit logic
+        else:
+            if exit_ind == "RSI" and "RSI_14" in row:
+                rsi_val = row["RSI_14"]
+                if not pd.isna(rsi_val):
+                    if exit_cond == "crosses_above" and rsi_val > exit_val:
+                        exit_signal = True
+                    elif exit_cond == "crosses_below" and rsi_val < exit_val:
+                        exit_signal = True
+            
+            # Risk exits: Stop loss & Take profit
+            pnl_pct = ((curr_price - entry_price) / entry_price) * 100
+            if stop_loss_pct and pnl_pct <= -abs(stop_loss_pct):
+                exit_signal = True
+            if take_profit_pct and pnl_pct >= abs(take_profit_pct):
+                exit_signal = True
 
-        # Check Exit Signal / Stop Loss / Take Profit
-        elif in_position:
-            pct_change = (curr_price - entry_price) / entry_price * 100.0
-            is_exit = False
-            exit_reason = "Exit Signal"
+        # Execute Entry
+        if entry_signal and not in_position:
+            in_position = True
+            entry_price = curr_price
+            entry_date = curr_date
+            shares = int(cash // curr_price)
+            cash -= shares * curr_price
 
-            if stop_loss_pct and pct_change <= -abs(stop_loss_pct):
-                is_exit = True
-                exit_reason = "Stop Loss Hit"
-            elif take_profit_pct and pct_change >= abs(take_profit_pct):
-                is_exit = True
-                exit_reason = "Take Profit Hit"
-            else:
-                if exit_cond == "crosses_above":
-                    is_exit = (prev_row[exit_col] <= exit_val) and (row[exit_col] > exit_val)
-                elif exit_cond == "crosses_below":
-                    is_exit = (prev_row[exit_col] >= exit_val) and (row[exit_col] < exit_val)
-                elif exit_cond == "greater_than":
-                    is_exit = row[exit_col] > exit_val
-                elif exit_cond == "less_than":
-                    is_exit = row[exit_col] < exit_val
-
-            if is_exit or i == len(df) - 1:
-                in_position = False
-                holding_days = (i - entry_idx)
-                pnl_amount = (curr_price - entry_price) / entry_price * initial_capital
-                trades.append({
-                    "entry_date": str(df.iloc[entry_idx]["time"]).split("T")[0].split(" ")[0],
-                    "entry_price": round(entry_price, 2),
-                    "exit_date": date_str,
-                    "exit_price": round(curr_price, 2),
-                    "pnl_pct": round(pct_change, 2),
-                    "pnl_amount": round(pnl_amount, 2),
-                    "holding_days": max(1, holding_days),
-                    "exit_reason": exit_reason
-                })
+        # Execute Exit
+        elif exit_signal and in_position:
+            in_position = False
+            exit_price = curr_price
+            proceeds = shares * exit_price
+            cash += proceeds
+            pnl = proceeds - (shares * entry_price)
+            pnl_pct = ((exit_price - entry_price) / entry_price) * 100
+            
+            trade_log.append({
+                "entry_date": entry_date,
+                "exit_date": curr_date,
+                "entry_price": round(entry_price, 2),
+                "exit_price": round(exit_price, 2),
+                "shares": shares,
+                "pnl": round(pnl, 2),
+                "pnl_pct": round(pnl_pct, 2),
+                "win": pnl > 0
+            })
+            shares = 0
 
         # Portfolio Tracking
-        if in_position:
-            current_val = initial_capital * (curr_price / entry_price)
-        else:
-            current_val = initial_capital
-            if trades:
-                total_pnl = sum(t["pnl_amount"] for t in trades)
-                current_val += total_pnl
-
-        portfolio_values.append({
-            "time": date_str,
-            "portfolio_value": round(current_val, 2),
+        current_portfolio_val = cash + (shares * curr_price)
+        equity_curve.append({
+            "time": curr_date,
+            "portfolio_value": round(current_portfolio_val, 2),
             "benchmark_value": round(initial_capital * (curr_price / float(df.iloc[0]["close"])), 2)
         })
 
-    # Calculate Summary Statistics
-    total_trades = len(trades)
-    winning_trades = [t for t in trades if t["pnl_pct"] > 0]
-    losing_trades = [t for t in trades if t["pnl_pct"] < 0]
-    win_rate = (len(winning_trades) / total_trades * 100.0) if total_trades > 0 else 0.0
+        if current_portfolio_val > peak_portfolio_val:
+            peak_portfolio_val = current_portfolio_val
+        dd = (peak_portfolio_val - current_portfolio_val) / peak_portfolio_val * 100.0
+        if dd > max_drawdown_pct:
+            max_drawdown_pct = dd
 
-    total_return_pct = ((portfolio_values[-1]["portfolio_value"] - initial_capital) / initial_capital * 100.0) if portfolio_values else 0.0
-    avg_win = np.mean([t["pnl_pct"] for t in winning_trades]) if winning_trades else 0.0
-    avg_loss = np.mean([t["pnl_pct"] for t in losing_trades]) if losing_trades else 0.0
+    # Final stats computation
+    final_val = current_portfolio_val
+    total_return_pct = round(((final_val - initial_capital) / initial_capital) * 100.0, 2)
+    
+    trading_days = max(1, len(df))
+    cagr = round((((final_val / initial_capital) ** (252.0 / trading_days)) - 1.0) * 100.0, 2) if final_val > 0 else 0.0
 
-    # Calculate Max Drawdown
-    p_vals = [p["portfolio_value"] for p in portfolio_values]
-    if p_vals:
-        peaks = np.maximum.accumulate(p_vals)
-        drawdowns = (p_vals - peaks) / peaks * 100.0
-        max_drawdown = round(abs(float(np.min(drawdowns))), 2)
-    else:
-        max_drawdown = 0.0
+    # Daily returns & Sharpe Ratio
+    eq_series = pd.Series([e["portfolio_value"] for e in equity_curve])
+    daily_returns = eq_series.pct_change().dropna()
+    
+    mean_ret = daily_returns.mean()
+    std_ret = daily_returns.std()
+    sharpe_ratio = round(float((mean_ret / std_ret) * math.sqrt(252)), 2) if std_ret > 0 else 0.0
+
+    wins = [t for t in trade_log if t["win"]]
+    win_rate = round((len(wins) / len(trade_log)) * 100.0, 2) if trade_log else 0.0
 
     return {
-        "strategy_json": strategy_json,
-        "stats": {
-            "total_return_pct": round(total_return_pct, 2),
-            "cagr_pct": round(total_return_pct / max(1, len(df)/252), 2),
-            "max_drawdown_pct": max_drawdown,
-            "sharpe_ratio": round(1.25 if total_return_pct > 0 else 0.45, 2),
-            "win_rate_pct": round(win_rate, 1),
-            "total_trades": total_trades,
-            "avg_win_pct": round(avg_win, 2),
-            "avg_loss_pct": round(avg_loss, 2),
-        },
-        "equity_curve": portfolio_values,
-        "trades": trades
+        "ticker": ticker,
+        "initial_capital": initial_capital,
+        "final_capital": round(final_val, 2),
+        "total_return_pct": total_return_pct,
+        "cagr": cagr,
+        "max_drawdown_pct": round(max_drawdown_pct, 2),
+        "sharpe_ratio": sharpe_ratio,
+        "total_trades": len(trade_log),
+        "win_rate_pct": win_rate,
+        "trade_log": trade_log,
+        "equity_curve": equity_curve
     }
+
+# Alias for backward compatibility
+run_backtest = run_indicator_backtest
+

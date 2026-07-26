@@ -1,49 +1,57 @@
 "use client";
 
-import React, { useState } from "react";
-import { TrendingUp, Play, Sparkles, AlertCircle, RefreshCw, Layers, Calendar, CheckCircle, ArrowRight } from "lucide-react";
+import React, { useState, useRef } from "react";
+import { SearchAutocomplete } from "@/components/SearchAutocomplete";
+import { EquityCurveChart } from "@/components/EquityCurveChart";
+import { api } from "@/lib/api";
+import { 
+  BrainCircuit, 
+  Play, 
+  Sparkles, 
+  TrendingUp, 
+  TrendingDown, 
+  CheckCircle2, 
+  AlertTriangle,
+  History,
+  Sliders,
+  FileSpreadsheet,
+  Zap
+} from "lucide-react";
 
-interface Trade {
-  entry_date: string;
-  entry_price: number;
-  exit_date: string;
-  exit_price: number;
-  pnl_pct: number;
-  pnl_amount: number;
-  holding_days: number;
-  exit_reason: string;
+interface BacktestResults {
+  error?: string;
+  ticker: string;
+  initial_capital: number;
+  final_capital: number;
+  total_return_pct: number;
+  cagr: number;
+  max_drawdown_pct: number;
+  sharpe_ratio: number;
+  total_trades: number;
+  win_rate_pct: number;
+  trade_log: Array<{
+    entry_date: string;
+    exit_date: string;
+    entry_price: number;
+    exit_price: number;
+    shares: number;
+    pnl: number;
+    pnl_pct: number;
+    win: boolean;
+  }>;
+  equity_curve: Array<{
+    time: string;
+    portfolio_value: number;
+    benchmark_value: number;
+  }>;
 }
-
-interface BacktestResult {
-  stats: {
-    total_return_pct: number;
-    cagr_pct: number;
-    max_drawdown_pct: number;
-    sharpe_ratio: number;
-    win_rate_pct: number;
-    total_trades: number;
-    avg_win_pct: number;
-    avg_loss_pct: number;
-  };
-  equity_curve: Array<{ time: string; portfolio_value: number; benchmark_value: number }>;
-  trades: Trade[];
-}
-
-const PRESET_SCENARIOS = [
-  { id: "covid", label: "COVID-19 Crash & Recovery", dates: { start: "2020-02-01", end: "2020-08-31" }, desc: "Fastest bear market & sharp V-recovery", live: true },
-  { id: "gfc", label: "Global Financial Crisis", dates: { start: "2008-01-01", end: "2009-03-31" }, desc: "Global credit crisis, ~50% market drop", live: true },
-  { id: "demonetization", label: "2016 Demonetization", dates: { start: "2016-11-01", end: "2017-01-31" }, desc: "Currency policy shock & short volatility", live: true },
-  { id: "ketan", label: "Ketan Parekh Dot-Com Bust", dates: { start: "2000-02-01", end: "2001-09-30" }, desc: "Tech rally & subsequent crash", live: true },
-  { id: "adani", label: "Adani-Hindenburg Episode", dates: { start: "2023-01-15", end: "2023-04-30" }, desc: "Single group shock & market ripples", live: true },
-  { id: "harshad", label: "Harshad Mehta Scam (1992)", dates: { start: "1992-03-01", end: "1992-06-30" }, desc: "SENSEX index approximation (pre-NSE)", live: false },
-];
 
 export default function BacktesterPage() {
   const [nlPrompt, setNlPrompt] = useState("");
-  const [parsingNL, setParsingNL] = useState(false);
-  const [runningBacktest, setRunningBacktest] = useState(false);
+  const [isParsing, setIsParsing] = useState(false);
+  const [parseSource, setParseSource] = useState<string | null>(null);
 
-  // Guided Builder Form State
+  // Form State
   const [ticker, setTicker] = useState("RELIANCE.NS");
   const [entryIndicator, setEntryIndicator] = useState("RSI");
   const [entryCondition, setEntryCondition] = useState("crosses_below");
@@ -53,456 +61,527 @@ export default function BacktesterPage() {
   const [exitCondition, setExitCondition] = useState("crosses_above");
   const [exitValue, setExitValue] = useState("70");
 
+  const [stopLossPct, setStopLossPct] = useState("5.0");
+  const [takeProfitPct, setTakeProfitPct] = useState("15.0");
   const [capital, setCapital] = useState("100000");
-  const [stopLoss, setStopLoss] = useState("5");
-  const [takeProfit, setTakeProfit] = useState("15");
+
   const [startDate, setStartDate] = useState("2020-02-01");
   const [endDate, setEndDate] = useState("2020-08-31");
   const [scenarioLabel, setScenarioLabel] = useState("COVID-19 Crash & Recovery");
 
-  const [results, setResults] = useState<BacktestResult | null>(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const [results, setResults] = useState<BacktestResults | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleNLParse = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const resultsRef = useRef<HTMLDivElement>(null);
+
+  // Scenario Presets
+  const presets = [
+    {
+      label: "COVID-19 Crash & Recovery",
+      ticker: "RELIANCE.NS",
+      start: "2020-02-01",
+      end: "2020-08-31",
+      desc: "Fast bear crash and sharp V-shaped recovery",
+    },
+    {
+      label: "Global Financial Crisis (GFC)",
+      ticker: "TCS.NS",
+      start: "2008-01-01",
+      end: "2009-03-31",
+      desc: "50%+ market drawdown during credit crash",
+    },
+    {
+      label: "2016 Demonetization",
+      ticker: "INFY.NS",
+      start: "2016-11-01",
+      end: "2017-01-31",
+      desc: "Short sharp policy shock volatility",
+    },
+    {
+      label: "Ketan Parekh Tech Crash",
+      ticker: "WIPRO.NS",
+      start: "2000-02-01",
+      end: "2001-09-30",
+      desc: "Dot-com sector bubble collapse",
+    },
+    {
+      label: "Adani-Hindenburg Shock",
+      ticker: "ADANIENT.NS",
+      start: "2023-01-15",
+      end: "2023-04-30",
+      desc: "Concentrated short report volatility",
+    },
+    {
+      label: "Harshad Mehta Scam (1992)",
+      ticker: "RELIANCE.NS",
+      start: "1992-03-01",
+      end: "1992-06-30",
+      desc: "⚠️ SENSEX index-level approximation",
+    },
+  ];
+
+  const handleApplyPreset = (p: typeof presets[0]) => {
+    setTicker(p.ticker);
+    setStartDate(p.start);
+    setEndDate(p.end);
+    setScenarioLabel(p.label);
+  };
+
+  const handleParseNL = async () => {
     if (!nlPrompt.trim()) return;
-    setParsingNL(true);
+    setIsParsing(true);
+    setErrorMessage(null);
+    setParseSource(null);
+
     try {
-      const res = await fetch("http://localhost:8000/api/backtest/parse", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: nlPrompt }),
-      });
-      if (res.ok) {
-        const data = await res.json();
+      const data = await api.post<{ status: string; source: string; strategy_json: any }>(
+        "/api/backtest/parse",
+        { text: nlPrompt.trim() }
+      );
+
+      if (data.strategy_json) {
         const s = data.strategy_json;
-        if (s) {
-          setTicker(s.ticker);
-          setEntryIndicator(s.entry_rule.indicator);
-          setEntryCondition(s.entry_rule.condition);
-          setEntryValue(String(s.entry_rule.value));
-          setExitIndicator(s.exit_rule.indicator);
-          setExitCondition(s.exit_rule.condition);
-          setExitValue(String(s.exit_rule.value));
-          if (s.stop_loss_pct) setStopLoss(String(s.stop_loss_pct));
-          if (s.take_profit_pct) setTakeProfit(String(s.take_profit_pct));
+        setParseSource(data.source === "gemini_ai" ? "Gemini AI" : "Rule Engine");
+
+        if (s.ticker) setTicker(s.ticker);
+        if (s.entry_rule) {
+          setEntryIndicator(s.entry_rule.indicator || "RSI");
+          setEntryCondition(s.entry_rule.condition || "crosses_below");
+          setEntryValue(String(s.entry_rule.value || 30));
         }
+        if (s.exit_rule) {
+          setExitIndicator(s.exit_rule.indicator || "RSI");
+          setExitCondition(s.exit_rule.condition || "crosses_above");
+          setExitValue(String(s.exit_rule.value || 70));
+        }
+        if (s.stop_loss_pct) setStopLossPct(String(s.stop_loss_pct));
+        if (s.take_profit_pct) setTakeProfitPct(String(s.take_profit_pct));
+        if (s.date_range) {
+          setStartDate(s.date_range.start || "2020-02-01");
+          setEndDate(s.date_range.end || "2020-08-31");
+        }
+        if (s.scenario_label) setScenarioLabel(s.scenario_label);
       }
-    } catch (err) {
-      console.warn("Parse fallback applied:", err);
+    } catch (err: any) {
+      setErrorMessage("Could not parse strategy. Please refine prompt or use dropdown builder below.");
     } finally {
-      setParsingNL(false);
+      setIsParsing(false);
     }
   };
 
   const handleRunBacktest = async () => {
-    setRunningBacktest(true);
-    const strategyJson = {
+    setIsRunning(true);
+    setErrorMessage(null);
+
+    const payload = {
       ticker,
-      entry_rule: { indicator: entryIndicator, params: { period: 14 }, condition: entryCondition, value: parseFloat(entryValue) },
-      exit_rule: { indicator: exitIndicator, params: { period: 14 }, condition: exitCondition, value: parseFloat(exitValue) },
-      position_sizing: { type: "fixed_capital", amount: parseFloat(capital) },
-      stop_loss_pct: stopLoss ? parseFloat(stopLoss) : null,
-      take_profit_pct: takeProfit ? parseFloat(takeProfit) : null,
+      entry_rule: {
+        indicator: entryIndicator,
+        condition: entryCondition,
+        value: parseFloat(entryValue) || 30,
+      },
+      exit_rule: {
+        indicator: exitIndicator,
+        condition: exitCondition,
+        value: parseFloat(exitValue) || 70,
+      },
+      position_sizing: { type: "fixed_capital", amount: parseFloat(capital) || 100000 },
+      stop_loss_pct: parseFloat(stopLossPct) || 5.0,
+      take_profit_pct: parseFloat(takeProfitPct) || 15.0,
       date_range: { start: startDate, end: endDate },
-      scenario_label: scenarioLabel,
     };
 
     try {
-      const res = await fetch("http://localhost:8000/api/backtest", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(strategyJson),
-      });
-      if (res.ok) {
-        const data = await res.json();
+      const data = await api.post<BacktestResults>("/api/backtest", payload);
+      if (data.error) {
+        setErrorMessage(data.error);
+      } else {
         setResults(data);
+        setTimeout(() => {
+          resultsRef.current?.scrollIntoView({ behavior: "smooth" });
+        }, 100);
       }
-    } catch (err) {
-      console.warn("FastAPI backend starting, using client fallback backtest results:", err);
-      setResults({
-        stats: {
-          total_return_pct: 34.5,
-          cagr_pct: 42.1,
-          max_drawdown_pct: 14.2,
-          sharpe_ratio: 1.65,
-          win_rate_pct: 75.0,
-          total_trades: 8,
-          avg_win_pct: 8.4,
-          avg_loss_pct: -3.2,
-        },
-        equity_curve: [
-          { time: "2020-02-01", portfolio_value: 100000, benchmark_value: 100000 },
-          { time: "2020-03-15", portfolio_value: 96000, benchmark_value: 75000 },
-          { time: "2020-04-30", portfolio_value: 112000, benchmark_value: 88000 },
-          { time: "2020-06-15", portfolio_value: 124000, benchmark_value: 102000 },
-          { time: "2020-08-31", portfolio_value: 134500, benchmark_value: 115000 },
-        ],
-        trades: [
-          { entry_date: "2020-03-05", entry_price: 1850.0, exit_date: "2020-03-24", exit_price: 1760.0, pnl_pct: -4.8, pnl_amount: -4800.0, holding_days: 19, exit_reason: "Stop Loss Hit" },
-          { entry_date: "2020-03-30", entry_price: 1720.0, exit_date: "2020-04-20", exit_price: 1980.0, pnl_pct: 15.1, pnl_amount: 15100.0, holding_days: 21, exit_reason: "Take Profit Hit" },
-          { entry_date: "2020-05-10", entry_price: 1940.0, exit_date: "2020-06-02", exit_price: 2180.0, pnl_pct: 12.3, pnl_amount: 12300.0, holding_days: 23, exit_reason: "Exit Signal" },
-          { entry_date: "2020-06-20", entry_price: 2150.0, exit_date: "2020-07-18", exit_price: 2400.0, pnl_pct: 11.6, pnl_amount: 11600.0, holding_days: 28, exit_reason: "Take Profit Hit" },
-        ],
-      });
+    } catch (err: any) {
+      setErrorMessage("Failed to execute backtest simulation. Check parameters.");
     } finally {
-      setRunningBacktest(false);
+      setIsRunning(false);
     }
   };
 
-  const applyScenario = (sc: typeof PRESET_SCENARIOS[0]) => {
-    setStartDate(sc.dates.start);
-    setEndDate(sc.dates.end);
-    setScenarioLabel(sc.label);
-  };
-
   return (
-    <div className="space-y-8">
+    <div className="space-[#0B1210] space-y-8">
       {/* Header Banner */}
-      <div className="bg-surface border border-border rounded-card p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/20 border border-secondary/30 text-secondary text-xs font-semibold">
-            <TrendingUp className="w-3.5 h-3.5" />
-            Headline Feature • Deterministic Vectorized Backtester
+      <div className="border border-border bg-surface rounded-card p-6 relative overflow-hidden">
+        <div className="absolute right-4 top-4 opacity-10 pointer-events-none">
+          <BrainCircuit className="w-32 h-32 text-secondary" />
+        </div>
+        <div className="max-w-3xl space-y-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/10 border border-secondary/20 text-secondary text-xs font-semibold">
+            <Zap className="w-3.5 h-3.5" />
+            Deterministic Python Engine + Gemini 3.6 Flash Sandbox
           </div>
-          <h1 className="font-heading font-bold text-2xl md:text-3xl text-neutralText">
-            Natural-Language Trading Strategy Sandbox
+          <h1 className="font-heading text-2xl sm:text-3xl font-bold text-neutralText">
+            Natural-Language & Guided Strategy Backtester
           </h1>
-          <p className="text-mutedText text-xs md:text-sm">
-            Type your trading idea in plain English or use the Guided Builder — LLM pre-fills form state, math is 100% deterministic code.
+          <p className="text-sm text-mutedText leading-relaxed">
+            Test trading ideas on historical NSE data. Type your strategy in plain English or configure parameters below. Results run on pure vectorized Python math — zero LLM hallucination.
           </p>
         </div>
       </div>
 
-      {/* Entry Point 2: Natural Language Box (Optional convenience layer) */}
-      <div className="bg-surface border border-border rounded-card p-6 space-y-4">
+      {/* Natural Language Prompt Card */}
+      <div className="border border-border bg-surface rounded-card p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <h3 className="font-heading font-semibold text-base text-neutralText flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-secondary" />
-            <h2 className="font-heading font-bold text-base text-neutralText">
-              Natural Language Strategy Prompt (Optional)
-            </h2>
-          </div>
-          <span className="text-xs text-mutedText">Pre-fills Guided Builder below</span>
+            Describe Strategy in Plain English
+          </h3>
+          {parseSource && (
+            <span className="text-xs px-2.5 py-0.5 rounded bg-primary/20 text-primary border border-primary/30 font-medium">
+              Parsed via {parseSource}
+            </span>
+          )}
         </div>
 
-        <form onSubmit={handleNLParse} className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <input
             type="text"
-            placeholder="e.g. 'Buy Reliance when RSI drops below 30, sell when RSI rises above 70, set 5% stop loss'..."
             value={nlPrompt}
             onChange={(e) => setNlPrompt(e.target.value)}
-            className="flex-1 bg-bg border border-border rounded-lg px-4 py-2.5 text-xs text-neutralText placeholder:text-mutedText focus:outline-none focus:border-secondary"
+            placeholder="e.g., Buy Reliance when RSI drops below 30, sell at RSI 70 with 5% stop loss during COVID crash"
+            className="flex-1 bg-bg border border-border rounded-lg px-4 py-2.5 text-sm text-neutralText placeholder-mutedText focus:outline-none focus:border-secondary transition-colors"
           />
           <button
-            type="submit"
-            disabled={parsingNL}
-            className="bg-secondary hover:bg-secondary/90 text-bg font-bold text-xs px-5 py-2.5 rounded-lg transition-colors flex items-center gap-1.5"
+            onClick={handleParseNL}
+            disabled={isParsing}
+            className="px-5 py-2.5 rounded-lg bg-secondary text-bg font-semibold text-sm hover:bg-secondary/90 transition-colors flex items-center justify-center gap-2 flex-shrink-0 disabled:opacity-50"
           >
-            {parsingNL ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-            Parse to Form
-          </button>
-        </form>
-
-        {/* Sample Prompts */}
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          <span className="text-[11px] text-mutedText">Try sample:</span>
-          <button
-            onClick={() => setNlPrompt("Buy Reliance when RSI drops below 30, sell when RSI crosses above 70")}
-            className="text-[11px] px-2.5 py-1 rounded bg-bg text-neutralText border border-border hover:border-secondary transition-colors"
-          >
-            RSI Oversold Bounce
-          </button>
-          <button
-            onClick={() => setNlPrompt("Buy TCS when RSI drops below 25, set 5% stop loss and 15% take profit")}
-            className="text-[11px] px-2.5 py-1 rounded bg-bg text-neutralText border border-border hover:border-secondary transition-colors"
-          >
-            TCS Deep Dip + Stop Loss
+            {isParsing ? (
+              <>Parsing Prompt...</>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4" />
+                Parse to Form
+              </>
+            )}
           </button>
         </div>
       </div>
 
-      {/* Preset Scenario Picker Cards */}
+      {/* Scenario Presets Library */}
       <div className="space-y-3">
-        <h3 className="font-heading font-semibold text-base text-neutralText flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-primary" />
-          Historical Crisis & Recovery Scenarios
+        <h3 className="font-heading font-semibold text-sm text-neutralText flex items-center gap-2">
+          <History className="w-4 h-4 text-primary" />
+          Historical Crisis Presets Library
         </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {PRESET_SCENARIOS.map((sc) => (
-            <div
-              key={sc.id}
-              onClick={() => sc.live && applyScenario(sc)}
-              className={`p-4 rounded-card border transition-all cursor-pointer ${
-                scenarioLabel === sc.label
-                  ? "bg-primary/20 border-primary"
-                  : "bg-surface border-border hover:border-primary/50"
-              } ${!sc.live ? "opacity-75" : ""}`}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {presets.map((p, idx) => (
+            <button
+              key={idx}
+              onClick={() => handleApplyPreset(p)}
+              className="text-left border border-border bg-surface hover:border-primary/50 p-3.5 rounded-lg transition-all group space-y-1"
             >
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-heading font-bold text-sm text-neutralText">{sc.label}</span>
-                {sc.live ? (
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-positive/20 text-positive font-bold">Per-Stock</span>
-                ) : (
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 font-bold">Index-Level Only</span>
-                )}
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-xs text-neutralText group-hover:text-primary transition-colors">
+                  {p.label}
+                </span>
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-bg text-mutedText">
+                  {p.ticker.replace(".NS", "")}
+                </span>
               </div>
-              <p className="text-xs text-mutedText mb-2">{sc.desc}</p>
-              <div className="text-[11px] font-mono text-mutedText">{sc.dates.start} → {sc.dates.end}</div>
-            </div>
+              <p className="text-[11px] text-mutedText">{p.desc}</p>
+            </button>
           ))}
         </div>
       </div>
 
-      {/* Primary Entry Point: Guided Builder Form */}
-      <div className="bg-surface border border-border rounded-card p-6 space-y-6">
-        <div className="flex items-center justify-between border-b border-border pb-4">
-          <h2 className="font-heading font-bold text-lg text-neutralText flex items-center gap-2">
-            <Layers className="w-5 h-5 text-primary" />
-            Guided Strategy Builder (Form State)
-          </h2>
-          <span className="text-xs text-positive font-semibold">100% Deterministic Engine</span>
+      {/* Guided Builder Form */}
+      <div className="border border-border bg-surface rounded-card p-6 space-y-6">
+        <div className="flex items-center justify-between border-b border-border pb-3">
+          <h3 className="font-heading font-semibold text-base text-neutralText flex items-center gap-2">
+            <Sliders className="w-4 h-4 text-primary" />
+            Guided Builder Parameters
+          </h3>
+          <span className="text-xs text-mutedText">Review or edit parsed form fields</span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Ticker & Capital */}
-          <div className="space-y-3">
-            <label className="text-xs font-semibold text-mutedText uppercase">Target Stock</label>
-            <select
-              value={ticker}
-              onChange={(e) => setTicker(e.target.value)}
-              className="w-full bg-bg border border-border rounded-lg p-2.5 text-xs text-neutralText focus:outline-none focus:border-primary"
-            >
-              <option value="RELIANCE.NS">Reliance Industries (RELIANCE.NS)</option>
-              <option value="TCS.NS">Tata Consultancy Services (TCS.NS)</option>
-              <option value="INFY.NS">Infosys Ltd (INFY.NS)</option>
-              <option value="HDFCBANK.NS">HDFC Bank Ltd (HDFCBANK.NS)</option>
-              <option value="TATAMOTORS.NS">Tata Motors Ltd (TATAMOTORS.NS)</option>
-            </select>
+        {errorMessage && (
+          <div className="p-3 rounded-lg bg-negative/10 border border-negative/30 text-negative text-xs flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+        )}
 
-            <label className="text-xs font-semibold text-mutedText uppercase block pt-2">Initial Capital (INR)</label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Target Stock */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-mutedText">Target Ticker</label>
+            <SearchAutocomplete
+              placeholder="Search ticker..."
+              onSelect={(selected) => setTicker(selected)}
+            />
+            <span className="text-[10px] text-primary font-mono font-semibold">Active: {ticker}</span>
+          </div>
+
+          {/* Initial Capital */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-mutedText">Capital (₹)</label>
             <input
               type="number"
               value={capital}
               onChange={(e) => setCapital(e.target.value)}
-              className="w-full bg-bg border border-border rounded-lg p-2.5 text-xs text-neutralText focus:outline-none focus:border-primary"
+              className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm text-neutralText focus:outline-none focus:border-primary"
             />
           </div>
 
+          {/* Stop Loss % */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-mutedText">Stop Loss (%)</label>
+            <input
+              type="number"
+              step="0.5"
+              value={stopLossPct}
+              onChange={(e) => setStopLossPct(e.target.value)}
+              className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm text-neutralText focus:outline-none focus:border-primary"
+            />
+          </div>
+
+          {/* Take Profit % */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-mutedText">Take Profit (%)</label>
+            <input
+              type="number"
+              step="0.5"
+              value={takeProfitPct}
+              onChange={(e) => setTakeProfitPct(e.target.value)}
+              className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm text-neutralText focus:outline-none focus:border-primary"
+            />
+          </div>
+        </div>
+
+        {/* Indicator Rules Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
           {/* Entry Rule */}
-          <div className="space-y-3 p-4 rounded-lg bg-bg/50 border border-border">
-            <div className="text-xs font-bold text-positive uppercase">Entry Condition (Buy)</div>
-            <div>
-              <label className="text-[11px] text-mutedText block mb-1">Indicator</label>
+          <div className="border border-border/80 bg-bg/40 p-4 rounded-lg space-y-3">
+            <span className="text-xs font-semibold text-positive flex items-center gap-1.5">
+              <TrendingUp className="w-3.5 h-3.5" /> ENTRY RULE
+            </span>
+            <div className="grid grid-cols-3 gap-2">
               <select
                 value={entryIndicator}
                 onChange={(e) => setEntryIndicator(e.target.value)}
-                className="w-full bg-surface border border-border rounded p-2 text-xs text-neutralText"
+                className="bg-surface border border-border rounded px-2 py-1.5 text-xs text-neutralText"
               >
                 <option value="RSI">RSI (14)</option>
-                <option value="SMA">SMA 20</option>
+                <option value="SMA_CROSS">SMA Cross</option>
+                <option value="EMA_CROSS">EMA Cross</option>
+                <option value="MACD">MACD</option>
+                <option value="BOLLINGER">Bollinger</option>
               </select>
-            </div>
-            <div>
-              <label className="text-[11px] text-mutedText block mb-1">Condition</label>
+
               <select
                 value={entryCondition}
                 onChange={(e) => setEntryCondition(e.target.value)}
-                className="w-full bg-surface border border-border rounded p-2 text-xs text-neutralText"
+                className="bg-surface border border-border rounded px-2 py-1.5 text-xs text-neutralText"
               >
                 <option value="crosses_below">Crosses Below</option>
                 <option value="crosses_above">Crosses Above</option>
-                <option value="less_than">Less Than</option>
               </select>
-            </div>
-            <div>
-              <label className="text-[11px] text-mutedText block mb-1">Threshold Value</label>
+
               <input
                 type="number"
                 value={entryValue}
                 onChange={(e) => setEntryValue(e.target.value)}
-                className="w-full bg-surface border border-border rounded p-2 text-xs text-neutralText"
+                placeholder="Value"
+                className="bg-surface border border-border rounded px-2 py-1.5 text-xs text-neutralText"
               />
             </div>
           </div>
 
           {/* Exit Rule */}
-          <div className="space-y-3 p-4 rounded-lg bg-bg/50 border border-border">
-            <div className="text-xs font-bold text-negative uppercase">Exit Condition (Sell)</div>
-            <div>
-              <label className="text-[11px] text-mutedText block mb-1">Indicator</label>
+          <div className="border border-border/80 bg-bg/40 p-4 rounded-lg space-y-3">
+            <span className="text-xs font-semibold text-negative flex items-center gap-1.5">
+              <TrendingDown className="w-3.5 h-3.5" /> EXIT RULE
+            </span>
+            <div className="grid grid-cols-3 gap-2">
               <select
                 value={exitIndicator}
                 onChange={(e) => setExitIndicator(e.target.value)}
-                className="w-full bg-surface border border-border rounded p-2 text-xs text-neutralText"
+                className="bg-surface border border-border rounded px-2 py-1.5 text-xs text-neutralText"
               >
                 <option value="RSI">RSI (14)</option>
-                <option value="SMA">SMA 50</option>
+                <option value="SMA_CROSS">SMA Cross</option>
+                <option value="EMA_CROSS">EMA Cross</option>
+                <option value="MACD">MACD</option>
+                <option value="BOLLINGER">Bollinger</option>
               </select>
-            </div>
-            <div>
-              <label className="text-[11px] text-mutedText block mb-1">Condition</label>
+
               <select
                 value={exitCondition}
                 onChange={(e) => setExitCondition(e.target.value)}
-                className="w-full bg-surface border border-border rounded p-2 text-xs text-neutralText"
+                className="bg-surface border border-border rounded px-2 py-1.5 text-xs text-neutralText"
               >
                 <option value="crosses_above">Crosses Above</option>
                 <option value="crosses_below">Crosses Below</option>
-                <option value="greater_than">Greater Than</option>
               </select>
-            </div>
-            <div>
-              <label className="text-[11px] text-mutedText block mb-1">Threshold Value</label>
+
               <input
                 type="number"
                 value={exitValue}
                 onChange={(e) => setExitValue(e.target.value)}
-                className="w-full bg-surface border border-border rounded p-2 text-xs text-neutralText"
+                placeholder="Value"
+                className="bg-surface border border-border rounded px-2 py-1.5 text-xs text-neutralText"
               />
             </div>
           </div>
         </div>
 
-        {/* Risk Controls & Date Range */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2 border-t border-border">
-          <div>
-            <label className="text-[11px] text-mutedText block mb-1">Stop Loss %</label>
-            <input
-              type="number"
-              value={stopLoss}
-              onChange={(e) => setStopLoss(e.target.value)}
-              className="w-full bg-bg border border-border rounded p-2 text-xs text-neutralText"
-            />
+        {/* Date Range & Run CTA */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 border-t border-border/40">
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="space-y-1">
+              <span className="text-[10px] text-mutedText block">Start Date</span>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="bg-bg border border-border rounded px-2.5 py-1 text-xs text-neutralText"
+              />
+            </div>
+            <span className="text-mutedText mt-4">to</span>
+            <div className="space-y-1">
+              <span className="text-[10px] text-mutedText block">End Date</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="bg-bg border border-border rounded px-2.5 py-1 text-xs text-neutralText"
+              />
+            </div>
           </div>
-          <div>
-            <label className="text-[11px] text-mutedText block mb-1">Take Profit %</label>
-            <input
-              type="number"
-              value={takeProfit}
-              onChange={(e) => setTakeProfit(e.target.value)}
-              className="w-full bg-bg border border-border rounded p-2 text-xs text-neutralText"
-            />
-          </div>
-          <div>
-            <label className="text-[11px] text-mutedText block mb-1">Start Date</label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-full bg-bg border border-border rounded p-2 text-xs text-neutralText"
-            />
-          </div>
-          <div>
-            <label className="text-[11px] text-mutedText block mb-1">End Date</label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="w-full bg-bg border border-border rounded p-2 text-xs text-neutralText"
-            />
-          </div>
-        </div>
 
-        <button
-          onClick={handleRunBacktest}
-          disabled={runningBacktest}
-          className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3.5 rounded-lg text-sm transition-colors flex items-center justify-center gap-2 shadow-lg"
-        >
-          {runningBacktest ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Play className="w-5 h-5 fill-current" />}
-          Run Deterministic Backtest Simulation
-        </button>
+          <button
+            onClick={handleRunBacktest}
+            disabled={isRunning}
+            className="w-full sm:w-auto px-8 py-3 rounded-lg bg-primary text-neutralText font-semibold text-sm hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {isRunning ? (
+              <>Simulating Python Math...</>
+            ) : (
+              <>
+                <Play className="w-4 h-4 fill-current" />
+                Run Vectorized Simulation
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
-      {/* Results Display */}
+      {/* Backtest Results Dashboard */}
       {results && (
-        <div className="space-y-6">
-          {/* Summary Stats Row */}
+        <div ref={resultsRef} className="space-y-6 pt-4 border-t border-border">
+          {/* Results Summary Stats */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            <div className="bg-surface border border-border rounded-card p-4 space-y-1">
-              <div className="text-[11px] text-mutedText uppercase font-semibold">Total Return</div>
-              <div className={`font-heading font-bold text-xl ${results.stats.total_return_pct >= 0 ? "text-positive" : "text-negative"}`}>
-                {results.stats.total_return_pct >= 0 ? "+" : ""}{results.stats.total_return_pct}%
-              </div>
+            <div className="border border-border bg-surface p-3.5 rounded-lg text-center">
+              <span className="text-[10px] text-mutedText uppercase tracking-wider block">Total Return</span>
+              <span className={`font-heading font-bold text-lg ${results.total_return_pct >= 0 ? "text-positive" : "text-negative"}`}>
+                {results.total_return_pct >= 0 ? "+" : ""}{results.total_return_pct}%
+              </span>
             </div>
 
-            <div className="bg-surface border border-border rounded-card p-4 space-y-1">
-              <div className="text-[11px] text-mutedText uppercase font-semibold">CAGR</div>
-              <div className="font-heading font-bold text-xl text-neutralText">
-                {results.stats.cagr_pct}%
-              </div>
+            <div className="border border-border bg-surface p-3.5 rounded-lg text-center">
+              <span className="text-[10px] text-mutedText uppercase tracking-wider block">CAGR</span>
+              <span className={`font-heading font-bold text-lg ${results.cagr >= 0 ? "text-positive" : "text-negative"}`}>
+                {results.cagr}%
+              </span>
             </div>
 
-            <div className="bg-surface border border-border rounded-card p-4 space-y-1">
-              <div className="text-[11px] text-mutedText uppercase font-semibold">Max Drawdown</div>
-              <div className="font-heading font-bold text-xl text-negative">
-                -{results.stats.max_drawdown_pct}%
-              </div>
+            <div className="border border-border bg-surface p-3.5 rounded-lg text-center">
+              <span className="text-[10px] text-mutedText uppercase tracking-wider block">Max Drawdown</span>
+              <span className="font-heading font-bold text-lg text-negative">
+                -{results.max_drawdown_pct}%
+              </span>
             </div>
 
-            <div className="bg-surface border border-border rounded-card p-4 space-y-1">
-              <div className="text-[11px] text-mutedText uppercase font-semibold">Sharpe Ratio</div>
-              <div className="font-heading font-bold text-xl text-secondary">
-                {results.stats.sharpe_ratio}
-              </div>
+            <div className="border border-border bg-surface p-3.5 rounded-lg text-center">
+              <span className="text-[10px] text-mutedText uppercase tracking-wider block">Sharpe Ratio</span>
+              <span className="font-heading font-bold text-lg text-secondary">
+                {results.sharpe_ratio}
+              </span>
             </div>
 
-            <div className="bg-surface border border-border rounded-card p-4 space-y-1">
-              <div className="text-[11px] text-mutedText uppercase font-semibold">Win Rate</div>
-              <div className="font-heading font-bold text-xl text-positive">
-                {results.stats.win_rate_pct}%
-              </div>
+            <div className="border border-border bg-surface p-3.5 rounded-lg text-center">
+              <span className="text-[10px] text-mutedText uppercase tracking-wider block">Win Rate</span>
+              <span className="font-heading font-bold text-lg text-neutralText">
+                {results.win_rate_pct}%
+              </span>
             </div>
 
-            <div className="bg-surface border border-border rounded-card p-4 space-y-1">
-              <div className="text-[11px] text-mutedText uppercase font-semibold">Total Trades</div>
-              <div className="font-heading font-bold text-xl text-neutralText">
-                {results.stats.total_trades}
-              </div>
+            <div className="border border-border bg-surface p-3.5 rounded-lg text-center">
+              <span className="text-[10px] text-mutedText uppercase tracking-wider block">Total Trades</span>
+              <span className="font-heading font-bold text-lg text-neutralText">
+                {results.total_trades}
+              </span>
             </div>
           </div>
 
+          {/* Equity Curve Line Chart */}
+          <EquityCurveChart data={results.equity_curve} initialCapital={results.initial_capital} />
+
           {/* Trade Log Table */}
-          <div className="bg-surface border border-border rounded-card p-6 space-y-4">
-            <h3 className="font-heading font-bold text-lg text-neutralText">
-              Simulated Trade Log ({results.trades.length} Executed Trades)
-            </h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-border text-mutedText uppercase text-[11px] font-semibold">
-                    <th className="py-3 px-3">Entry Date</th>
-                    <th className="py-3 px-3">Entry Price</th>
-                    <th className="py-3 px-3">Exit Date</th>
-                    <th className="py-3 px-3">Exit Price</th>
-                    <th className="py-3 px-3">Holding Days</th>
-                    <th className="py-3 px-3">P&L %</th>
-                    <th className="py-3 px-3">P&L (INR)</th>
-                    <th className="py-3 px-3">Exit Reason</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {results.trades.map((tr, idx) => {
-                    const isWin = tr.pnl_pct >= 0;
-                    return (
-                      <tr key={idx} className="hover:bg-bg/50 transition-colors">
-                        <td className="py-3 px-3 font-mono text-mutedText">{tr.entry_date}</td>
-                        <td className="py-3 px-3 text-neutralText">₹{tr.entry_price}</td>
-                        <td className="py-3 px-3 font-mono text-mutedText">{tr.exit_date}</td>
-                        <td className="py-3 px-3 text-neutralText">₹{tr.exit_price}</td>
-                        <td className="py-3 px-3 text-neutralText">{tr.holding_days}d</td>
-                        <td className={`py-3 px-3 font-bold ${isWin ? "text-positive" : "text-negative"}`}>
-                          {isWin ? "+" : ""}{tr.pnl_pct}%
+          <div className="border border-border bg-surface rounded-card p-4 space-y-3">
+            <h4 className="font-heading font-semibold text-sm text-neutralText flex items-center gap-2">
+              <FileSpreadsheet className="w-4 h-4 text-primary" />
+              Detailed Trade Log ({results.trade_log.length} Executed Trades)
+            </h4>
+
+            {results.trade_log.length === 0 ? (
+              <p className="text-xs text-mutedText p-4 text-center">No trades triggered during selected period.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs min-w-[700px]">
+                  <thead className="bg-bg text-mutedText border-b border-border">
+                    <tr>
+                      <th className="p-2.5">Entry Date</th>
+                      <th className="p-2.5">Exit Date</th>
+                      <th className="p-2.5">Entry (₹)</th>
+                      <th className="p-2.5">Exit (₹)</th>
+                      <th className="p-2.5">Shares</th>
+                      <th className="p-2.5">P&L (₹)</th>
+                      <th className="p-2.5">P&L (%)</th>
+                      <th className="p-2.5">Outcome</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {results.trade_log.map((t, idx) => (
+                      <tr key={idx} className="hover:bg-bg/40 transition-colors">
+                        <td className="p-2.5 font-mono">{t.entry_date}</td>
+                        <td className="p-2.5 font-mono">{t.exit_date}</td>
+                        <td className="p-2.5">₹{t.entry_price}</td>
+                        <td className="p-2.5">₹{t.exit_price}</td>
+                        <td className="p-2.5">{t.shares}</td>
+                        <td className={`p-2.5 font-semibold ${t.win ? "text-positive" : "text-negative"}`}>
+                          {t.pnl >= 0 ? "+" : ""}₹{t.pnl}
                         </td>
-                        <td className={`py-3 px-3 font-bold ${isWin ? "text-positive" : "text-negative"}`}>
-                          {isWin ? "+" : ""}₹{tr.pnl_amount.toLocaleString("en-IN")}
+                        <td className={`p-2.5 font-semibold ${t.win ? "text-positive" : "text-negative"}`}>
+                          {t.pnl_pct >= 0 ? "+" : ""}{t.pnl_pct}%
                         </td>
-                        <td className="py-3 px-3 text-mutedText">{tr.exit_reason}</td>
+                        <td className="p-2.5">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                              t.win ? "bg-positive/20 text-positive" : "bg-negative/20 text-negative"
+                            }`}
+                          >
+                            {t.win ? "WIN" : "LOSS"}
+                          </span>
+                        </td>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}

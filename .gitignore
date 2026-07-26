@@ -19,3 +19,5 @@ __pycache__/
 # Logs & temp
 *.log
 .DS_Store
+Gemeni api keys.txt
+

@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { Trophy, TrendingUp, ShieldCheck, ArrowUpRight, Award, User } from "lucide-react";
+import { api } from "@/lib/api";
+import { Trophy, Award, User, Loader2 } from "lucide-react";
 
 interface LeaderboardItem {
   id: string;
@@ -25,11 +26,8 @@ export default function LeaderboardPage() {
   useEffect(() => {
     async function fetchLeaderboard() {
       try {
-        const res = await fetch("http://localhost:8000/api/leaderboard");
-        if (res.ok) {
-          const data = await res.json();
-          setItems(data.leaderboard || []);
-        }
+        const data = await api.get<{ leaderboard: LeaderboardItem[] }>("/api/leaderboard");
+        setItems(data.leaderboard || []);
       } catch (err) {
         setItems([
           { id: "strat-1", name: "RSI Oversold Swing Strategy", ticker: "RELIANCE.NS", author: "TraderQuant99", total_return_pct: 48.5, cagr_pct: 38.2, sharpe_ratio: 2.15, max_drawdown_pct: 9.4, win_rate_pct: 82.0, total_trades: 12, scenario: "COVID-19 Recovery" },
@@ -63,7 +61,7 @@ export default function LeaderboardPage() {
 
       {/* Leaderboard Data Table */}
       <div className="bg-surface border border-border rounded-card p-6 space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between border-b border-border pb-3">
           <h2 className="font-heading font-bold text-lg text-neutralText flex items-center gap-2">
             <Award className="w-5 h-5 text-secondary" />
             Top Community Strategies
@@ -71,52 +69,64 @@ export default function LeaderboardPage() {
           <span className="text-xs text-mutedText">Ranked by Sharpe Ratio</span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="border-b border-border text-mutedText uppercase text-[11px] font-semibold">
-                <th className="py-3 px-4">Rank & Strategy</th>
-                <th className="py-3 px-3">Ticker</th>
-                <th className="py-3 px-3">Author</th>
-                <th className="py-3 px-3">Total Return</th>
-                <th className="py-3 px-3">CAGR</th>
-                <th className="py-3 px-3">Max Drawdown</th>
-                <th className="py-3 px-3">Sharpe</th>
-                <th className="py-3 px-3">Win Rate</th>
-                <th className="py-3 px-4 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {items.map((st, idx) => (
-                <tr key={st.id} className="hover:bg-bg/50 transition-colors">
-                  <td className="py-3.5 px-4 font-semibold text-neutralText flex items-center gap-3">
-                    <span className="w-6 h-6 rounded-full bg-secondary/20 text-secondary font-bold flex items-center justify-center text-xs">
-                      #{idx + 1}
-                    </span>
-                    <div>
-                      <div className="font-bold text-neutralText">{st.name}</div>
-                      <div className="text-[10px] text-mutedText">{st.scenario}</div>
-                    </div>
-                  </td>
-                  <td className="py-3.5 px-3 font-semibold text-neutralText">{st.ticker}</td>
-                  <td className="py-3.5 px-3 text-mutedText flex items-center gap-1">
-                    <User className="w-3 h-3" /> {st.author}
-                  </td>
-                  <td className="py-3.5 px-3 font-bold text-positive">+{st.total_return_pct}%</td>
-                  <td className="py-3.5 px-3 font-bold text-neutralText">{st.cagr_pct}%</td>
-                  <td className="py-3.5 px-3 text-negative">-{st.max_drawdown_pct}%</td>
-                  <td className="py-3.5 px-3 font-bold text-secondary">{st.sharpe_ratio}</td>
-                  <td className="py-3.5 px-3 font-semibold text-positive">{st.win_rate_pct}%</td>
-                  <td className="py-3.5 px-4 text-right">
-                    <Link href="/backtester" className="text-xs text-primary hover:underline font-semibold">
-                      Clone & Backtest →
-                    </Link>
-                  </td>
+        {loading ? (
+          <div className="w-full h-48 flex items-center justify-center text-mutedText text-sm gap-2">
+            <Loader2 className="w-4 h-4 text-secondary animate-spin" />
+            <span>Fetching Strategy Leaderboard...</span>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs min-w-[700px]">
+              <thead>
+                <tr className="border-b border-border text-mutedText uppercase text-[11px] font-semibold">
+                  <th className="py-3 px-4">Rank & Strategy</th>
+                  <th className="py-3 px-3">Ticker</th>
+                  <th className="py-3 px-3">Author</th>
+                  <th className="py-3 px-3 text-right">Total Return</th>
+                  <th className="py-3 px-3 text-right">CAGR</th>
+                  <th className="py-3 px-3 text-right">Max Drawdown</th>
+                  <th className="py-3 px-3 text-right">Sharpe</th>
+                  <th className="py-3 px-3 text-right">Win Rate</th>
+                  <th className="py-3 px-4 text-right">Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {items.map((st, idx) => (
+                  <tr key={st.id} className="hover:bg-bg/50 transition-colors">
+                    <td className="py-3.5 px-4 font-semibold text-neutralText flex items-center gap-3">
+                      <span className="w-6 h-6 rounded-full bg-secondary/20 text-secondary font-bold flex items-center justify-center text-xs">
+                        #{idx + 1}
+                      </span>
+                      <div>
+                        <div className="font-bold text-neutralText">{st.name}</div>
+                        <div className="text-[10px] text-mutedText">{st.scenario}</div>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-3 font-semibold text-neutralText font-mono">{st.ticker}</td>
+                    <td className="py-3.5 px-3 text-mutedText">
+                      <span className="flex items-center gap-1">
+                        <User className="w-3 h-3 text-mutedText" /> {st.author}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-3 font-bold text-positive text-right">+{st.total_return_pct}%</td>
+                    <td className="py-3.5 px-3 font-bold text-neutralText text-right">{st.cagr_pct}%</td>
+                    <td className="py-3.5 px-3 text-negative text-right">-{st.max_drawdown_pct}%</td>
+                    <td className="py-3.5 px-3 font-bold text-secondary text-right">{st.sharpe_ratio}</td>
+                    <td className="py-3.5 px-3 font-semibold text-positive text-right">{st.win_rate_pct}%</td>
+                    <td className="py-3.5 px-4 text-right">
+                      <Link
+                        href={`/backtester?ticker=${st.ticker}&strategy=${encodeURIComponent(st.name)}`}
+                        className="px-3 py-1 rounded bg-primary/20 hover:bg-primary text-primary hover:text-neutralText transition-colors font-semibold text-xs border border-primary/30 inline-block"
+                      >
+                        Clone & Backtest →
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

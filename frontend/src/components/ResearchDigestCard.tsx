@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Brain, FileText, ExternalLink, AlertCircle, ShieldCheck, Sparkles, MessageSquare } from "lucide-react";
+import { api } from "@/lib/api";
 
 interface Announcement {
   id: string;
@@ -38,11 +39,8 @@ export default function ResearchDigestCard({ ticker }: ResearchDigestCardProps) 
   useEffect(() => {
     async function fetchNotes() {
       try {
-        const res = await fetch(`http://localhost:8000/api/companies/${ticker}/research-notes`);
-        if (res.ok) {
-          const data = await res.json();
-          setNotes(data);
-        }
+        const data = await api.get<ResearchNotes>(`/api/companies/${ticker}/research-notes`);
+        setNotes(data);
       } catch (err) {
         setNotes({
           ticker,

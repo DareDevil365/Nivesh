@@ -1,0 +1,14 @@
+name: Free-Tier Keepalive Cron
+
+on:
+  schedule:
+    - cron: '*/14 * * * *'  # Runs every 14 minutes
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Backend Health Endpoint
+        run: |
+          curl -s https://nivesh-backend.onrender.com/health || true
