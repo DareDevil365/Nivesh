@@ -80,8 +80,11 @@ export const PeerComparison: React.FC<PeerComparisonProps> = ({ currentTicker })
             </tr>
           </thead>
           <tbody className="divide-y divide-border/50">
-            {peers.map((p) => {
+            {peers.map((p: any) => {
               const isCurrent = p.ticker === currentTicker;
+              const priceVal = p.current_price ?? p.price;
+              const totalScore = p.snowflake_total ?? p.snowflake_score ?? 0;
+
               return (
                 <tr
                   key={p.ticker}
@@ -102,16 +105,26 @@ export const PeerComparison: React.FC<PeerComparisonProps> = ({ currentTicker })
                       )}
                     </Link>
                   </td>
-                  <td className="p-3 text-right font-mono">₹{p.price}</td>
-                  <td className="p-3 text-right font-mono">{p.pe}x</td>
-                  <td className="p-3 text-right font-mono">{p.pb}x</td>
-                  <td className="p-3 text-right font-mono text-positive">{p.roe}%</td>
-                  <td className="p-3 text-right font-mono text-positive">{p.roce}%</td>
-                  <td className="p-3 text-right font-mono">{p.debt_equity}</td>
-                  <td className="p-3 text-right font-mono">{p.div_yield}%</td>
+                  <td className="p-3 text-right font-mono">
+                    {priceVal ? `₹${priceVal.toLocaleString("en-IN")}` : "N/A"}
+                  </td>
+                  <td className="p-3 text-right font-mono">{p.pe ? `${p.pe}x` : "N/A"}</td>
+                  <td className="p-3 text-right font-mono">{p.pb ? `${p.pb}x` : "N/A"}</td>
+                  <td className="p-3 text-right font-mono text-positive">
+                    {p.roe != null ? `${p.roe}%` : "N/A"}
+                  </td>
+                  <td className="p-3 text-right font-mono text-positive">
+                    {p.roce != null ? `${p.roce}%` : "N/A"}
+                  </td>
+                  <td className="p-3 text-right font-mono">
+                    {p.debt_equity != null ? p.debt_equity : "N/A"}
+                  </td>
+                  <td className="p-3 text-right font-mono">
+                    {p.div_yield != null ? `${p.div_yield}%` : "N/A"}
+                  </td>
                   <td className="p-3 text-right">
                     <span className="inline-flex items-center px-2 py-0.5 rounded bg-surface border border-border text-secondary font-bold font-mono">
-                      {p.snowflake_score}/30
+                      {totalScore}/30
                     </span>
                   </td>
                 </tr>
@@ -123,3 +136,4 @@ export const PeerComparison: React.FC<PeerComparisonProps> = ({ currentTicker })
     </div>
   );
 };
+

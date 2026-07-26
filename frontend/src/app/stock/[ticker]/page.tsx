@@ -272,33 +272,48 @@ export default function StockDashboardPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
         <div className="bg-surface border border-border rounded-card p-3.5 space-y-1">
           <div className="text-[11px] uppercase font-semibold"><GlossaryTooltip term="P/E Ratio" /></div>
-          <div className="font-heading font-bold text-base text-neutralText">{fundamentals.pe}x</div>
+          <div className="font-heading font-bold text-base text-neutralText">
+            {fundamentals.pe != null ? `${fundamentals.pe}x` : "N/A"}
+          </div>
         </div>
         <div className="bg-surface border border-border rounded-card p-3.5 space-y-1">
           <div className="text-[11px] uppercase font-semibold"><GlossaryTooltip term="P/B Ratio" /></div>
-          <div className="font-heading font-bold text-base text-neutralText">{fundamentals.pb}x</div>
+          <div className="font-heading font-bold text-base text-neutralText">
+            {fundamentals.pb != null ? `${fundamentals.pb}x` : "N/A"}
+          </div>
         </div>
         <div className="bg-surface border border-border rounded-card p-3.5 space-y-1">
           <div className="text-[11px] uppercase font-semibold"><GlossaryTooltip term="ROE" /></div>
-          <div className="font-heading font-bold text-base text-positive">{fundamentals.roe}%</div>
+          <div className="font-heading font-bold text-base text-positive">
+            {fundamentals.roe != null ? `${fundamentals.roe}%` : "N/A"}
+          </div>
         </div>
         <div className="bg-surface border border-border rounded-card p-3.5 space-y-1">
           <div className="text-[11px] uppercase font-semibold"><GlossaryTooltip term="ROCE" /></div>
-          <div className="font-heading font-bold text-base text-positive">{fundamentals.roce}%</div>
+          <div className="font-heading font-bold text-base text-positive">
+            {fundamentals.roce != null ? `${fundamentals.roce}%` : "N/A"}
+          </div>
         </div>
         <div className="bg-surface border border-border rounded-card p-3.5 space-y-1">
           <div className="text-[11px] uppercase font-semibold"><GlossaryTooltip term="Debt / Equity" /></div>
-          <div className="font-heading font-bold text-base text-neutralText">{fundamentals.debt_equity}</div>
+          <div className="font-heading font-bold text-base text-neutralText">
+            {fundamentals.debt_equity != null ? fundamentals.debt_equity : "N/A"}
+          </div>
         </div>
         <div className="bg-surface border border-border rounded-card p-3.5 space-y-1">
           <div className="text-[11px] uppercase font-semibold"><GlossaryTooltip term="Dividend Yield" /></div>
-          <div className="font-heading font-bold text-base text-secondary">{fundamentals.div_yield}%</div>
+          <div className="font-heading font-bold text-base text-secondary">
+            {fundamentals.div_yield != null ? `${fundamentals.div_yield}%` : "0%"}
+          </div>
         </div>
         <div className="bg-surface border border-border rounded-card p-3.5 space-y-1 col-span-2 sm:col-span-1">
           <div className="text-[11px] uppercase font-semibold"><GlossaryTooltip term="Promoter Holding" /></div>
-          <div className="font-heading font-bold text-base text-neutralText">{fundamentals.promoter_holding}%</div>
+          <div className="font-heading font-bold text-base text-neutralText">
+            {fundamentals.promoter_holding != null ? `${fundamentals.promoter_holding}%` : "N/A"}
+          </div>
         </div>
       </div>
+
 
       {/* SimplyWall.st Interactive DCF Calculator */}
       <DCFCalculator currentPrice={fundamentals.current_price} ticker={company.ticker} />

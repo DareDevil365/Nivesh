@@ -11,26 +11,34 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/behavior", tags=["behavior"])
 
-SAMPLE_TRADES = [
-    {"ticker": "RELIANCE.NS", "buy_date": "2026-01-05", "buy_price": 2800.0, "sell_date": "2026-01-20", "sell_price": 2950.0, "qty": 50},
-    {"ticker": "TCS.NS", "buy_date": "2026-01-10", "buy_price": 3900.0, "sell_date": "2026-02-15", "sell_price": 3700.0, "qty": 30},
-    {"ticker": "INFY.NS", "buy_date": "2026-01-15", "buy_price": 1600.0, "sell_date": "2026-01-18", "sell_price": 1650.0, "qty": 100},
-    {"ticker": "TATAMOTORS.NS", "buy_date": "2026-02-01", "buy_price": 950.0, "sell_date": "2026-03-10", "sell_price": 880.0, "qty": 80},
-    {"ticker": "HDFCBANK.NS", "buy_date": "2026-02-16", "buy_price": 1420.0, "sell_date": "2026-02-18", "sell_price": 1460.0, "qty": 70},
-    {"ticker": "ICICIBANK.NS", "buy_date": "2026-02-19", "buy_price": 1050.0, "sell_date": "2026-03-25", "sell_price": 980.0, "qty": 90},
-]
-
 class AnalyzeBehaviorRequest(BaseModel):
     trades: Optional[List[Dict[str, Any]]] = None
 
 @router.post("/upload")
 def upload_trade_csv(req: AnalyzeBehaviorRequest):
-    trade_list = req.trades if req.trades else SAMPLE_TRADES
+    trade_list = req.trades if req.trades else []
     return {"status": "uploaded", "trade_count": len(trade_list), "trades": trade_list}
 
 @router.post("/analyze")
 def analyze_behavior(req: AnalyzeBehaviorRequest):
-    trade_list = req.trades if req.trades else SAMPLE_TRADES
+    trade_list = req.trades or []
+    if not trade_list:
+        return {
+            "metrics": {
+                "disposition_score": 0.0,
+                "loss_aversion_ratio": 0.0,
+                "revenge_score": 0.0,
+                "overtrading_score": 0.0,
+                "position_sizing_cv": 0.0,
+                "win_rate_pct": 0.0,
+                "expectancy_pct": 0.0,
+                "flags": ["No trade history provided. Please upload or log your trades to view psychological analysis."]
+            },
+            "flags": ["No trade history provided. Upload trades to run behavioral diagnostics."],
+            "narrative": "No user trade data provided for analysis.",
+            "ai_generated": False
+        }
+
     analysis = analyze_trade_psychology(trade_list)
 
     # Narrative generation via Gemini AI or template fallback
@@ -74,7 +82,6 @@ def analyze_behavior(req: AnalyzeBehaviorRequest):
         la = analysis["loss_aversion_ratio"]
         narrative = (
             f"Your trade analysis indicates a Disposition Effect score of {disp}x and Loss Aversion Ratio of {la}x. "
-            f"Holding losing positions significantly longer than winning ones erodes long-term portfolio expectancy. "
             f"Establishing fixed stop-loss orders prior to trade execution will enforce strict risk management discipline."
         )
 
@@ -84,3 +91,4 @@ def analyze_behavior(req: AnalyzeBehaviorRequest):
         "narrative": narrative,
         "ai_generated": bool(active_key and narrative)
     }
+

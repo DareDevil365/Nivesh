@@ -31,7 +31,13 @@ export default function SnowflakeChart({ scores }: SnowflakeChartProps) {
     { subject: "DIVIDEND", score: scores.dividend, full: 6 },
   ];
 
-  const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
+  const totalScore =
+    (scores.value || 0) +
+    (scores.future || 0) +
+    (scores.past || 0) +
+    (scores.health || 0) +
+    (scores.dividend || 0);
+
 
   return (
     <div className="flex flex-col items-center justify-center p-4 relative">

@@ -68,60 +68,79 @@ def summarize_filing_with_gemini(title: str, category: str) -> str:
 
     return f"Official {category} filing submitted to exchange."
 
+import logging
+from typing import Dict, Any, List, Optional
+import httpx
+from services.data_fetcher import get_company_profile
+from services.gemini_client import gemini_rotator
+
+logger = logging.getLogger(__name__)
+
+ANNOUNCEMENT_CATEGORIES = [
+    "Financial Results",
+    "Board Meeting",
+    "Credit Rating",
+    "Auditor Resignation",
+    "Related Party Transaction",
+    "Litigation & Regulatory",
+    "Pledge Change",
+    "Key Personnel Change",
+    "General Corporate"
+]
+
 def get_company_research_notes(ticker: str) -> Dict[str, Any]:
     """
-    Returns AI Research Digest notes for a company.
-    Strictly separates rule-based numerical checks from qualitative document summaries.
-    Every AI summary line carries a direct link to official exchange filings.
+    Returns Research Digest notes for a company using real fundamental data & direct exchange filing links.
+    Does NOT invent fake concall transcripts or hardcoded sample filings.
     """
     ticker_clean = ticker.upper().strip()
     symbol_bare = ticker_clean.replace(".NS", "").replace(".BO", "")
 
-    sample_filings = [
-        {"id": "doc-1", "date": "2026-07-20", "title": f"Un-audited Financial Results for Q1 FY27 & Press Release for {symbol_bare}"},
-        {"id": "doc-2", "date": "2026-07-02", "title": f"Intimation of CRISIL AAA/Stable Credit Rating Reaffirmation for {symbol_bare}"},
-        {"id": "doc-3", "date": "2026-06-15", "title": f"Outcome of Board Meeting held on June 15, 2026 for {symbol_bare}"}
-    ]
+    # Try fetching profile to generate real numeric flags
+    rule_based_flags = []
+    try:
+        profile = get_company_profile(ticker_clean)
+        debt_eq = profile.get("debt_equity")
+        if debt_eq is not None:
+            if debt_eq == 0.0:
+                rule_based_flags.append({"type": "numeric_check", "label": "Debt Coverage", "text": "Company is virtually debt-free (D/E = 0.0)", "status": "positive"})
+            elif debt_eq < 0.5:
+                rule_based_flags.append({"type": "numeric_check", "label": "Debt Coverage", "text": f"Healthy leverage with D/E ratio at {debt_eq:.2f}", "status": "positive"})
+            elif debt_eq > 1.2:
+                rule_based_flags.append({"type": "numeric_check", "label": "Debt Risk", "text": f"Elevated debt-to-equity ratio of {debt_eq:.2f}", "status": "negative"})
 
-    announcements = []
-    for item in sample_filings:
-        cat = classify_filing_by_triage_rules(item["title"])
-        summary = summarize_filing_with_gemini(item["title"], cat)
-        announcements.append({
-            "id": item["id"],
-            "date": item["date"],
-            "title": item["title"],
-            "category": cat,
-            "summary_text": summary,
-            "source_url": f"https://www.nseindia.com/companies-listing/corporate-filings-announcements?symbol={symbol_bare}",
-            "ai_summarized": True
-        })
+        promoter = profile.get("promoter_holding")
+        if promoter is not None:
+            if promoter > 60.0:
+                rule_based_flags.append({"type": "numeric_check", "label": "Promoter Holding", "text": f"Strong insider holding at {promoter:.1f}%", "status": "positive"})
+            elif promoter < 30.0 and promoter > 0:
+                rule_based_flags.append({"type": "numeric_check", "label": "Promoter Holding", "text": f"Low promoter holding at {promoter:.1f}%", "status": "negative"})
 
-    concall_digest = {
-        "covered": True,
-        "quarter": "Q1 FY27",
-        "management_tone": "Confident",
-        "key_takeaways": [
-            f"Guidance maintained: Double-digit top-line growth projected for full fiscal year for {symbol_bare}.",
-            "Margin expansion: Operating margins improved 40bps quarter-on-quarter due to operating leverage.",
-            "CapEx roadmap: New capacity commissioning remains on schedule for Q3."
-        ],
-        "source_url": f"https://www.nseindia.com/companies-listing/corporate-filings-announcements?symbol={symbol_bare}"
-    }
+        pe = profile.get("pe")
+        if pe is not None:
+            if pe > 35.0:
+                rule_based_flags.append({"type": "numeric_check", "label": "Valuation Multiples", "text": f"Trading at elevated P/E ratio of {pe:.1f}x", "status": "negative"})
+            elif pe < 20.0:
+                rule_based_flags.append({"type": "numeric_check", "label": "Valuation Multiples", "text": f"Attractive P/E ratio of {pe:.1f}x", "status": "positive"})
 
-    rule_based_flags = [
-        {"type": "numeric_check", "label": "Debt Coverage", "text": "Interest coverage ratio is healthy at > 5.0x", "status": "positive"},
-        {"type": "numeric_check", "label": "Pledge Status", "text": "Zero promoter shares pledged", "status": "positive"}
-    ]
+    except Exception as e:
+        logger.warning(f"Could not load real profile for research flags: {e}")
 
-    ai_derived_flags = [
-        {"type": "ai_document_flag", "label": "Management Tone", "text": "Management expressed optimism regarding demand recovery in concall Q&A", "status": "positive"}
-    ]
+    nse_filings_url = f"https://www.nseindia.com/companies-listing/corporate-filings-announcements?symbol={symbol_bare}"
 
     return {
         "ticker": ticker_clean,
-        "announcements": announcements,
-        "concall_digest": concall_digest,
+        "announcements": [],
+        "concall_digest": {
+            "covered": False,
+            "quarter": None,
+            "management_tone": "N/A",
+            "key_takeaways": [],
+            "source_url": nse_filings_url,
+            "message": "Official earnings conference call digest unavailable from exchange feed."
+        },
+        "official_exchange_filings_url": nse_filings_url,
         "rule_based_flags": rule_based_flags,
-        "ai_derived_flags": ai_derived_flags
+        "ai_derived_flags": []
     }
+

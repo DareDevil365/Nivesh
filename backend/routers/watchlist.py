@@ -5,19 +5,11 @@ from services.data_fetcher import get_company_profile
 
 router = APIRouter(tags=["watchlist"])
 
-USER_WATCHLISTS = {
-    "default": [
-        {"ticker": "RELIANCE.NS", "added_at": "2026-07-25T10:00:00Z"},
-        {"ticker": "TCS.NS", "added_at": "2026-07-25T10:00:00Z"},
-        {"ticker": "INFY.NS", "added_at": "2026-07-25T10:00:00Z"},
-        {"ticker": "HDFCBANK.NS", "added_at": "2026-07-25T10:00:00Z"}
-    ]
+USER_WATCHLISTS: dict = {
+    "default": []
 }
 
-USER_ALERTS = [
-    {"id": "alert-1", "ticker": "RELIANCE.NS", "condition": "PRICE_ABOVE", "threshold": 3100.0, "active": True},
-    {"id": "alert-2", "ticker": "TCS.NS", "condition": "RSI_BELOW", "threshold": 30.0, "active": True}
-]
+USER_ALERTS: list = []
 
 class AddWatchlistItemRequest(BaseModel):
     watchlist_name: str = "default"
@@ -40,11 +32,11 @@ def get_watchlist(name: str = "default"):
                 "added_at": item["added_at"],
                 "name": profile["name"],
                 "sector": profile["sector"],
-                "current_price": profile["fundamentals"]["current_price"],
-                "day_change": profile["fundamentals"]["day_change"],
-                "day_change_pct": profile["fundamentals"]["day_change_pct"],
-                "pe": profile["fundamentals"]["pe"],
-                "roe": profile["fundamentals"]["roe"]
+                "current_price": profile.get("current_price", 0.0),
+                "day_change": profile.get("day_change", 0.0),
+                "day_change_pct": profile.get("day_change_pct", 0.0),
+                "pe": profile.get("pe"),
+                "roe": profile.get("roe")
             })
         except Exception:
             continue
@@ -65,7 +57,11 @@ def add_watchlist_item(req: AddWatchlistItemRequest):
         if existing["ticker"] == ticker:
             return {"status": "exists", "ticker": ticker}
 
-    USER_WATCHLISTS[name].append({"ticker": ticker, "added_at": "2026-07-25T12:00:00Z"})
+    import datetime
+    USER_WATCHLISTS[name].append({
+        "ticker": ticker, 
+        "added_at": datetime.datetime.utcnow().isoformat() + "Z"
+    })
     return {"status": "added", "ticker": ticker, "watchlist": name}
 
 @router.delete("/api/watchlist/item")
@@ -93,3 +89,4 @@ def create_alert(req: CreateAlertRequest):
     }
     USER_ALERTS.append(new_alert)
     return {"status": "created", "alert": new_alert}
+

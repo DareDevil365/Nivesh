@@ -1,5 +1,25 @@
 from typing import List, Dict, Any
 
+# Ticker Aliases for Corporate Rebranding / Symbol Changes
+TICKER_ALIASES: Dict[str, str] = {
+    "ZOMATO.NS": "ETERNAL.NS",
+    "ZOMATO": "ETERNAL.NS",
+    "ETERNAL": "ETERNAL.NS",
+    "ETERNAL.NS": "ETERNAL.NS"
+}
+
+def resolve_symbol_alias(ticker: str) -> str:
+    ticker_clean = ticker.strip().upper()
+    if ticker_clean in TICKER_ALIASES:
+        return TICKER_ALIASES[ticker_clean]
+    
+    if not ticker_clean.endswith(".NS") and not ticker_clean.endswith(".BO"):
+        ns_version = f"{ticker_clean}.NS"
+        if ns_version in TICKER_ALIASES:
+            return TICKER_ALIASES[ns_version]
+            
+    return ticker_clean
+
 # Nifty 500 Constituent Universe Master List
 NSE_MASTER_LIST: Dict[str, Dict[str, str]] = {
     # NIFTY 50 & IT LEADERS
@@ -54,7 +74,8 @@ NSE_MASTER_LIST: Dict[str, Dict[str, str]] = {
     "HAL.NS": {"name": "Hindustan Aeronautics Ltd", "sector": "Capital Goods", "industry": "Aerospace & Defence"},
     "VBL.NS": {"name": "Varun Beverages Ltd", "sector": "FMCG", "industry": "Beverages"},
     "DLF.NS": {"name": "DLF Ltd", "sector": "Realty", "industry": "Real Estate Developers"},
-    "ZOMATO.NS": {"name": "Zomato Ltd", "sector": "Consumer Services", "industry": "E-Commerce & Food Delivery"},
+    "ETERNAL.NS": {"name": "Eternal Limited (formerly Zomato)", "sector": "Consumer Services", "industry": "E-Commerce & Food Delivery"},
+    "ZOMATO.NS": {"name": "Eternal Limited (Zomato)", "sector": "Consumer Services", "industry": "E-Commerce & Food Delivery"},
     "JIOFIN.NS": {"name": "Jio Financial Services Ltd", "sector": "Financial Services", "industry": "NBFC"},
     "PAYTM.NS": {"name": "One 97 Communications Ltd (Paytm)", "sector": "Financial Services", "industry": "Fintech"},
     "POLICYBZR.NS": {"name": "PB Fintech Ltd (Policybazaar)", "sector": "Financial Services", "industry": "Fintech"},
@@ -67,27 +88,40 @@ NSE_MASTER_LIST: Dict[str, Dict[str, str]] = {
 }
 
 def search_stock_master(query: str, limit: int = 10) -> List[Dict[str, str]]:
-    """Fast in-memory fuzzy typeahead search across master list."""
-    query = query.strip().upper()
+    """Fast in-memory search + real-time yfinance search for any NSE/BSE listed stock."""
+    query = query.strip()
     if not query:
         return []
 
-    query_bare = query.replace(".NS", "").replace(".BO", "")
+    query_upper = query.upper()
+    query_bare = query_upper.replace(".NS", "").replace(".BO", "")
     results = []
 
-    # 1. Exact Ticker Prefix Match
+    # Alias check
+    if query_upper in TICKER_ALIASES or query_bare in TICKER_ALIASES or f"{query_bare}.NS" in TICKER_ALIASES:
+        resolved = resolve_symbol_alias(query_upper)
+        info = NSE_MASTER_LIST.get(resolved, {"name": "Eternal Limited (Zomato)", "sector": "Consumer Services", "industry": "E-Commerce & Food Delivery"})
+        results.append({
+            "ticker": resolved,
+            "name": info["name"],
+            "sector": info["sector"],
+            "industry": info["industry"],
+            "score": 100
+        })
+
+    # 1. Exact Ticker Prefix Match from Master List
     for ticker, info in NSE_MASTER_LIST.items():
         ticker_bare = ticker.replace(".NS", "")
-        if ticker_bare.startswith(query_bare):
+        if ticker_bare.startswith(query_bare) and not any(r["ticker"] == ticker for r in results):
             results.append({
                 "ticker": ticker,
                 "name": info["name"],
                 "sector": info["sector"],
                 "industry": info["industry"],
-                "score": 100
+                "score": 90
             })
 
-    # 2. Company Name Word Match
+    # 2. Company Name Word Match from Master List
     if len(results) < limit:
         for ticker, info in NSE_MASTER_LIST.items():
             if any(r["ticker"] == ticker for r in results):
@@ -102,7 +136,27 @@ def search_stock_master(query: str, limit: int = 10) -> List[Dict[str, str]]:
                     "score": 80
                 })
 
-    # 3. Dynamic Candidate Fallback
+    # 3. Dynamic Real-Time yfinance Search for ANY Indian Listed Company (e.g., Force Motors -> FORCEMOT.NS)
+    if len(results) < limit:
+        try:
+            import yfinance as yf
+            search_results = yf.Search(query)
+            for q in search_results.quotes:
+                sym = q.get("symbol", "").upper()
+                if sym.endswith(".NS") or sym.endswith(".BO"):
+                    if not any(r["ticker"] == sym for r in results):
+                        comp_name = q.get("longname") or q.get("shortname") or sym.replace(".NS", "")
+                        results.append({
+                            "ticker": sym,
+                            "name": comp_name,
+                            "sector": q.get("sector", "NSE Equity"),
+                            "industry": q.get("industry", "Real-time Fetch"),
+                            "score": 75
+                        })
+        except Exception:
+            pass
+
+    # 4. Fallback Candidate Ticker
     if not results:
         results.append({
             "ticker": f"{query_bare}.NS",
@@ -113,3 +167,5 @@ def search_stock_master(query: str, limit: int = 10) -> List[Dict[str, str]]:
         })
 
     return results[:limit]
+
+

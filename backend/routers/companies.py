@@ -24,15 +24,15 @@ def get_company(ticker: str):
         pros, cons = generate_pros_and_cons(profile)
         
         fundamentals = {
-            "pe": profile.get("pe", 0.0),
-            "pb": profile.get("pb", 0.0),
-            "roe": profile.get("roe", 0.0),
-            "roce": profile.get("roce", 0.0),
-            "debt_equity": profile.get("debt_equity", 0.0),
+            "pe": profile.get("pe"),
+            "pb": profile.get("pb"),
+            "roe": profile.get("roe"),
+            "roce": profile.get("roce"),
+            "debt_equity": profile.get("debt_equity"),
             "div_yield": profile.get("div_yield", 0.0),
-            "revenue_growth_3yr": profile.get("revenue_growth_3yr", 0.0),
-            "eps_growth_3yr": profile.get("eps_growth_3yr", 0.0),
-            "promoter_holding": profile.get("promoter_holding", 0.0),
+            "revenue_growth_3yr": profile.get("revenue_growth_3yr"),
+            "eps_growth_3yr": profile.get("eps_growth_3yr"),
+            "promoter_holding": profile.get("promoter_holding"),
             "pledged_shares_pct": profile.get("pledged_shares_pct", 0.0),
             "market_cap": profile.get("market_cap", 0.0),
             "current_price": profile.get("current_price", 0.0),
@@ -50,8 +50,11 @@ def get_company(ticker: str):
         result["pros"] = pros
         result["cons"] = cons
         return result
+    except ValueError as ve:
+        raise HTTPException(status_code=404, detail=str(ve))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/{ticker}/chart")
 def get_company_chart(ticker: str, period: str = Query("1y"), interval: str = Query("1d")):
