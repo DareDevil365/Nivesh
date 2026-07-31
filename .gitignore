@@ -25,10 +25,16 @@ future_trash
 future_trash/
 *.md.private
 
+# Internal implementation plans & notes
+nivesh imple file
+nivesh imple*
+Main/
+
 # Logs & temp
 *.log
 .DS_Store
 Gemeni api keys.txt
 *.tsbuildinfo
+
 
 
