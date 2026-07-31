@@ -1,0 +1,290 @@
+# Nivesh — Comprehensive Bug Fix & Ship-Readiness Plan
+
+Complete audit of all frontend pages (7), backend routers (6), and services (7). Every flaw was identified through code review and live-site navigation.
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> This plan covers **42 distinct flaws** grouped into 6 priority tiers. The fixes are ordered so each phase can be shipped independently. Please review and approve before I begin execution.
+
+> [!WARNING]
+> **Critical bugs (Phase 1)** include data integrity issues and broken core features that would immediately undermine user trust in a "stock research" product. These should be fixed first.
+
+---
+
+## Open Questions
+
+> [!IMPORTANT]
+> 1. **Deployment target**: The frontend hardcodes `http://localhost:8000` for all API calls. Do you have a deployed backend URL (e.g., Render), or should I make the base URL configurable via environment variable?
+> 2. **Supabase/Redis**: Config references `SUPABASE_URL`, `UPSTASH_REDIS_URL`, and `GEMINI_API_KEY` but none are used anywhere in the codebase. Should I wire these up (e.g., persistent watchlist storage in Supabase) or remove the dead config?
+> 3. **CSV Upload**: The Behavior page shows a "drop CSV here" zone but has no actual file upload handler — it just calls `runAnalysis()` with sample data. Should I implement real CSV file upload + parsing, or just make it clear it's a demo?
+
+---
+
+## Phase 1: Critical Data Integrity & Broken Features (Ship-Blockers)
+
+These flaws would cause users to see **wrong numbers** or encounter **broken core functionality**.
+
+---
+
+### ⛔ Stock Universe & Search Limitations (THE core usability blocker)
+
+> [!CAUTION]
+> The most fundamental problem: **users cannot research any stock they want**. The entire platform only works for ~15 preselected tickers.
+
+#### [MODIFY] [data_fetcher.py](file:///c:/Users/yasha/Desktop/Saarthi/backend/services/data_fetcher.py) + [Header.tsx](file:///c:/Users/yasha/Desktop/Saarthi/frontend/src/components/Header.tsx) + [page.tsx (homepage)](file:///c:/Users/yasha/Desktop/Saarthi/frontend/src/app/page.tsx)
+
+| # | Flaw | Impact | Fix |
+|---|------|--------|----- |
+| ★1 | **Search bar accepts any ticker but only 6 stocks have preset data** — `PRESET_STOCKS` in [data_fetcher.py](file:///c:/Users/yasha/Desktop/Saarthi/backend/services/data_fetcher.py#L12-L19) has only 6 entries, and `NSE_UNIVERSE` in [screener_engine.py](file:///c:/Users/yasha/Desktop/Saarthi/backend/services/screener_engine.py#L5-L9) has 15. If a user searches "BAJAJ-AUTO" or "WIPRO", the backend falls through to yfinance (which may fail) → they get fallback hardcoded data with fake values **identical for every unknown stock**. | The core promise of a stock research tool is broken. Users searching any stock outside the preset list get fabricated identical data (PE 24.5, ROE 16.5, price ₹2,450). | **Fix the backend**: `get_company_profile()` already calls yfinance for any ticker — but when yfinance fails, it must clearly flag the response. **Fix the frontend**: Add an autocomplete/typeahead search component that queries a backend endpoint returning matching NSE tickers, or integrate a static list of all ~2,000 NSE symbols for client-side filtering. The search input in [Header.tsx](file:///c:/Users/yasha/Desktop/Saarthi/frontend/src/components/Header.tsx#L39-L48) and [page.tsx](file:///c:/Users/yasha/Desktop/Saarthi/frontend/src/app/page.tsx#L52-L69) should show a dropdown of matching symbols as the user types. |
+| ★2 | **No autocomplete/typeahead on search** — user must know the exact ticker symbol (with `.NS` suffix). No search suggestions, no company name matching. | Users who don't know the exact NSE ticker symbol can't find stocks. Typing "Reliance" or "reliance industries" won't help. | Add a searchable autocomplete dropdown. Backend: create a `/api/search?q=reliance` endpoint that fuzzy-matches against a full list of NSE tickers + company names. Frontend: replace the plain `<input>` with a typeahead component showing live suggestions as the user types. |
+
+---
+
+### Backend Data Integrity
+
+#### [MODIFY] [data_fetcher.py](file:///c:/Users/yasha/Desktop/Saarthi/backend/services/data_fetcher.py)
+
+| # | Flaw | Impact | Fix |
+|---|------|--------|-----|
+| 1 | **ROCE fabricated as `ROE × 1.15`** (line 65) | Users see a fake financial ratio presented as real data. ROCE and ROE are fundamentally different metrics. | Fetch `ROCE` from yfinance `info` where available, or compute from `EBIT / Capital Employed`. Fall back to a labeled "estimated" value. |
+| 2 | **Promoter holding hardcoded to 50.5%** (line 54) | Every stock shows identical promoter holding, which is obviously wrong (HDFC Bank has 0% promoter). | Scrape from yfinance `info` key `heldPercentInsiders` or leave blank with a "Not Available" label instead of a fake number. |
+| 3 | **Pledged shares hardcoded to 0.0%** (line 55) | Misleads users into thinking all stocks have zero pledge risk. | Same approach — fetch real data or show "N/A". |
+| 4 | **Fallback defaults mask all errors silently** (lines 82–99) | If yfinance fails, the user sees generic hardcoded numbers (PE 24.5, ROE 16.5) with no indication they're fake. | Add a `data_source: "live" | "fallback"` flag to the response so the frontend can display a "⚠ Data unavailable — showing estimates" warning. |
+| 5 | **In-memory cache never expires** (line 9–10, `COMPANY_CACHE`) | Stock data fetched once is cached forever until server restart. Stale prices, ratios. | Add a TTL (e.g., 15 minutes) using `time.time()` checks, or use a simple `functools.lru_cache` with `maxsize`. |
+
+---
+
+#### [MODIFY] [snowflake_calculator.py](file:///c:/Users/yasha/Desktop/Saarthi/backend/services/snowflake_calculator.py)
+
+| # | Flaw | Impact | Fix |
+|---|------|--------|-----|
+| 6 | **Cons list empty for most stocks** — the PE threshold for generating a "High PE" con is `> 40` (line 114) but most Indian stocks trade at PE 15–30. | Stock detail page shows an empty Cons section, which looks broken. Confirmed via live audit. | Lower threshold to `> 30` and add more con rules: low dividend yield (`< 0.5%`), high P/B (`> 5`), low promoter holding, declining margins. |
+
+---
+
+#### [MODIFY] [backtest_engine.py](file:///c:/Users/yasha/Desktop/Saarthi/backend/services/backtest_engine.py)
+
+| # | Flaw | Impact | Fix |
+|---|------|--------|-----|
+| 7 | **Sharpe ratio is hardcoded** (line 166): `1.25 if return > 0 else 0.45` | The signature metric of a backtest result is completely fake. | Compute from actual daily returns: `mean(daily_returns) / std(daily_returns) * sqrt(252)`. |
+| 8 | **CAGR formula wrong** (line 164): divides total return by `len(df)/252` | This is `total_return / years`, not CAGR. CAGR = `((end/start)^(1/years) - 1) × 100`. | Use the standard CAGR formula. |
+| 9 | **Portfolio value tracking is broken** — when not in a position, it resets to `initial_capital + sum(pnl)` each bar, but while in a position, it's `initial_capital * (price / entry)`. | The equity curve is discontinuous and doesn't properly compound. | Track a running `cash` variable that accumulates realized P&L, and compute `current_val` as `cash + unrealized_position_value`. |
+
+---
+
+### Frontend Critical Bugs
+
+#### [MODIFY] [page.tsx (watchlist)](file:///c:/Users/yasha/Desktop/Saarthi/frontend/src/app/watchlist/page.tsx)
+
+| # | Flaw | Impact | Fix |
+|---|------|--------|-----|
+| 10 | **Alert ticker field doesn't clear before typing** — user types "INFY.NS" but the field already contains "RELIANCE.NS", so it becomes "RELIANCE.NSINFY.NS". | Confirmed via live audit: creating alerts corrupts the Active Trigger List display. | Clear the alert ticker input before the user types, or use `triple-click to select all` before typing. Also fix: the `alertTicker` state defaults to `"RELIANCE.NS"` but the input doesn't clear on form submit. Clear all alert form fields on successful submission. |
+| 11 | **Alert form sends to wrong endpoint** — frontend POSTs to `/api/watchlist/alerts` but the body only has `{ticker, condition, threshold}`. The backend `CreateAlertRequest` Pydantic model expects those exact fields, but the frontend doesn't await response or re-fetch properly. | The alert list doesn't re-render with the new alert from the backend because `fetchAlerts()` catch block returns hardcoded fallback, masking the actual backend response. | After successful POST, properly re-fetch alerts. Remove hardcoded fallback alert data or merge it intelligently. |
+
+---
+
+#### [MODIFY] [page.tsx (homepage)](file:///c:/Users/yasha/Desktop/Saarthi/frontend/src/app/page.tsx)
+
+| # | Flaw | Impact | Fix |
+|---|------|--------|-----|
+| 12 | **Featured stocks have hardcoded prices and changes** (lines 8–15) that never update. | Homepage shows stale "₹2,980.50 +1.25%" that contradicts the live data on the stock detail page. | Fetch live data from the backend `/api/screener` or `/api/companies/{ticker}` on mount, or add a clear "Sample data" disclaimer. |
+
+---
+
+## Phase 2: Mobile Responsiveness & Navigation (High Priority)
+
+The site is completely broken on mobile — confirmed via live audit at 375px width.
+
+---
+
+#### [MODIFY] [Header.tsx](file:///c:/Users/yasha/Desktop/Saarthi/frontend/src/components/Header.tsx)
+
+| # | Flaw | Impact | Fix |
+|---|------|--------|-----|
+| 13 | **No mobile hamburger menu** — nav links use `hidden md:flex` (line 51) and disappear on mobile with no alternative. | Mobile users cannot navigate to any page except home. Zero mobile navigation. | Add a hamburger menu button + slide-out drawer for mobile viewports. |
+| 14 | **Header search input overflows** on mobile — `flex-1 max-w-md` doesn't constrain properly when viewport < 500px. | Search bar extends beyond the screen edge. | Add `hidden sm:block` to the header search and provide a search icon that expands on mobile, or make it responsive with proper min-width constraints. |
+
+---
+
+#### [MODIFY] [globals.css](file:///c:/Users/yasha/Desktop/Saarthi/frontend/src/app/globals.css) + various pages
+
+| # | Flaw | Impact | Fix |
+|---|------|--------|-----|
+| 15 | **Tables don't scroll horizontally on mobile** — Screener, Watchlist, Backtester, and Leaderboard all have wide tables. | Data tables overflow on narrow screens even though `overflow-x-auto` is set on the wrapper — the actual table needs `min-width` to trigger scroll. | Add `min-w-[700px]` or similar to the `<table>` elements so the outer `overflow-x-auto` container actually scrolls. |
+
+---
+
+## Phase 3: Functional Completeness Gaps (Medium-High Priority)
+
+Features that exist in the UI but don't actually work.
+
+---
+
+#### [MODIFY] [page.tsx (behavior)](file:///c:/Users/yasha/Desktop/Saarthi/frontend/src/app/behavior/page.tsx)
+
+| # | Flaw | Impact | Fix |
+|---|------|--------|-----|
+| 16 | **CSV upload zone is fake** — clicking it just calls `runAnalysis()` which POSTs an empty body. No actual file input, no drag-and-drop handler. | Users see "Click to analyze trades or drop CSV file here" but nothing happens with their file. | Add a hidden `<input type="file" accept=".csv">`, implement `onDrop`/`onChange` handler to parse CSV, send parsed trades to the backend. |
+| 17 | **Behavior page auto-runs analysis on mount** (line 67–69) with sample data, so users see a "report card" before they've done anything. | Misleading — users might think it's their data. | Only show the report card after the user explicitly uploads a CSV or clicks "Run Demo Analysis". |
+
+---
+
+#### [MODIFY] [page.tsx (backtester)](file:///c:/Users/yasha/Desktop/Saarthi/frontend/src/app/backtester/page.tsx) + [backtest.py (router)](file:///c:/Users/yasha/Desktop/Saarthi/backend/routers/backtest.py)
+
+| # | Flaw | Impact | Fix |
+|---|------|--------|-----|
+| 18 | **No equity curve chart** — the backtest returns an `equity_curve` array but it's never rendered. | Users see stats and a trade log but no visual chart of portfolio growth vs benchmark. | Add a `lightweight-charts` line chart showing `portfolio_value` vs `benchmark_value` over time. |
+| ★19 | **AI NL parser is completely non-functional** — the "Parse to Form" button on the backtester calls `/api/backtest/parse` which is just a [crude keyword matcher](file:///c:/Users/yasha/Desktop/Saarthi/backend/routers/backtest.py#L19-L60): it only detects RSI + 4 ticker names. **Any other strategy text is silently ignored** and the form stays unchanged. No error message, no feedback. | Users see "Natural Language Strategy Prompt" as a headline feature, type something like "Buy TCS when price crosses above 20-day SMA with 3% trailing stop loss", click "Parse to Form" — and nothing changes. The feature is completely broken for anything beyond trivial RSI prompts. | **Two-pronged fix**: (a) **Expand rule-based parser** with regex patterns for SMA, MACD, Bollinger, price-based conditions, stop-loss/take-profit extraction, date ranges. (b) **Wire up Gemini Flash API** (the `GEMINI_API_KEY` is already in [config.py](file:///c:/Users/yasha/Desktop/Saarthi/backend/config.py#L12)) as the real NL parsing backend — send the user's text to Gemini with a structured JSON schema prompt, validate the response, and populate the form. Add clear error/success toast feedback in the UI. |
+| ★20 | **Backtester ticker selection is a locked dropdown with only 5 options** — [line 270-280](file:///c:/Users/yasha/Desktop/Saarthi/frontend/src/app/backtester/page.tsx#L270-L280) uses a `<select>` with hardcoded `<option>` tags for RELIANCE, TCS, INFY, HDFCBANK, TATAMOTORS. User cannot type to search or filter, and cannot backtest any other stock. | Users who want to backtest a strategy on WIPRO, BAJAJ-AUTO, ITC, or any other stock literally cannot do it. | Replace the `<select>` dropdown with a **searchable combobox/autocomplete input** that allows typing to filter and accepts any valid NSE ticker. Reuse the same autocomplete component from the header search fix. |
+
+---
+
+#### [MODIFY] [StockChart.tsx](file:///c:/Users/yasha/Desktop/Saarthi/frontend/src/components/StockChart.tsx)
+
+| # | Flaw | Impact | Fix |
+|---|------|--------|-----|
+| 20 | **RSI toggle button exists but does nothing** — `showRSI` state is declared (line 35) but never used in the chart rendering logic. | Users toggle RSI on/off and nothing changes. | Add an RSI sub-chart pane (separate price scale at bottom) when `showRSI` is true, using the `RSI_14` data from the bars. |
+
+---
+
+#### [MODIFY] [DCFCalculator.tsx](file:///c:/Users/yasha/Desktop/Saarthi/frontend/src/components/DCFCalculator.tsx)
+
+| # | Flaw | Impact | Fix |
+|---|------|--------|-----|
+| 21 | **DCF formula is meaningless** — `baseValue = currentPrice * 0.95` then multiplied by tiny adjustment factors. | The "fair value" is always ~95% of current price regardless of inputs. Moving sliders barely changes the output. | Implement a proper simplified DCF: project future free cash flows using the growth rate, discount them at WACC, compute terminal value, divide by shares outstanding. Or at minimum make the sliders have meaningful impact on the output. |
+
+---
+
+## Phase 4: Data Quality & Error Handling (Medium Priority)
+
+---
+
+### Backend
+
+#### [MODIFY] [screener_engine.py](file:///c:/Users/yasha/Desktop/Saarthi/backend/services/screener_engine.py)
+
+| # | Flaw | Impact | Fix |
+|---|------|--------|-----|
+| 22 | **NSE Universe has only 15 stocks** — a screener claiming "2,000+ NSE companies" shows max 15 results. | Deeply misleading. Users will immediately notice. | Either: (a) expand `NSE_UNIVERSE` to include top 50+ NSE stocks, or (b) change the UI copy to say "Top 15 NSE Blue-chips" instead of "2,000+ NSE companies". |
+| 23 | **Sector heatmap averages are wrong** — uses simple arithmetic mean of `day_change_pct` instead of market-cap-weighted average. | Sector performance is misrepresented. A ₹100 Cr stock and a ₹18 Lakh Cr stock get equal weight. | Implement market-cap-weighted average change. |
+
+---
+
+#### [MODIFY] [backtest.py (router)](file:///c:/Users/yasha/Desktop/Saarthi/backend/routers/backtest.py)
+
+| # | Flaw | Impact | Fix |
+|---|------|--------|-----|
+| 24 | **NL parser doesn't extract stop-loss/take-profit values** from text — hardcodes `5` and `15` (lines 54–55). | User says "set 3% stop loss" but the form still shows 5%. | Parse stop-loss/take-profit percentages from the NL text using regex. |
+
+---
+
+#### [MODIFY] [indicators.py](file:///c:/Users/yasha/Desktop/Saarthi/backend/services/indicators.py)
+
+| # | Flaw | Impact | Fix |
+|---|------|--------|-----|
+| 25 | **RSI uses simple rolling mean** instead of Wilder's smoothing (exponential). | RSI values will differ from every other charting platform, confusing traders. | Use `ewm(alpha=1/14)` (Wilder's smoothing) instead of `.rolling(window=14).mean()`. |
+
+---
+
+### Frontend
+
+#### [MODIFY] [stock/[ticker]/page.tsx](file:///c:/Users/yasha/Desktop/Saarthi/frontend/src/app/stock/%5Bticker%5D/page.tsx)
+
+| # | Flaw | Impact | Fix |
+|---|------|--------|-----|
+| 26 | **No error state UI** — if the backend is down, users see the loading spinner briefly then get fake fallback data with no indication it's fake. | Users make investment decisions based on fabricated numbers. | Add a visible warning banner: "⚠ Live data unavailable — showing sample data for demonstration" when using fallback data. |
+| 27 | **"Share Report Card" button just shows an `alert()`** (line 153). | Looks like an unfinished feature. | Either implement proper share functionality (copy link, generate image) or remove the button. |
+
+---
+
+#### [MODIFY] [page.tsx (screener)](file:///c:/Users/yasha/Desktop/Saarthi/frontend/src/app/screener/page.tsx) + [screener.py](file:///c:/Users/yasha/Desktop/Saarthi/backend/routers/screener.py)
+
+| # | Flaw | Impact | Fix |
+|---|------|--------|-----|
+| ★28 | **No custom screener query builder** — unlike screener.in where users can build complex filters like `Market Cap > ₹1,000 Cr AND < ₹50,000 Cr AND PE > 30 AND Profit Margin > 35%`, Nivesh only offers pre-built preset buttons. The state variables `maxPE`, `minROE`, `maxDebtEq` exist in the code (lines 51–53) but are **never rendered in the UI** — there are no input fields for them. | This is a **core differentiator** of any stock screener. Without custom filtering, users can only use 8 fixed presets. They can't set their own ranges for market cap, PE, ROE, profit margin, etc. The "2,000+ NSE companies" claim is doubly misleading because users can't even filter the 15 stocks that exist. | Build a **screener.in-style custom filter panel** with: (1) A collapsible "Custom Filters" section below the presets, (2) Range inputs (min/max) for: Market Cap, P/E, P/B, ROE, ROCE, Debt/Equity, Dividend Yield, Revenue Growth, EPS Growth, Promoter Holding, Pledged %, (3) A "Run Custom Screen" button that sends all filter params to the backend, (4) The backend already supports all these filters in [screener.py](file:///c:/Users/yasha/Desktop/Saarthi/backend/routers/screener.py#L7-L50) — we just need the frontend to send them. (5) Add a "Clear Filters" button to reset. |
+
+---
+
+## Phase 5: UX Polish & Micro-Interactions (Medium-Low Priority)
+
+---
+
+| # | File | Flaw | Fix |
+|---|------|------|-----|
+| 29 | [Header.tsx](file:///c:/Users/yasha/Desktop/Saarthi/frontend/src/components/Header.tsx) | **"Dashboard" link goes to `/stock/RELIANCE.NS`** — misleading. There's no actual dashboard page. | Either rename to "Reliance" or create a proper dashboard page showing portfolio overview. |
+| 30 | [Header.tsx](file:///c:/Users/yasha/Desktop/Saarthi/frontend/src/components/Header.tsx) | **No active link highlighting** — current page isn't visually indicated in the nav. | Use `usePathname()` to add `text-neutralText` + bottom border to the active link. |
+| 31 | [page.tsx (stock)](file:///c:/Users/yasha/Desktop/Saarthi/frontend/src/app/stock/%5Bticker%5D/page.tsx) | **Snowflake score labels always show `text-positive`** regardless of the actual score (line 240–256). | A score of 1/6 should show red/negative, not green. Color-code: 0–2 = negative, 3–4 = neutralText, 5–6 = positive. |
+| 32 | [layout.tsx](file:///c:/Users/yasha/Desktop/Saarthi/frontend/src/app/layout.tsx) | **No favicon** — browser tab shows default Next.js icon. | Add a branded favicon (the "N" logo). |
+| 33 | [layout.tsx](file:///c:/Users/yasha/Desktop/Saarthi/frontend/src/app/layout.tsx) | **No `<meta viewport>` tag** explicitly set. | Next.js adds one by default, but verify it's correct for mobile. |
+| 34 | Various pages | **No loading skeletons** — most pages show a blank white gap while data loads. Only the stock page has a spinner. | Add shimmer/skeleton loading states to Screener, Watchlist, Leaderboard pages. |
+| 35 | [GlossaryTooltip.tsx](file:///c:/Users/yasha/Desktop/Saarthi/frontend/src/components/GlossaryTooltip.tsx) | **Tooltip clips at screen edges** — positioned with `left-1/2 -translate-x-1/2` which overflows when the term is near the left/right edge. | Add boundary detection to flip tooltip position when near edges. |
+
+---
+
+## Phase 6: Security & Production Readiness (Low Priority but Important)
+
+| # | Location | Flaw | Fix |
+|---|----------|------|-----|
+| 36 | [main.py](file:///c:/Users/yasha/Desktop/Saarthi/backend/main.py) | **CORS allows all origins** (`allow_origins=["*"]`). | Restrict to actual frontend domain(s) for production. |
+| 37 | [watchlist.py](file:///c:/Users/yasha/Desktop/Saarthi/backend/routers/watchlist.py) | **Watchlist/alerts stored in-memory Python dicts** — lost on every server restart, shared across all users (no auth). | Persist to Supabase (config already has credentials) or at minimum a JSON file. Add basic user ID isolation. |
+
+---
+
+## Proposed Changes Summary
+
+### Phase 1 (Critical — 14 fixes, ★ = user-flagged)
+- ★ **Stock search & autocomplete** — Add typeahead search with full NSE symbol list, replace plain inputs
+- ★ **Expand stock universe** — Make any valid NSE ticker searchable/analyzable, not just 6-15 presets
+- [data_fetcher.py](file:///c:/Users/yasha/Desktop/Saarthi/backend/services/data_fetcher.py) — Fix ROCE, promoter, pledge fabrication; add cache TTL; add `data_source` flag
+- [snowflake_calculator.py](file:///c:/Users/yasha/Desktop/Saarthi/backend/services/snowflake_calculator.py) — Lower cons thresholds, add more rules
+- [backtest_engine.py](file:///c:/Users/yasha/Desktop/Saarthi/backend/services/backtest_engine.py) — Fix Sharpe, CAGR, equity curve tracking
+- [page.tsx (watchlist)](file:///c:/Users/yasha/Desktop/Saarthi/frontend/src/app/watchlist/page.tsx) — Fix alert creation + form reset
+- [page.tsx (homepage)](file:///c:/Users/yasha/Desktop/Saarthi/frontend/src/app/page.tsx) — Fetch live stock data or add disclaimer
+
+### Phase 2 (Mobile — 3 fixes)
+- [Header.tsx](file:///c:/Users/yasha/Desktop/Saarthi/frontend/src/components/Header.tsx) — Mobile hamburger menu + responsive search
+- [globals.css](file:///c:/Users/yasha/Desktop/Saarthi/frontend/src/app/globals.css) + tables — Mobile table scrolling
+
+### Phase 3 (Functional — 8 fixes, ★ = user-flagged)
+- ★ **Backtester AI parser overhaul** — Expand rule-based NL parser + wire up Gemini Flash API
+- ★ **Backtester searchable ticker input** — Replace locked 5-option dropdown with autocomplete
+- [page.tsx (behavior)](file:///c:/Users/yasha/Desktop/Saarthi/frontend/src/app/behavior/page.tsx) — Real CSV upload
+- [page.tsx (backtester)](file:///c:/Users/yasha/Desktop/Saarthi/frontend/src/app/backtester/page.tsx) — Equity curve chart
+- [StockChart.tsx](file:///c:/Users/yasha/Desktop/Saarthi/frontend/src/components/StockChart.tsx) — RSI sub-chart
+- [DCFCalculator.tsx](file:///c:/Users/yasha/Desktop/Saarthi/frontend/src/components/DCFCalculator.tsx) — Meaningful DCF formula
+
+### Phase 4 (Data Quality — 5 fixes, ★ = user-flagged)
+- ★ **Screener custom query builder** — screener.in-style range filters for all metrics (Market Cap, PE, ROE, etc.)
+- Backend: Expand universe, fix heatmap weighting, parse SL/TP from NL, fix RSI smoothing
+
+### Phase 5 (Polish — 7 fixes)
+- Active nav links, score color-coding, favicon, loading skeletons, tooltip edge detection
+
+### Phase 6 (Security — 2 fixes)
+- CORS restriction, persistent storage
+
+---
+
+## Verification Plan
+
+### Automated Tests
+```bash
+cd backend && python -m pytest test_backend.py -v
+```
+
+### Manual Verification
+- Navigate every page on the live site at desktop (1280px) and mobile (375px) widths
+- **Search for a non-preset stock** (e.g., WIPRO, BAJAJ-AUTO) and verify it fetches real data with typeahead suggestions
+- **Type partial company name** (e.g., "Baj") in search and verify autocomplete shows matching tickers
+- **Backtester**: Type a natural language strategy mentioning SMA/MACD and verify the parser fills the form correctly
+- **Backtester**: Type a ticker name in the stock input and verify the autocomplete works (not a locked dropdown)
+- **Screener**: Build a custom screen with Market Cap > ₹1,000 Cr, PE < 25, ROE > 15% and verify correct filtered results
+- Verify all API endpoints return real data when backend is connected to yfinance
+- Confirm fallback paths show clear warnings
+- Test watchlist add/remove/alert create flow end-to-end
+- Run a backtest and verify Sharpe ratio and CAGR are mathematically correct
+- Verify equity curve chart renders in backtester
+- Upload a real CSV on the behavior page

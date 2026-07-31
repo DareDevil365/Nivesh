@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { Users, Loader2 } from "lucide-react";
+import { Users, Loader2, AlertCircle, ExternalLink } from "lucide-react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -12,22 +12,63 @@ import {
   Tooltip,
   Legend,
   CartesianGrid,
+  Cell,
 } from "recharts";
+
+interface ShareholdingCategory {
+  category: string;
+  key: string;
+  pct: number;
+  trend: number[];
+  color: string;
+}
 
 interface ShareholdingData {
   ticker: string;
   quarters: string[];
-  breakdown: Array<{
-    category: string;
-    pct: number;
-    trend: number[];
-  }>;
-  pledged_pct: number;
+  breakdown: ShareholdingCategory[];
+  pledged_pct: number | null;
+  data_source: string;
+  message?: string;
+  note?: string;
 }
 
 interface ShareholdingChartProps {
   ticker: string;
 }
+
+// Fixed colors per category
+const CATEGORY_COLORS: Record<string, string> = {
+  Promoter: "#2ECC71",
+  FII: "#3B82F6",
+  DII: "#9333EA",
+  "Public & Others": "#8FA096",
+  "Promoter & Insiders": "#2ECC71",
+  "Institutional Holdings": "#3B82F6",
+};
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div
+      style={{
+        backgroundColor: "#131B18",
+        border: "1px solid #223028",
+        borderRadius: 8,
+        padding: "10px 14px",
+        fontSize: 12,
+        color: "#E6EDEA",
+      }}
+    >
+      <p style={{ fontWeight: 600, marginBottom: 6 }}>{label}</p>
+      {payload.map((p: any) => (
+        <p key={p.dataKey} style={{ color: p.fill, margin: "2px 0" }}>
+          {p.dataKey}: {p.value?.toFixed(1)}%
+        </p>
+      ))}
+    </div>
+  );
+};
 
 export const ShareholdingChart: React.FC<ShareholdingChartProps> = ({ ticker }) => {
   const [data, setData] = useState<ShareholdingData | null>(null);
@@ -41,6 +82,7 @@ export const ShareholdingChart: React.FC<ShareholdingChartProps> = ({ ticker }) 
         setData(res);
       } catch (err) {
         console.error("Failed to load shareholding", err);
+        setData(null);
       } finally {
         setLoading(false);
       }
@@ -52,31 +94,65 @@ export const ShareholdingChart: React.FC<ShareholdingChartProps> = ({ ticker }) 
     return (
       <div className="w-full h-48 border border-border bg-surface rounded-card flex items-center justify-center text-mutedText text-sm gap-2">
         <Loader2 className="w-4 h-4 animate-spin text-primary" />
-        <span>Loading Shareholding Pattern...</span>
+        <span>Loading Shareholding Pattern…</span>
       </div>
     );
   }
 
-  if (!data) return null;
+  // Unavailable state — show helpful link to NSE
+  if (!data || data.data_source === "unavailable" || !data.breakdown?.length) {
+    const symbol = ticker.replace(".NS", "").replace(".BO", "");
+    return (
+      <div className="border border-border bg-surface rounded-card p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-heading font-semibold text-base text-neutralText flex items-center gap-2">
+            <Users className="w-4 h-4 text-primary" />
+            Shareholding Pattern
+          </h3>
+        </div>
+        <div className="flex items-start gap-2 p-4 bg-bg rounded-lg border border-border/60 text-xs text-mutedText">
+          <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+          <div className="space-y-2">
+            <p>{data?.message || "Shareholding pattern data is unavailable from the current data source."}</p>
+            <a
+              href={`https://www.nseindia.com/get-quotes/equity?symbol=${symbol}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-primary hover:underline font-semibold"
+            >
+              View on NSE India <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  // Format data for Recharts stacked bar chart across quarters
+  // Build chart data — one object per quarter
   const chartData = data.quarters.map((q, qIdx) => {
     const item: any = { quarter: q };
     data.breakdown.forEach((b) => {
-      item[b.category] = b.trend[qIdx] || b.pct;
+      item[b.category] = b.trend[qIdx] !== undefined ? b.trend[qIdx] : b.pct;
     });
     return item;
   });
 
+  // Pie-style summary tiles for current snapshot
+  const latest = data.breakdown.map((b) => ({
+    ...b,
+    current: b.trend[b.trend.length - 1] ?? b.pct,
+  }));
+
   return (
-    <div className="border border-border bg-surface rounded-card p-6 space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border pb-3">
+    <div className="border border-border bg-surface rounded-card overflow-hidden">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-6 py-4 border-b border-border">
         <h3 className="font-heading font-semibold text-base text-neutralText flex items-center gap-2">
           <Users className="w-4 h-4 text-primary" />
-          Shareholding Pattern (Promoter, FII, DII, Public)
+          Shareholding Pattern
         </h3>
 
-        {data.pledged_pct > 0 ? (
+        {data.pledged_pct != null && data.pledged_pct > 0 ? (
           <span className="text-xs px-2.5 py-0.5 rounded bg-negative/20 text-negative border border-negative/30 font-medium">
             Promoter Pledged: {data.pledged_pct}%
           </span>
@@ -87,30 +163,66 @@ export const ShareholdingChart: React.FC<ShareholdingChartProps> = ({ ticker }) 
         )}
       </div>
 
-      <div className="w-full h-[260px]">
+      {/* Latest Snapshot Tiles */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 divide-x divide-border border-b border-border">
+        {latest.map((b) => (
+          <div key={b.category} className="px-4 py-3 text-center">
+            <div className="flex items-center justify-center gap-1.5 mb-1">
+              <span
+                className="w-2.5 h-2.5 rounded-full inline-block flex-shrink-0"
+                style={{ backgroundColor: CATEGORY_COLORS[b.category] || b.color }}
+              />
+              <span className="text-[10px] text-mutedText font-semibold uppercase tracking-wide">
+                {b.category}
+              </span>
+            </div>
+            <div className="font-heading font-bold text-lg text-neutralText">
+              {b.current.toFixed(1)}%
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Stacked Bar Chart */}
+      <div className="w-full h-[200px] px-2 py-4">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <BarChart data={chartData} margin={{ top: 5, right: 16, left: -20, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#223028" vertical={false} />
-            <XAxis dataKey="quarter" stroke="#8FA096" tick={{ fontSize: 11 }} tickLine={false} />
-            <YAxis stroke="#8FA096" tick={{ fontSize: 11 }} tickLine={false} domain={[0, 100]} unit="%" />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "#131B18",
-                borderColor: "#223028",
-                borderRadius: "8px",
-                color: "#E6EDEA",
-                fontSize: "12px",
-              }}
-              formatter={(val: number) => [`${val}%`]}
+            <XAxis
+              dataKey="quarter"
+              stroke="#8FA096"
+              tick={{ fontSize: 11 }}
+              tickLine={false}
             />
+            <YAxis
+              stroke="#8FA096"
+              tick={{ fontSize: 11 }}
+              tickLine={false}
+              domain={[0, 100]}
+              unit="%"
+            />
+            <Tooltip content={<CustomTooltip />} />
             <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
-            <Bar dataKey="Promoter" stackId="a" fill="#2ECC71" />
-            <Bar dataKey="FII" stackId="a" fill="#3B82F6" />
-            <Bar dataKey="DII" stackId="a" fill="#9333EA" />
-            <Bar dataKey="Public & Others" stackId="a" fill="#8FA096" />
+            {data.breakdown.map((b) => (
+              <Bar
+                key={b.category}
+                dataKey={b.category}
+                stackId="a"
+                fill={CATEGORY_COLORS[b.category] || b.color}
+                radius={b.category === data.breakdown[data.breakdown.length - 1].category ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+              />
+            ))}
           </BarChart>
         </ResponsiveContainer>
       </div>
+
+      {/* Note if data is estimated */}
+      {data.note && (
+        <div className="px-6 py-2 border-t border-border/50 text-[10px] text-mutedText flex items-center gap-1">
+          <AlertCircle className="w-3 h-3 text-amber-400 flex-shrink-0" />
+          {data.note}
+        </div>
+      )}
     </div>
   );
 };

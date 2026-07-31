@@ -19,7 +19,10 @@ def run_screener(
     min_eps_growth: Optional[float] = None,
     min_promoter: Optional[float] = None,
     max_pledged: Optional[float] = None,
+    min_market_cap: Optional[float] = None,
     sector: Optional[str] = None,
+    sort_by: Optional[str] = "market_cap",
+    order: Optional[str] = "desc",
 ):
     filters = {}
 
@@ -39,7 +42,12 @@ def run_screener(
     if min_eps_growth is not None: filters["min_eps_growth"] = min_eps_growth
     if min_promoter is not None: filters["min_promoter"] = min_promoter
     if max_pledged is not None: filters["max_pledged"] = max_pledged
+    if min_market_cap is not None: filters["min_market_cap"] = min_market_cap
     if sector is not None: filters["sector"] = sector
+
+    # Wire sort_by and order into filters for filter_stocks()
+    filters["sort_by"] = sort_by or "market_cap"
+    filters["order"] = order or "desc"
 
     results = filter_stocks(filters)
     return {

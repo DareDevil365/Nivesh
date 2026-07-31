@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "Nivesh — NSE Equity Research, Backtester & Psychology Analyzer",
-  description: "Simplywall.st-style 5-axis visual analysis, natural-language strategy backtesting, and trading behavior analysis for the Indian stock market.",
+  description: "Interactive 5-axis visual equity analysis, natural-language strategy backtesting, and trading behavior analysis for Indian stock markets.",
 };
 
 export default function RootLayout({

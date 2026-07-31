@@ -1,0 +1,24 @@
+Here is a breakdown of three of the most widely used algorithmic trading strategies, ranging from execution-focused to strategy-focused.
+1. Volume Weighted Average Price (VWAP)
+VWAP is an execution algorithm used primarily by institutional traders and mutual funds. Rather than trying to predict the market, its goal is to buy or sell a large block of shares without causing sudden price spikes.
+The algorithm breaks a large order into smaller chunks and executes them throughout the day, aiming to keep the average purchase price as close as possible to the historical average for that timeframe.
+
+$$VWAP = \frac{\sum (Price \times Volume)}{\sum Volume}$$
+Key Insight: If a trading algorithm buys a million shares below the daily VWAP, it means the trader executed the block order at a "better than average" price for that specific day.
+2. Statistical Arbitrage (Pairs Trading)
+Statistical arbitrage relies on complex mathematical models to identify pricing inefficiencies between correlated assets. The most famous subset of this is Pairs Trading.
+If two companies in the same sector (e.g., Coca-Cola and Pepsi) historically move together, the algorithm monitors the spread between their stock prices. If the spread widens beyond a specific statistical threshold (usually measured in standard deviations), the algorithm assumes the historical relationship will eventually revert to the mean.
+The Execution: It automatically short-sells the overperforming stock and goes long (buys) the underperforming stock.
+The Result: When the prices converge back to their historical average, the algorithm closes both positions for a profit, remaining market-neutral regardless of whether the broader stock market went up or down.
+3. Moving Average Crossover (Momentum)
+This is a classic trend-following algorithm that triggers automated trades based on overlapping timeframes. It relies on two moving averages: a "fast" one (e.g., a 50-day average) and a "slow" one (e.g., a 200-day average).
+The algorithm constantly calculates these averages and looks for intersections:
+Golden Cross (Buy Signal): The fast moving average crosses above the slow moving average, indicating a sudden surge in upward momentum.
+Death Cross (Sell Signal): The fast moving average crosses below the slow moving average, indicating downward momentum.
+Here is an interactive visualization of how adjusting those timeframes changes the algorithm's sensitivity to price movements:
+
+
+
+
+Key insight: A shorter fast-period makes the algorithm highly reactive to recent news, but drastically increases the risk of "false positives" that trigger bad trades.
+

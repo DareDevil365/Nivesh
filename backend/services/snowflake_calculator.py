@@ -2,7 +2,7 @@ from typing import Dict, Any, List, Tuple
 
 def compute_snowflake_scores(data: Dict[str, Any]) -> Dict[str, float]:
     """
-    Computes SimplyWall.St-accurate 30-Check Binary Scoring Engine (0-6 per axis).
+    Computes 30-Check Binary Scoring Engine (0-6 per axis).
     Each axis gets exactly 6 checks (pass=1, fail=0).
     Missing metrics evaluate as False/0 check passed (no synthetic inflation).
     """

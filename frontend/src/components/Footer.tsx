@@ -35,6 +35,9 @@ export const Footer: React.FC = () => {
             <Link href="/behavior" className="hover:text-primary transition-colors">
               Behavior Analyzer
             </Link>
+            <Link href="/watchlist" className="hover:text-primary transition-colors">
+              Watchlist
+            </Link>
             <Link href="/leaderboard" className="hover:text-primary transition-colors">
               Leaderboard
             </Link>

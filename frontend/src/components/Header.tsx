@@ -7,7 +7,6 @@ import { SearchAutocomplete } from "./SearchAutocomplete";
 import { 
   TrendingUp, 
   Search, 
-  BarChart2, 
   BrainCircuit, 
   BookOpen, 
   ShieldAlert, 
@@ -21,7 +20,6 @@ export const Header: React.FC = () => {
   const pathname = usePathname();
 
   const navLinks = [
-    { href: "/stock/RELIANCE.NS", label: "Research", icon: BarChart2, color: "text-primary" },
     { href: "/screener", label: "Screener", icon: Search, color: "text-positive" },
     { href: "/watchlist", label: "Watchlist", icon: ShieldAlert, color: "text-amber-400" },
     { href: "/backtester", label: "Backtester", icon: BrainCircuit, color: "text-secondary" },
@@ -51,7 +49,7 @@ export const Header: React.FC = () => {
         <nav className="hidden md:flex items-center gap-1">
           {navLinks.map((link) => {
             const Icon = link.icon;
-            const isActive = pathname.startsWith(link.href.split("?")[0]);
+          const isActive = pathname.startsWith(link.href.split("?")[0]);
             return (
               <Link
                 key={link.href}

@@ -36,10 +36,22 @@ interface BehaviorReport {
   ai_generated?: boolean;
 }
 
+const SAMPLE_DEMO_TRADES = [
+  { ticker: "RELIANCE.NS", buy_date: "2024-01-10", buy_price: 2450.0, sell_date: "2024-02-15", sell_price: 2610.0, qty: 20 },
+  { ticker: "TCS.NS", buy_date: "2024-02-01", buy_price: 3800.0, sell_date: "2024-02-28", sell_price: 3650.0, qty: 10 },
+  { ticker: "INFY.NS", buy_date: "2024-03-05", buy_price: 1550.0, sell_date: "2024-03-20", sell_price: 1480.0, qty: 30 },
+  { ticker: "HDFCBANK.NS", buy_date: "2024-03-22", buy_price: 1420.0, sell_date: "2024-04-10", sell_price: 1580.0, qty: 25 },
+  { ticker: "WIPRO.NS", buy_date: "2024-04-12", buy_price: 480.0, sell_date: "2024-04-25", sell_price: 460.0, qty: 80 },
+  { ticker: "RELIANCE.NS", buy_date: "2024-04-26", buy_price: 2900.0, sell_date: "2024-05-10", sell_price: 3100.0, qty: 40 },
+  { ticker: "ICICIBANK.NS", buy_date: "2024-05-15", buy_price: 1100.0, sell_date: "2024-06-01", sell_price: 1050.0, qty: 50 },
+  { ticker: "BAJFINANCE.NS", buy_date: "2024-06-05", buy_price: 6800.0, sell_date: "2024-06-20", sell_price: 7200.0, qty: 5 },
+];
+
 export default function BehaviorPage() {
   const [report, setReport] = useState<BehaviorReport | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
-  const [selectedBroker, setSelectedBroker] = useState("zerodha");
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [selectedBroker, setSelectedBroker] = useState("auto");
   const [parsedTrades, setParsedTrades] = useState<any[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -127,13 +139,15 @@ export default function BehaviorPage() {
 
   const runAnalysis = async (customTrades?: any[]) => {
     setAnalyzing(true);
+    setErrorMsg(null);
     try {
+      const tradesToSend = customTrades && customTrades.length > 0 ? customTrades : null;
       const data = await api.post<BehaviorReport>("/api/behavior/analyze", {
-        trades: customTrades && customTrades.length > 0 ? customTrades : null,
+        trades: tradesToSend,
       });
       setReport(data);
-    } catch (err) {
-      console.warn("Behavior analysis error:", err);
+    } catch (err: any) {
+      setErrorMsg(err?.message || "Behavior analysis failed. Please check your connection and retry.");
     } finally {
       setAnalyzing(false);
     }
@@ -157,7 +171,7 @@ export default function BehaviorPage() {
         </div>
 
         <button
-          onClick={() => runAnalysis()}
+          onClick={() => runAnalysis(SAMPLE_DEMO_TRADES)}
           disabled={analyzing}
           className="px-5 py-2.5 rounded-lg bg-purple-600 text-neutralText font-semibold text-xs hover:bg-purple-700 transition-colors flex items-center gap-2 flex-shrink-0 disabled:opacity-50"
         >
@@ -175,17 +189,9 @@ export default function BehaviorPage() {
           </h3>
 
           <div className="flex items-center gap-2 text-xs text-mutedText">
-            <span>Broker Format:</span>
-            <select
-              value={selectedBroker}
-              onChange={(e) => setSelectedBroker(e.target.value)}
-              className="bg-bg border border-border rounded px-2.5 py-1 text-xs text-neutralText"
-            >
-              <option value="zerodha">Zerodha Console</option>
-              <option value="groww">Groww Tradebook</option>
-              <option value="upstox">Upstox Reports</option>
-              <option value="generic">Generic CSV</option>
-            </select>
+            <span className="px-2.5 py-1 rounded border border-border bg-bg text-mutedText">
+              Auto-Detect Format (Zerodha · Groww · Upstox · Generic)
+            </span>
           </div>
         </div>
 
@@ -249,7 +255,15 @@ export default function BehaviorPage() {
         )}
       </div>
 
-      {/* Analysis Results Dashboard */}
+        {/* Error state */}
+        {errorMsg && (
+          <div className="p-4 rounded-lg bg-negative/10 border border-negative/30 text-negative text-sm flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+
+        {/* Analysis Results Dashboard */}
       {report && (
         <div className="space-y-6">
           {/* AI Psychology Advice Panel */}
@@ -316,25 +330,16 @@ export default function BehaviorPage() {
               </p>
             </div>
 
-            {/* Revenge Trading Score */}
+            {/* Total Trades */}
             <div className="border border-border bg-surface p-4 rounded-card space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-mutedText font-medium">Revenge Trading</span>
-                <span
-                  className={`text-[10px] px-2 py-0.5 rounded font-semibold ${
-                    report.metrics.revenge_score > 20.0
-                      ? "bg-negative/20 text-negative"
-                      : "bg-positive/20 text-positive"
-                  }`}
-                >
-                  {report.metrics.revenge_score > 20.0 ? "Flagged" : "Disciplined"}
-                </span>
+                <span className="text-xs text-mutedText font-medium">Total Trades</span>
               </div>
               <div className="font-heading font-bold text-2xl text-neutralText">
-                {report.metrics.revenge_score}%
+                {report.metrics.total_trades}
               </div>
               <p className="text-[11px] text-mutedText">
-                Position size increase immediately after loss.
+                Completed round-trip trades analyzed.
               </p>
             </div>
 

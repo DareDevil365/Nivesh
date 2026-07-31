@@ -29,11 +29,8 @@ export default function LeaderboardPage() {
         const data = await api.get<{ leaderboard: LeaderboardItem[] }>("/api/leaderboard");
         setItems(data.leaderboard || []);
       } catch (err) {
-        setItems([
-          { id: "strat-1", name: "RSI Oversold Swing Strategy", ticker: "RELIANCE.NS", author: "TraderQuant99", total_return_pct: 48.5, cagr_pct: 38.2, sharpe_ratio: 2.15, max_drawdown_pct: 9.4, win_rate_pct: 82.0, total_trades: 12, scenario: "COVID-19 Recovery" },
-          { id: "strat-2", name: "TCS Quality Dip Buyer", ticker: "TCS.NS", author: "ValueInvestorIN", total_return_pct: 34.2, cagr_pct: 28.5, sharpe_ratio: 1.85, max_drawdown_pct: 7.8, win_rate_pct: 75.0, total_trades: 8, scenario: "GFC 2008 Recovery" },
-          { id: "strat-3", name: "Infosys Momentum Breakout", ticker: "INFY.NS", author: "TechTraderPro", total_return_pct: 29.8, cagr_pct: 24.1, sharpe_ratio: 1.62, max_drawdown_pct: 11.2, win_rate_pct: 70.0, total_trades: 10, scenario: "Demonetization" },
-        ]);
+        // API unavailable — show empty state, not fake data
+        setItems([]);
       } finally {
         setLoading(false);
       }
@@ -76,6 +73,21 @@ export default function LeaderboardPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
+            {items.length === 0 ? (
+              <div className="py-16 text-center space-y-3">
+                <Trophy className="w-10 h-10 text-mutedText/40 mx-auto" />
+                <p className="font-semibold text-neutralText">No strategies submitted yet</p>
+                <p className="text-xs text-mutedText">
+                  Run a backtest and submit your strategy to appear here.
+                </p>
+                <a
+                  href="/backtester"
+                  className="inline-block px-5 py-2 rounded-lg bg-primary/20 hover:bg-primary text-primary hover:text-neutralText transition-colors font-semibold text-xs border border-primary/30 mt-2"
+                >
+                  Go to Backtester →
+                </a>
+              </div>
+            ) : (
             <table className="w-full text-left border-collapse text-xs min-w-[700px]">
               <thead>
                 <tr className="border-b border-border text-mutedText uppercase text-[11px] font-semibold">
@@ -125,6 +137,7 @@ export default function LeaderboardPage() {
                 ))}
               </tbody>
             </table>
+            )}
           </div>
         )}
       </div>

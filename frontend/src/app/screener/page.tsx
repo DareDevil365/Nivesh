@@ -66,6 +66,23 @@ export default function ScreenerPage() {
   const [results, setResults] = useState<StockResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCustomMode, setIsCustomMode] = useState(false);
+  const [watchlistSaveSuccess, setWatchlistSaveSuccess] = useState(false);
+
+  const handleSaveAllToWatchlist = async () => {
+    if (!results || results.length === 0) return;
+    try {
+      for (const stock of results.slice(0, 15)) {
+        await api.post("/api/watchlist/item", {
+          watchlist_name: "default",
+          ticker: stock.ticker,
+        });
+      }
+      setWatchlistSaveSuccess(true);
+      setTimeout(() => setWatchlistSaveSuccess(false), 2500);
+    } catch (err) {
+      console.warn("Failed to save to watchlist:", err);
+    }
+  };
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -379,6 +396,31 @@ export default function ScreenerPage() {
             </select>
           </div>
 
+          {/* Action Buttons */}
+          <button
+            onClick={handleSaveAllToWatchlist}
+            disabled={results.length === 0}
+            className="flex items-center gap-1.5 px-3 py-1 rounded bg-surface border border-border hover:border-primary/50 text-neutralText font-medium text-xs transition-colors disabled:opacity-50"
+            title="Add top screening results to your watchlist"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-positive" />
+            {watchlistSaveSuccess ? (
+              <span className="text-positive font-semibold">Saved to Watchlist!</span>
+            ) : (
+              "Save to Watchlist"
+            )}
+          </button>
+
+          <button
+            onClick={handleExportCSV}
+            disabled={results.length === 0}
+            className="flex items-center gap-1.5 px-3 py-1 rounded bg-surface border border-border hover:border-primary/50 text-neutralText font-medium text-xs transition-colors disabled:opacity-50"
+            title="Export screening results as CSV"
+          >
+            <Download className="w-3.5 h-3.5 text-primary" />
+            Export CSV
+          </button>
+
           {/* View Toggle */}
           <div className="flex items-center bg-surface border border-border rounded-lg p-0.5">
             <button
@@ -470,7 +512,7 @@ export default function ScreenerPage() {
                     </td>
                     <td className="p-3 text-right">
                       <span className="inline-flex items-center px-2 py-0.5 rounded bg-bg border border-border text-secondary font-bold font-mono">
-                        {r.snowflake_total || 18}/30
+                        {r.snowflake_total != null ? `${r.snowflake_total}/30` : "N/A"}
                       </span>
                     </td>
                   </tr>
@@ -496,7 +538,7 @@ export default function ScreenerPage() {
                   <span className="text-xs font-mono text-mutedText">{r.ticker}</span>
                 </div>
                 <span className="px-2 py-0.5 rounded bg-secondary/10 text-secondary border border-secondary/20 text-xs font-bold font-mono">
-                  {r.snowflake_total || 18}/30
+                  {r.snowflake_total != null ? `${r.snowflake_total}/30` : "N/A"}
                 </span>
               </div>
 

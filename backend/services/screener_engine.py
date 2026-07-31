@@ -99,35 +99,35 @@ def filter_stocks(filters: Dict[str, Any]) -> List[Dict[str, Any]]:
     for s in all_stocks:
         f = s
 
-        if sector_filter and s["sector"].lower() != sector_filter.lower():
+        if sector_filter and (s.get("sector") or "").lower() != sector_filter.lower():
             continue
-        if min_pe is not None and f["pe"] < float(min_pe):
+        if min_pe is not None and (f.get("pe") is None or f["pe"] < float(min_pe)):
             continue
-        if max_pe is not None and f["pe"] > float(max_pe):
+        if max_pe is not None and (f.get("pe") is None or f["pe"] > float(max_pe)):
             continue
-        if min_pb is not None and f["pb"] < float(min_pb):
+        if min_pb is not None and (f.get("pb") is None or f["pb"] < float(min_pb)):
             continue
-        if max_pb is not None and f["pb"] > float(max_pb):
+        if max_pb is not None and (f.get("pb") is None or f["pb"] > float(max_pb)):
             continue
-        if min_roe is not None and f["roe"] < float(min_roe):
+        if min_roe is not None and (f.get("roe") is None or f["roe"] < float(min_roe)):
             continue
-        if min_roce is not None and f["roce"] < float(min_roce):
+        if min_roce is not None and (f.get("roce") is None or f["roce"] < float(min_roce)):
             continue
-        if max_debt_equity is not None and f["debt_equity"] > float(max_debt_equity):
+        if max_debt_equity is not None and (f.get("debt_equity") is None or f["debt_equity"] > float(max_debt_equity)):
             continue
-        if min_div_yield is not None and f["div_yield"] < float(min_div_yield):
+        if min_div_yield is not None and (f.get("div_yield") or 0.0) < float(min_div_yield):
             continue
-        if min_rev_growth is not None and f.get("revenue_growth_3yr", 0) < float(min_rev_growth):
+        if min_rev_growth is not None and (f.get("revenue_growth_3yr") or 0.0) < float(min_rev_growth):
             continue
-        if min_eps_growth is not None and f.get("eps_growth_3yr", 0) < float(min_eps_growth):
+        if min_eps_growth is not None and (f.get("eps_growth_3yr") or 0.0) < float(min_eps_growth):
             continue
-        if min_promoter is not None and f.get("promoter_holding", 0) < float(min_promoter):
+        if min_promoter is not None and (f.get("promoter_holding") or 0.0) < float(min_promoter):
             continue
-        if max_pledged is not None and f.get("pledged_shares_pct", 0) > float(max_pledged):
+        if max_pledged is not None and (f.get("pledged_shares_pct") or 0.0) > float(max_pledged):
             continue
-        if min_market_cap is not None and f["market_cap"] < float(min_market_cap):
+        if min_market_cap is not None and (f.get("market_cap") or 0.0) < float(min_market_cap):
             continue
-        if max_market_cap is not None and f["market_cap"] > float(max_market_cap):
+        if max_market_cap is not None and (f.get("market_cap") or 0.0) > float(max_market_cap):
             continue
 
         filtered.append(s)

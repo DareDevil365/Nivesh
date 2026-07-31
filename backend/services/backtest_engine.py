@@ -1,6 +1,6 @@
 import math
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import pandas as pd
 import numpy as np
 from services.data_fetcher import get_chart_data
@@ -16,6 +16,7 @@ def run_indicator_backtest(
     stop_loss_pct: float = 5.0,
     take_profit_pct: Optional[float] = None,
     start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
     period: str = "5y"
 ) -> Dict[str, Any]:
     """

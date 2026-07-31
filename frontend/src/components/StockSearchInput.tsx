@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Search, ArrowRight, TrendingUp, Loader2 } from "lucide-react";
+import { api } from "@/lib/api";
 
 interface SearchResultItem {
   ticker: string;
@@ -46,13 +47,12 @@ export default function StockSearchInput({
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await fetch(`http://localhost:8000/api/companies/search?q=${encodeURIComponent(query.trim())}`);
-        if (res.ok) {
-          const data = await res.json();
-          setResults(data.results || []);
-          setIsOpen(true);
-          setSelectedIndex(-1);
-        }
+        const data = await api.get<{ results: SearchResultItem[] }>(
+          `/api/companies/search?q=${encodeURIComponent(query.trim())}`
+        );
+        setResults(data.results || []);
+        setIsOpen(true);
+        setSelectedIndex(-1);
       } catch (err) {
         // Fallback client lookup for candidate ticker
         const qUpper = query.trim().toUpperCase();

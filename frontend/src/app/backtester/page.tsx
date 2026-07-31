@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { SearchAutocomplete } from "@/components/SearchAutocomplete";
 import { EquityCurveChart } from "@/components/EquityCurveChart";
 import { api } from "@/lib/api";
@@ -46,13 +47,21 @@ interface BacktestResults {
   }>;
 }
 
-export default function BacktesterPage() {
+function BacktesterContent() {
+  const searchParams = useSearchParams();
   const [nlPrompt, setNlPrompt] = useState("");
   const [isParsing, setIsParsing] = useState(false);
   const [parseSource, setParseSource] = useState<string | null>(null);
 
-  // Form State
+  // Form State — pre-fill from URL params (e.g. Clone from leaderboard)
   const [ticker, setTicker] = useState("RELIANCE.NS");
+
+  useEffect(() => {
+    const urlTicker = searchParams.get("ticker");
+    const urlStrategy = searchParams.get("strategy");
+    if (urlTicker) setTicker(urlTicker);
+    if (urlStrategy) setNlPrompt(urlStrategy);
+  }, [searchParams]);
   const [entryIndicator, setEntryIndicator] = useState("RSI");
   const [entryCondition, setEntryCondition] = useState("crosses_below");
   const [entryValue, setEntryValue] = useState("30");
@@ -74,6 +83,24 @@ export default function BacktesterPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const resultsRef = useRef<HTMLDivElement>(null);
+
+  const handleExportCSV = () => {
+    if (!results || !results.trade_log.length) return;
+    const headers = ["Entry Date", "Exit Date", "Entry Price", "Exit Price", "Shares", "P&L (Rs)", "P&L (%)", "Result"];
+    const rows = results.trade_log.map(t => [
+      t.entry_date, t.exit_date, t.entry_price, t.exit_price, t.shares, t.pnl, t.pnl_pct, t.win ? "WIN" : "LOSS"
+    ]);
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(v => `"${v}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${results.ticker}_backtest_trades.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   // Scenario Presets
   const presets = [
@@ -210,7 +237,7 @@ export default function BacktesterPage() {
   };
 
   return (
-    <div className="space-[#0B1210] space-y-8">
+    <div className="space-y-8">
       {/* Header Banner */}
       <div className="border border-border bg-surface rounded-card p-6 relative overflow-hidden">
         <div className="absolute right-4 top-4 opacity-10 pointer-events-none">
@@ -219,7 +246,7 @@ export default function BacktesterPage() {
         <div className="max-w-3xl space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/10 border border-secondary/20 text-secondary text-xs font-semibold">
             <Zap className="w-3.5 h-3.5" />
-            Deterministic Python Engine + Gemini 3.6 Flash Sandbox
+            Deterministic Python Engine + Gemini 2.5 Flash Parsing
           </div>
           <h1 className="font-heading text-2xl sm:text-3xl font-bold text-neutralText">
             Natural-Language & Guided Strategy Backtester
@@ -531,10 +558,21 @@ export default function BacktesterPage() {
 
           {/* Trade Log Table */}
           <div className="border border-border bg-surface rounded-card p-4 space-y-3">
-            <h4 className="font-heading font-semibold text-sm text-neutralText flex items-center gap-2">
-              <FileSpreadsheet className="w-4 h-4 text-primary" />
-              Detailed Trade Log ({results.trade_log.length} Executed Trades)
-            </h4>
+            <div className="flex items-center justify-between">
+              <h4 className="font-heading font-semibold text-sm text-neutralText flex items-center gap-2">
+                <FileSpreadsheet className="w-4 h-4 text-primary" />
+                Detailed Trade Log ({results.trade_log.length} Executed Trades)
+              </h4>
+              {results.trade_log.length > 0 && (
+                <button
+                  onClick={handleExportCSV}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-semibold text-mutedText hover:text-primary hover:border-primary/50 transition-colors"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  Export CSV
+                </button>
+              )}
+            </div>
 
             {results.trade_log.length === 0 ? (
               <p className="text-xs text-mutedText p-4 text-center">No trades triggered during selected period.</p>
@@ -586,5 +624,20 @@ export default function BacktesterPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function BacktesterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-3">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-mutedText">Loading Backtester Engine...</p>
+        </div>
+      }
+    >
+      <BacktesterContent />
+    </Suspense>
   );
 }

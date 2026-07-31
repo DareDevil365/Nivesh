@@ -33,10 +33,11 @@ class LRUCache:
             self.cache.popitem(last=False)
 
 class CacheManager:
-    """Unified cache manager reading Upstash Redis first with in-memory LRU fallback."""
+    """Unified cache manager reading Upstash Redis first with in-memory LRU cache fallback."""
     def __init__(self):
         self.lru = LRUCache(capacity=2000)
         self.redis_client = None
+        self.redis_error_count = 0
         
         if settings.UPSTASH_REDIS_URL and settings.UPSTASH_REDIS_TOKEN:
             try:
@@ -45,7 +46,7 @@ class CacheManager:
                 if not redis_url.startswith("redis://") and not redis_url.startswith("rediss://"):
                     redis_url = f"rediss://:{settings.UPSTASH_REDIS_TOKEN}@{redis_url.replace('https://', '')}:6379"
                 
-                self.redis_client = redis.Redis.from_url(redis_url, socket_timeout=3.0)
+                self.redis_client = redis.Redis.from_url(redis_url, socket_timeout=0.5, socket_connect_timeout=0.5)
                 logger.info("Connected to Upstash Redis cache shield.")
             except Exception as e:
                 logger.warning(f"Could not connect to Redis ({e}). Falling back to in-memory LRU cache.")
@@ -59,7 +60,10 @@ class CacheManager:
                 if val:
                     return json.loads(val)
             except Exception as e:
-                logger.warning(f"Redis read error ({e}). Checking LRU fallback.")
+                self.redis_error_count += 1
+                if self.redis_error_count >= 2:
+                    logger.warning("Disabling Redis client due to repeated connection errors. Using LRU cache.")
+                    self.redis_client = None
 
         # Fallback to local LRU
         return self.lru.get(key)
@@ -77,7 +81,9 @@ class CacheManager:
                 else:
                     self.redis_client.set(key, serialized)
             except Exception as e:
-                logger.warning(f"Redis write error ({e}). Saved in local LRU.")
+                self.redis_error_count += 1
+                if self.redis_error_count >= 2:
+                    self.redis_client = None
 
     def set_permanent(self, key: str, value: Any):
         """Used for historical data (TTL = infinite)."""

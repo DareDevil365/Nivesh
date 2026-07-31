@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Grid, TrendingUp, TrendingDown } from "lucide-react";
 
+import { api } from "@/lib/api";
+
 interface SectorData {
   sector: string;
   total_market_cap: number;
@@ -19,11 +21,8 @@ export default function SectorHeatmap() {
   useEffect(() => {
     async function fetchHeatmap() {
       try {
-        const res = await fetch("http://localhost:8000/api/screener/sector-heatmap");
-        if (res.ok) {
-          const data = await res.json();
-          setHeatmap(data.heatmap || []);
-        }
+        const data = await api.get<{ heatmap: SectorData[] }>("/api/screener/sector-heatmap");
+        setHeatmap(data.heatmap || []);
       } catch (err) {
         // Fallback sample sector heatmap if local backend starting
         setHeatmap([
@@ -52,7 +51,7 @@ export default function SectorHeatmap() {
             NSE Sector Performance Heatmap
           </h2>
         </div>
-        <span className="text-xs text-mutedText">Tijori-style sector framing</span>
+        <span className="text-xs text-mutedText">Sector Market Cap Weighting</span>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

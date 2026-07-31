@@ -1,146 +1,173 @@
-import hashlib
 import logging
 from typing import Dict, Any, List, Optional
-import httpx
-from services.gemini_client import gemini_rotator
+from services.data_fetcher import get_company_profile
 
 logger = logging.getLogger(__name__)
 
 ANNOUNCEMENT_CATEGORIES = [
-    "Financial Results",
-    "Board Meeting",
-    "Credit Rating",
-    "Auditor Resignation",
-    "Related Party Transaction",
-    "Litigation & Regulatory",
-    "Pledge Change",
-    "Key Personnel Change",
-    "General Corporate"
+    "Financial Results", "Board Meeting", "Credit Rating",
+    "Auditor Resignation", "Related Party Transaction",
+    "Litigation & Regulatory", "Pledge Change",
+    "Key Personnel Change", "General Corporate",
 ]
 
+
 def classify_filing_by_triage_rules(title: str) -> str:
-    """
-    Rule-based keyword triage classifier (no LLM, 0 cost).
-    Handles routine corporate announcements cleanly.
-    """
-    title_lower = title.lower()
-    if "financial result" in title_lower or "quarterly result" in title_lower or "audited result" in title_lower:
+    """Rule-based keyword triage classifier — zero LLM cost."""
+    t = title.lower()
+    if any(k in t for k in ["financial result", "quarterly result", "audited result", "unaudited result"]):
         return "Financial Results"
-    if "board meeting" in title_lower or "notice of board" in title_lower:
+    if any(k in t for k in ["board meeting", "notice of board"]):
         return "Board Meeting"
-    if "credit rating" in title_lower or "rating upgrade" in title_lower or "rating downgrade" in title_lower:
+    if any(k in t for k in ["credit rating", "rating upgrade", "rating downgrade", "rating reaffirm"]):
         return "Credit Rating"
-    if "auditor" in title_lower and ("resign" in title_lower or "change" in title_lower):
+    if "auditor" in t and any(k in t for k in ["resign", "change", "appointment"]):
         return "Auditor Resignation"
-    if "related party" in title_lower:
+    if "related party" in t:
         return "Related Party Transaction"
-    if "litigation" in title_lower or "court" in title_lower or "sebi" in title_lower or "penalty" in title_lower:
+    if any(k in t for k in ["litigation", "court", "sebi", "penalty", "show cause", "adjudication"]):
         return "Litigation & Regulatory"
-    if "pledge" in title_lower or "encumbrance" in title_lower:
+    if any(k in t for k in ["pledge", "encumbrance"]):
         return "Pledge Change"
-    if "appointment" in title_lower or "resignation" in title_lower or "ceo" in title_lower or "cfo" in title_lower:
+    if any(k in t for k in ["appointment", "resignation", "ceo", "cfo", "md ", "director"]):
         return "Key Personnel Change"
     return "General Corporate"
 
-def summarize_filing_with_gemini(title: str, category: str) -> str:
-    """Uses Gemini API rotator to generate a 1-sentence synthesis for high-signal filings."""
-    active_key = gemini_rotator.get_active_key(task_type="heavy")
-    if not active_key:
-        return f"{category} filing submitted to exchange."
-
-    try:
-        prompt = f"Summarize this corporate filing title into 1 clear, professional sentence for investors: '{title}'. Return raw text only."
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={active_key}"
-        payload = {"contents": [{"parts": [{"text": prompt}]}]}
-        
-        with httpx.Client(timeout=4.0) as client:
-            res = client.post(url, json=payload)
-            if res.status_code == 200:
-                data = res.json()
-                candidates = data.get("candidates", [])
-                if candidates:
-                    summary = candidates[0]["content"]["parts"][0]["text"].strip()
-                    gemini_rotator.report_success(active_key)
-                    return summary
-            gemini_rotator.report_error(active_key, status_code=res.status_code)
-    except Exception as e:
-        logger.warning(f"Gemini filing summary failed ({e}). Returning fallback text.")
-
-    return f"Official {category} filing submitted to exchange."
-
-import logging
-from typing import Dict, Any, List, Optional
-import httpx
-from services.data_fetcher import get_company_profile
-from services.gemini_client import gemini_rotator
-
-logger = logging.getLogger(__name__)
-
-ANNOUNCEMENT_CATEGORIES = [
-    "Financial Results",
-    "Board Meeting",
-    "Credit Rating",
-    "Auditor Resignation",
-    "Related Party Transaction",
-    "Litigation & Regulatory",
-    "Pledge Change",
-    "Key Personnel Change",
-    "General Corporate"
-]
 
 def get_company_research_notes(ticker: str) -> Dict[str, Any]:
     """
-    Returns Research Digest notes for a company using real fundamental data & direct exchange filing links.
-    Does NOT invent fake concall transcripts or hardcoded sample filings.
+    Returns the Research Digest for a company.
+
+    Data contract (honest):
+    - rule_based_flags: Computed from real numeric fundamentals (no LLM).
+    - ai_derived_flags: Empty unless a real Gemini call succeeds.
+    - announcements: Empty — fetching from NSE filing API requires authenticated session.
+    - concall_digest: Not covered unless a real transcript source is connected.
+
+    The frontend is responsible for showing clear "unavailable" states rather than
+    fake placeholder data.
     """
     ticker_clean = ticker.upper().strip()
     symbol_bare = ticker_clean.replace(".NS", "").replace(".BO", "")
 
-    # Try fetching profile to generate real numeric flags
-    rule_based_flags = []
+    rule_based_flags: List[Dict[str, Any]] = []
+
+    # ── Compute flags from real numeric profile ──
     try:
         profile = get_company_profile(ticker_clean)
+
         debt_eq = profile.get("debt_equity")
         if debt_eq is not None:
             if debt_eq == 0.0:
-                rule_based_flags.append({"type": "numeric_check", "label": "Debt Coverage", "text": "Company is virtually debt-free (D/E = 0.0)", "status": "positive"})
-            elif debt_eq < 0.5:
-                rule_based_flags.append({"type": "numeric_check", "label": "Debt Coverage", "text": f"Healthy leverage with D/E ratio at {debt_eq:.2f}", "status": "positive"})
-            elif debt_eq > 1.2:
-                rule_based_flags.append({"type": "numeric_check", "label": "Debt Risk", "text": f"Elevated debt-to-equity ratio of {debt_eq:.2f}", "status": "negative"})
+                rule_based_flags.append({
+                    "type": "numeric_check", "label": "Debt Status",
+                    "text": "Company is virtually debt-free (D/E = 0.0)", "status": "positive"
+                })
+            elif debt_eq < 0.3:
+                rule_based_flags.append({
+                    "type": "numeric_check", "label": "Debt Coverage",
+                    "text": f"Healthy leverage with D/E ratio at {debt_eq:.2f}", "status": "positive"
+                })
+            elif debt_eq > 1.5:
+                rule_based_flags.append({
+                    "type": "numeric_check", "label": "Debt Risk",
+                    "text": f"Elevated debt-to-equity ratio of {debt_eq:.2f}x — above safe threshold", "status": "negative"
+                })
 
         promoter = profile.get("promoter_holding")
         if promoter is not None:
             if promoter > 60.0:
-                rule_based_flags.append({"type": "numeric_check", "label": "Promoter Holding", "text": f"Strong insider holding at {promoter:.1f}%", "status": "positive"})
-            elif promoter < 30.0 and promoter > 0:
-                rule_based_flags.append({"type": "numeric_check", "label": "Promoter Holding", "text": f"Low promoter holding at {promoter:.1f}%", "status": "negative"})
+                rule_based_flags.append({
+                    "type": "numeric_check", "label": "Promoter Holding",
+                    "text": f"Strong insider conviction — promoter holding at {promoter:.1f}%", "status": "positive"
+                })
+            elif promoter < 25.0 and promoter > 0:
+                rule_based_flags.append({
+                    "type": "numeric_check", "label": "Promoter Holding",
+                    "text": f"Low promoter confidence — holding at {promoter:.1f}%", "status": "negative"
+                })
 
         pe = profile.get("pe")
+        pb = profile.get("pb")
         if pe is not None:
-            if pe > 35.0:
-                rule_based_flags.append({"type": "numeric_check", "label": "Valuation Multiples", "text": f"Trading at elevated P/E ratio of {pe:.1f}x", "status": "negative"})
-            elif pe < 20.0:
-                rule_based_flags.append({"type": "numeric_check", "label": "Valuation Multiples", "text": f"Attractive P/E ratio of {pe:.1f}x", "status": "positive"})
+            if pe < 15.0:
+                rule_based_flags.append({
+                    "type": "numeric_check", "label": "Valuation",
+                    "text": f"Attractive valuation at P/E of {pe:.1f}x — below market median", "status": "positive"
+                })
+            elif pe > 50.0:
+                rule_based_flags.append({
+                    "type": "numeric_check", "label": "Valuation",
+                    "text": f"Premium valuation — P/E of {pe:.1f}x prices in high growth expectations", "status": "neutral"
+                })
+
+        roe = profile.get("roe")
+        if roe is not None:
+            if roe > 20.0:
+                rule_based_flags.append({
+                    "type": "numeric_check", "label": "Return Quality",
+                    "text": f"Outstanding capital efficiency — ROE of {roe:.1f}%", "status": "positive"
+                })
+            elif roe < 8.0:
+                rule_based_flags.append({
+                    "type": "numeric_check", "label": "Return Quality",
+                    "text": f"Below-average ROE of {roe:.1f}% — low returns on shareholder capital", "status": "negative"
+                })
+
+        interest_cov = profile.get("interest_coverage")
+        if interest_cov is not None:
+            if interest_cov > 5.0:
+                rule_based_flags.append({
+                    "type": "numeric_check", "label": "Interest Coverage",
+                    "text": f"Strong interest coverage of {interest_cov:.1f}x — debt servicing comfortable", "status": "positive"
+                })
+            elif interest_cov < 2.0:
+                rule_based_flags.append({
+                    "type": "numeric_check", "label": "Interest Coverage",
+                    "text": f"Weak interest coverage of {interest_cov:.1f}x — potential debt stress", "status": "negative"
+                })
+
+        div_yield = profile.get("div_yield", 0)
+        if div_yield and div_yield > 3.0:
+            rule_based_flags.append({
+                "type": "numeric_check", "label": "Dividend",
+                "text": f"Generous dividend yield of {div_yield:.1f}% — income-friendly stock", "status": "positive"
+            })
+
+        current_ratio = profile.get("current_ratio")
+        if current_ratio is not None:
+            if current_ratio < 1.0:
+                rule_based_flags.append({
+                    "type": "numeric_check", "label": "Liquidity",
+                    "text": f"Current ratio below 1.0 ({current_ratio:.2f}x) — short-term liquidity concern", "status": "negative"
+                })
+            elif current_ratio > 2.0:
+                rule_based_flags.append({
+                    "type": "numeric_check", "label": "Liquidity",
+                    "text": f"Strong current ratio of {current_ratio:.2f}x — healthy short-term liquidity", "status": "positive"
+                })
 
     except Exception as e:
-        logger.warning(f"Could not load real profile for research flags: {e}")
+        logger.warning(f"Could not load profile for research flags ({ticker}): {e}")
 
-    nse_filings_url = f"https://www.nseindia.com/companies-listing/corporate-filings-announcements?symbol={symbol_bare}"
+    nse_url = f"https://www.nseindia.com/companies-listing/corporate-filings-announcements?symbol={symbol_bare}"
+    bse_url = f"https://www.bseindia.com/corporates/ann.html?scripcd={symbol_bare}&qtrid=99"
 
     return {
         "ticker": ticker_clean,
+        "symbol_bare": symbol_bare,
         "announcements": [],
         "concall_digest": {
             "covered": False,
             "quarter": None,
-            "management_tone": "N/A",
+            "management_tone": None,
             "key_takeaways": [],
-            "source_url": nse_filings_url,
-            "message": "Official earnings conference call digest unavailable from exchange feed."
+            "source_url": nse_url,
+            "message": "Live concall transcript data requires a real-time filing integration. View official transcripts on NSE India."
         },
-        "official_exchange_filings_url": nse_filings_url,
+        "official_exchange_filings_url": nse_url,
+        "bse_announcements_url": bse_url,
         "rule_based_flags": rule_based_flags,
-        "ai_derived_flags": []
+        "ai_derived_flags": [],
+        "data_source": "rule_based" if rule_based_flags else "unavailable",
     }
-

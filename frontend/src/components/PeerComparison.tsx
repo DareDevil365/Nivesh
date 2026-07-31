@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
-import { Layers, Loader2 } from "lucide-react";
+import { Layers, Loader2, ArrowUpDown, ChevronDown, ChevronUp, Check } from "lucide-react";
 
 interface PeerStock {
   ticker: string;
@@ -22,9 +22,13 @@ interface PeerComparisonProps {
   currentTicker: string;
 }
 
+type SortField = "name" | "price" | "pe" | "pb" | "roe" | "roce" | "debt_equity" | "div_yield" | "snowflake_score";
+
 export const PeerComparison: React.FC<PeerComparisonProps> = ({ currentTicker }) => {
   const [peers, setPeers] = useState<PeerStock[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sortField, setSortField] = useState<SortField>("snowflake_score");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   useEffect(() => {
     async function loadPeers() {
@@ -43,6 +47,24 @@ export const PeerComparison: React.FC<PeerComparisonProps> = ({ currentTicker })
     loadPeers();
   }, [currentTicker]);
 
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortOrder(field === "pe" || field === "pb" || field === "debt_equity" ? "asc" : "desc");
+    }
+  };
+
+  const sortedPeers = [...peers].sort((a, b) => {
+    let aVal: any = a[sortField] ?? 0;
+    let bVal: any = b[sortField] ?? 0;
+    if (typeof aVal === "string") {
+      return sortOrder === "asc" ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+    }
+    return sortOrder === "asc" ? aVal - bVal : bVal - aVal;
+  });
+
   if (loading) {
     return (
       <div className="w-full h-48 border border-border bg-surface rounded-card flex items-center justify-center text-mutedText text-sm gap-2">
@@ -57,30 +79,60 @@ export const PeerComparison: React.FC<PeerComparisonProps> = ({ currentTicker })
   return (
     <div className="border border-border bg-surface rounded-card p-6 space-y-4">
       <div className="flex items-center justify-between border-b border-border pb-3">
-        <h3 className="font-heading font-semibold text-base text-neutralText flex items-center gap-2">
-          <Layers className="w-4 h-4 text-primary" />
-          Sector Peer Benchmarking Matrix
-        </h3>
-        <span className="text-xs text-mutedText">{peers.length} Sector Rivals</span>
+        <div>
+          <h3 className="font-heading font-semibold text-base text-neutralText flex items-center gap-2">
+            <Layers className="w-4 h-4 text-primary" />
+            Sector Peer Benchmarking Matrix
+          </h3>
+          <p className="text-xs text-mutedText mt-0.5">
+            Click column headers to sort by metrics. Highlighted row is current stock.
+          </p>
+        </div>
+        <span className="text-xs text-mutedText font-semibold bg-bg px-2.5 py-1 rounded border border-border">
+          {peers.length} Competitors
+        </span>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs min-w-[700px]">
+        <table className="w-full text-left text-xs min-w-[750px]">
           <thead className="bg-bg text-mutedText border-b border-border">
             <tr>
-              <th className="p-3">Company Ticker</th>
-              <th className="p-3 text-right">Price (₹)</th>
-              <th className="p-3 text-right">P/E Ratio</th>
-              <th className="p-3 text-right">P/B Ratio</th>
-              <th className="p-3 text-right">ROE (%)</th>
-              <th className="p-3 text-right">ROCE (%)</th>
-              <th className="p-3 text-right">D/E Ratio</th>
-              <th className="p-3 text-right">Div Yield (%)</th>
-              <th className="p-3 text-right">Snowflake Score</th>
+              {[
+                { key: "name", label: "Company" },
+                { key: "price", label: "Price (₹)", align: "right" },
+                { key: "pe", label: "P/E", align: "right" },
+                { key: "pb", label: "P/B", align: "right" },
+                { key: "roe", label: "ROE (%)", align: "right" },
+                { key: "roce", label: "ROCE (%)", align: "right" },
+                { key: "debt_equity", label: "D/E", align: "right" },
+                { key: "div_yield", label: "Div Yield (%)", align: "right" },
+                { key: "snowflake_score", label: "Snowflake Score", align: "right" },
+              ].map((col) => (
+                <th
+                  key={col.key}
+                  onClick={() => handleSort(col.key as SortField)}
+                  className={`p-3 cursor-pointer hover:text-neutralText transition-colors select-none ${
+                    col.align === "right" ? "text-right" : "text-left"
+                  }`}
+                >
+                  <div className={`inline-flex items-center gap-1 ${col.align === "right" ? "justify-end" : ""}`}>
+                    <span>{col.label}</span>
+                    {sortField === col.key ? (
+                      sortOrder === "asc" ? (
+                        <ChevronUp className="w-3 h-3 text-primary" />
+                      ) : (
+                        <ChevronDown className="w-3 h-3 text-primary" />
+                      )
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-40" />
+                    )}
+                  </div>
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-border/50">
-            {peers.map((p: any) => {
+            {sortedPeers.map((p: any) => {
               const isCurrent = p.ticker === currentTicker;
               const priceVal = p.current_price ?? p.price;
               const totalScore = p.snowflake_total ?? p.snowflake_score ?? 0;
@@ -89,7 +141,7 @@ export const PeerComparison: React.FC<PeerComparisonProps> = ({ currentTicker })
                 <tr
                   key={p.ticker}
                   className={`transition-colors ${
-                    isCurrent ? "bg-primary/10 font-semibold" : "hover:bg-bg/40"
+                    isCurrent ? "bg-primary/10 font-semibold border-l-2 border-l-primary" : "hover:bg-bg/40"
                   }`}
                 >
                   <td className="p-3">
@@ -97,9 +149,12 @@ export const PeerComparison: React.FC<PeerComparisonProps> = ({ currentTicker })
                       href={`/stock/${p.ticker}`}
                       className="text-neutralText hover:text-primary transition-colors flex items-center gap-1.5"
                     >
-                      <span className="font-mono">{p.ticker.replace(".NS", "")}</span>
+                      <span className="font-mono font-bold">{p.ticker.replace(".NS", "").replace(".BO", "")}</span>
+                      <span className="text-mutedText font-normal text-[11px] truncate max-w-[150px]">
+                        ({p.name || p.ticker})
+                      </span>
                       {isCurrent && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/30 text-primary font-sans font-bold">
+                        <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.2 rounded font-semibold ml-1">
                           Current
                         </span>
                       )}
@@ -108,22 +163,28 @@ export const PeerComparison: React.FC<PeerComparisonProps> = ({ currentTicker })
                   <td className="p-3 text-right font-mono">
                     {priceVal ? `₹${priceVal.toLocaleString("en-IN")}` : "N/A"}
                   </td>
-                  <td className="p-3 text-right font-mono">{p.pe ? `${p.pe}x` : "N/A"}</td>
-                  <td className="p-3 text-right font-mono">{p.pb ? `${p.pb}x` : "N/A"}</td>
-                  <td className="p-3 text-right font-mono text-positive">
-                    {p.roe != null ? `${p.roe}%` : "N/A"}
-                  </td>
-                  <td className="p-3 text-right font-mono text-positive">
-                    {p.roce != null ? `${p.roce}%` : "N/A"}
+                  <td className="p-3 text-right font-mono">
+                    {p.pe ? `${p.pe}x` : "N/A"}
                   </td>
                   <td className="p-3 text-right font-mono">
+                    {p.pb ? `${p.pb}x` : "N/A"}
+                  </td>
+                  <td className={`p-3 text-right font-mono ${p.roe > 15 ? "text-positive" : p.roe < 8 ? "text-negative" : ""}`}>
+                    {p.roe ? `${p.roe}%` : "N/A"}
+                  </td>
+                  <td className={`p-3 text-right font-mono ${p.roce > 15 ? "text-positive" : p.roce < 8 ? "text-negative" : ""}`}>
+                    {p.roce ? `${p.roce}%` : "N/A"}
+                  </td>
+                  <td className={`p-3 text-right font-mono ${p.debt_equity < 0.5 ? "text-positive" : p.debt_equity > 1.5 ? "text-negative" : ""}`}>
                     {p.debt_equity != null ? p.debt_equity : "N/A"}
                   </td>
-                  <td className="p-3 text-right font-mono">
-                    {p.div_yield != null ? `${p.div_yield}%` : "N/A"}
+                  <td className="p-3 text-right font-mono text-secondary">
+                    {p.div_yield ? `${p.div_yield}%` : "0%"}
                   </td>
-                  <td className="p-3 text-right">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded bg-surface border border-border text-secondary font-bold font-mono">
+                  <td className="p-3 text-right font-mono">
+                    <span className={`inline-block px-2 py-0.5 rounded font-bold text-xs ${
+                      totalScore >= 18 ? "bg-positive/20 text-positive" : totalScore >= 12 ? "bg-amber-500/20 text-amber-400" : "bg-negative/20 text-negative"
+                    }`}>
                       {totalScore}/30
                     </span>
                   </td>
@@ -136,4 +197,3 @@ export const PeerComparison: React.FC<PeerComparisonProps> = ({ currentTicker })
     </div>
   );
 };
-

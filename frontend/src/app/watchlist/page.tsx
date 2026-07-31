@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { Star, Bell, Plus, Trash2, ArrowUpRight, ArrowDownRight, ShieldCheck, AlertCircle } from "lucide-react";
+import { api } from "@/lib/api";
+import { Star, Bell, Trash2, ArrowUpRight, ArrowDownRight, AlertCircle } from "lucide-react";
 import StockSearchInput from "@/components/StockSearchInput";
 
 
@@ -35,20 +36,15 @@ export default function WatchlistPage() {
   const [alertCondition, setAlertCondition] = useState("PRICE_ABOVE");
   const [alertThreshold, setAlertThreshold] = useState("3100");
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   const fetchWatchlist = async () => {
     try {
-      const res = await fetch("http://localhost:8000/api/watchlist");
-      if (res.ok) {
-        const data = await res.json();
-        setItems(data.items || []);
-      }
+      const data = await api.get<{ items: WatchlistItem[] }>("/api/watchlist");
+      setItems(data.items || []);
     } catch (err) {
-      setItems([
-        { ticker: "RELIANCE.NS", name: "Reliance Industries", sector: "Energy", current_price: 2980.5, day_change: 36.8, day_change_pct: 1.25, pe: 24.5, roe: 16.5 },
-        { ticker: "TCS.NS", name: "Tata Consultancy Services", sector: "IT Services", current_price: 3940.0, day_change: 33.1, day_change_pct: 0.85, pe: 28.2, roe: 48.5 },
-        { ticker: "INFY.NS", name: "Infosys Ltd", sector: "IT Services", current_price: 1620.4, day_change: -6.5, day_change_pct: -0.40, pe: 23.4, roe: 31.2 },
-        { ticker: "HDFCBANK.NS", name: "HDFC Bank Ltd", sector: "Banking", current_price: 1440.15, day_change: 8.5, day_change_pct: 0.60, pe: 18.5, roe: 16.8 },
-      ]);
+      setLoadError("Unable to load watchlist. Make sure the backend server is running.");
+      setItems([]);
     } finally {
       setLoading(false);
     }
@@ -56,16 +52,10 @@ export default function WatchlistPage() {
 
   const fetchAlerts = async () => {
     try {
-      const res = await fetch("http://localhost:8000/api/watchlist/alerts");
-      if (res.ok) {
-        const data = await res.json();
-        setAlerts(data.alerts || []);
-      }
+      const data = await api.get<{ alerts: AlertItem[] }>("/api/watchlist/alerts");
+      setAlerts(data.alerts || []);
     } catch (err) {
-      setAlerts([
-        { id: "alert-1", ticker: "RELIANCE.NS", condition: "PRICE_ABOVE", threshold: 3100.0, active: true },
-        { id: "alert-2", ticker: "TCS.NS", condition: "RSI_BELOW", threshold: 30.0, active: true },
-      ]);
+      setAlerts([]);
     }
   };
 
@@ -78,11 +68,7 @@ export default function WatchlistPage() {
     const symbol = tickerToAdd || newTicker;
     if (!symbol.trim()) return;
     try {
-      await fetch("http://localhost:8000/api/watchlist/item", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ticker: symbol.trim() }),
-      });
+      await api.post("/api/watchlist/item", { ticker: symbol.trim() });
       setNewTicker("");
       fetchWatchlist();
     } catch (err) {
@@ -92,9 +78,7 @@ export default function WatchlistPage() {
 
   const handleRemoveStock = async (tickerToRemove: string) => {
     try {
-      await fetch(`http://localhost:8000/api/watchlist/item?ticker=${encodeURIComponent(tickerToRemove)}`, {
-        method: "DELETE",
-      });
+      await api.delete(`/api/watchlist/item?ticker=${encodeURIComponent(tickerToRemove)}`);
       setItems((prev) => prev.filter((i) => i.ticker !== tickerToRemove));
     } catch (err) {
       console.error(err);
@@ -105,35 +89,24 @@ export default function WatchlistPage() {
     e.preventDefault();
     if (!alertTicker.trim() || !alertThreshold) return;
     try {
-      const res = await fetch("http://localhost:8000/api/watchlist/alerts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ticker: alertTicker.trim().toUpperCase(),
-          condition: alertCondition,
-          threshold: parseFloat(alertThreshold),
-        }),
+      const data = await api.post<{ alert: AlertItem }>("/api/watchlist/alerts", {
+        ticker: alertTicker.trim().toUpperCase(),
+        condition: alertCondition,
+        threshold: parseFloat(alertThreshold),
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.alert) {
-          setAlerts((prev) => [data.alert, ...prev]);
-        } else {
-          fetchAlerts();
-        }
+      if (data.alert) {
+        setAlerts((prev) => [data.alert, ...prev]);
       } else {
-        // Optimistic update
-        setAlerts((prev) => [
-          { id: `alert-${Date.now()}`, ticker: alertTicker.trim().toUpperCase(), condition: alertCondition, threshold: parseFloat(alertThreshold), active: true },
-          ...prev,
-        ]);
+        fetchAlerts();
       }
       setAlertTicker("");
     } catch (err) {
+      // Optimistic update on API failure
       setAlerts((prev) => [
         { id: `alert-${Date.now()}`, ticker: alertTicker.trim().toUpperCase(), condition: alertCondition, threshold: parseFloat(alertThreshold), active: true },
         ...prev,
       ]);
+      setAlertTicker("");
     }
   };
 
@@ -186,7 +159,16 @@ export default function WatchlistPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {items.map((stk) => {
+                {items.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-12 text-center text-sm text-mutedText">
+                      <div className="space-y-1">
+                        <p className="font-semibold text-neutralText">No stocks tracked yet</p>
+                        <p className="text-xs">Search above to add your first stock to the watchlist.</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : items.map((stk) => {
                   const isUp = stk.day_change >= 0;
                   return (
                     <tr key={stk.ticker} className="hover:bg-bg/50 transition-colors">
@@ -289,15 +271,26 @@ export default function WatchlistPage() {
           <div className="pt-4 border-t border-border space-y-2">
             <div className="text-xs font-semibold text-mutedText">Active Trigger List</div>
             <div className="space-y-1.5 max-h-48 overflow-y-auto">
-              {alerts.map((al) => (
-                <div key={al.id} className="flex items-center justify-between p-2 rounded bg-bg text-xs border border-border">
-                  <div>
-                    <strong className="text-neutralText font-mono">{al.ticker}</strong>
-                    <div className="text-[10px] text-mutedText">{al.condition} {al.threshold}</div>
-                  </div>
-                  <span className="w-2 h-2 rounded-full bg-positive animate-pulse" />
-                </div>
-              ))}
+                {alerts.map((al) => {
+                  const conditionLabel: Record<string, string> = {
+                    PRICE_ABOVE: "Price ↑",
+                    PRICE_BELOW: "Price ↓",
+                    RSI_BELOW: "RSI(14) ↓",
+                    RSI_ABOVE: "RSI(14) ↑",
+                    VOLUME_SPIKE: "Vol Spike",
+                  };
+                  return (
+                    <div key={al.id} className="flex items-center justify-between p-2 rounded bg-bg text-xs border border-border">
+                      <div>
+                        <strong className="text-neutralText font-mono">{al.ticker}</strong>
+                        <div className="text-[10px] text-mutedText">
+                          {conditionLabel[al.condition] || al.condition} · {al.threshold}
+                        </div>
+                      </div>
+                      <span className="w-2 h-2 rounded-full bg-positive animate-pulse" />
+                    </div>
+                  );
+                })}
             </div>
           </div>
         </div>

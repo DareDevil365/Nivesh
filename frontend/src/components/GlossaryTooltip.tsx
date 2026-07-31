@@ -11,7 +11,7 @@ const GLOSSARY_TERMS: Record<string, string> = {
   "Dividend Yield": "Annual dividend payment divided by current share price, expressed as a percentage.",
   "RSI": "Relative Strength Index (14) momentum oscillator ranging 0-100. Below 30 suggests oversold conditions, above 70 suggests overbought.",
   "MACD": "Moving Average Convergence Divergence tracks trend strength and direction by measuring differences between moving averages.",
-  "Snowflake": "Simplywall.st-style 5-pillar visual analysis evaluating Value, Future, Past, Health, and Dividend strength.",
+  "Snowflake": "Interactive 5-pillar visual radar evaluating Value, Future, Past, Health, and Dividend strength.",
   "Promoter Holding": "Percentage of share capital owned by founding promoters. High holding (>50%) reflects strong insider confidence."
 };
 
@@ -35,7 +35,7 @@ export default function GlossaryTooltip({ term, children }: GlossaryTooltipProps
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-surface border border-border rounded-lg shadow-xl text-xs text-neutralText z-50 pointer-events-none animate-in fade-in">
           <div className="font-heading font-bold text-positive mb-1">{term}</div>
           <p className="text-[11px] text-mutedText leading-snug">{definition}</p>
-          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-surface" />
+          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-surface" />
         </div>
       )}
     </span>

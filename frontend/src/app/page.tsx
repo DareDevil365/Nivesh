@@ -1,18 +1,19 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, Activity, TrendingUp, ShieldCheck, Brain, ArrowRight, ShieldAlert, Sparkles } from "lucide-react";
+import { Activity, TrendingUp, ShieldCheck, Brain, Sparkles } from "lucide-react";
 import StockSearchInput from "@/components/StockSearchInput";
+import SectorHeatmap from "@/components/SectorHeatmap";
 
 const FEATURED_STOCKS = [
-  { ticker: "RELIANCE.NS", name: "Reliance Industries", sector: "Energy & Oil", price: "₹2,980.50", change: "+1.25%" },
-  { ticker: "TCS.NS", name: "Tata Consultancy Services", sector: "IT Services", price: "₹3,940.00", change: "+0.85%" },
-  { ticker: "INFY.NS", name: "Infosys Ltd", sector: "IT Services", price: "₹1,620.40", change: "-0.40%" },
-  { ticker: "HDFCBANK.NS", name: "HDFC Bank Ltd", sector: "Banking", price: "₹1,440.15", change: "+0.60%" },
-  { ticker: "ICICIBANK.NS", name: "ICICI Bank Ltd", sector: "Banking", price: "₹1,090.00", change: "+1.10%" },
-  { ticker: "TATAMOTORS.NS", name: "Tata Motors Ltd", sector: "Automobile", price: "₹965.80", change: "+2.30%" },
+  { ticker: "RELIANCE.NS", name: "Reliance Industries", sector: "Energy & Oil" },
+  { ticker: "TCS.NS", name: "Tata Consultancy Services", sector: "IT Services" },
+  { ticker: "INFY.NS", name: "Infosys Ltd", sector: "IT Services" },
+  { ticker: "HDFCBANK.NS", name: "HDFC Bank Ltd", sector: "Banking" },
+  { ticker: "ICICIBANK.NS", name: "ICICI Bank Ltd", sector: "Banking" },
+  { ticker: "TATAMOTORS.NS", name: "Tata Motors Ltd", sector: "Automobile" },
 ];
 
 export default function HomePage() {
@@ -46,14 +47,13 @@ export default function HomePage() {
         </div>
       </div>
 
-
       {/* Featured Stock Cards */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-heading font-semibold text-xl text-neutralText">
-            Popular NSE Stocks
+            Quick Research — Blue-Chip NSE Stocks
           </h2>
-          <span className="text-xs text-mutedText">Delayed ~15 min</span>
+          <span className="text-xs text-mutedText italic">Click any card for live analysis</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -64,26 +64,25 @@ export default function HomePage() {
               className="bg-surface border border-border hover:border-primary/60 rounded-card p-5 transition-all group hover:-translate-y-0.5"
             >
               <div className="flex items-start justify-between">
-                <div>
+                <div className="space-y-0.5">
                   <h3 className="font-heading font-bold text-neutralText group-hover:text-primary transition-colors">
                     {stock.name}
                   </h3>
-                  <span className="text-xs text-mutedText">{stock.ticker} • {stock.sector}</span>
+                  <span className="text-xs text-mutedText">{stock.ticker.replace(".NS","")} • {stock.sector}</span>
                 </div>
-                <div className="text-right">
-                  <div className="font-heading font-semibold text-neutralText">{stock.price}</div>
-                  <span
-                    className={`text-xs font-semibold ${
-                      stock.change.startsWith("+") ? "text-positive" : "text-negative"
-                    }`}
-                  >
-                    {stock.change}
-                  </span>
-                </div>
+                <span className="text-xs font-semibold text-primary/70 group-hover:text-primary transition-colors mt-0.5">
+                  Analyze →
+                </span>
               </div>
             </Link>
           ))}
         </div>
+      </div>
+
+      {/* Live Sector Heatmap */}
+      <div className="space-y-3">
+        <h2 className="font-heading font-semibold text-xl text-neutralText">NSE Sector Performance</h2>
+        <SectorHeatmap />
       </div>
 
       {/* 4bundled Core Features Grid */}
