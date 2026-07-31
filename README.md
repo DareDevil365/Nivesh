@@ -15,16 +15,22 @@
 ### 1. SimplyWall.st Parity
 - **5-Axis Snowflake Radar:** Visual radar evaluating company strength across **Value**, **Future**, **Past**, **Health**, and **Dividend** (0–6 score scale).
 - **"Why Does This Matter" Hover Glossary:** Site-wide 1-sentence plain-English tooltips for financial metrics (P/E, P/B, ROE, ROCE, Debt/Equity, Dividend Yield, RSI, MACD, Snowflake, Promoter Holding).
-- **Interactive DCF Narrative Model:** Interactive Discounted Cash Flow valuation calculator with growth and discount rate sliders estimating intrinsic fair value per share.
+- **Interactive DCF & Reverse DCF Narrative Models:** Interactive Discounted Cash Flow and Reverse DCF valuation calculators with growth and discount rate sliders estimating intrinsic fair value and implied market growth rates.
+- **Historical Valuation Bands:** Visual historical P/E and P/B valuation band charts with standard deviation channels for timing entry/exit points.
 - **Shareable Report Card Export:** Client-side HTML5 canvas snapshot generator for social media sharing.
 
 ### 2. Screener.in Parity
 - **Multi-Metric Dynamic Stock Screener & 8 Presets:** Multi-metric filter query engine with 8 pre-built screens (*Quality Compounders*, *Deep Value*, *High Dividend Yield*, *Low Debt + High Growth*, *Zero Promoter Pledge*, *Sector Leaders*, *GARP*, *Cash Flow Kings*).
 - **Automated Rule-Based Pros & Cons Flags:** Derived strictly from numerical debt, ROE, ROCE, P/E, and promoter holding thresholds with zero LLM involvement.
 - **Peer Benchmarking Matrix & CSV Export:** Sector peer comparison matrix and 1-click CSV download.
+- **Complete Financial Statements & Ratio Trends:** Standalone/Consolidated Profit & Loss, Balance Sheet, Cash Flow Statement, and multi-year ratio visualizer.
+- **Quarterly Results Engine:** YoY and QoQ sales, net profit, and operating margin breakdown tables.
+- **Shareholding Trend Analyzer:** Category breakdown over time (Promoter, FII, DII, Public) with promoter pledging alerts.
 
 ### 3. Tijori Finance Parity
 - **NSE Sector Performance Heatmap:** Treemap/grid visualization displaying all NSE sectors sized by market cap and color-coded by daily percentage performance.
+- **Supply Chain & Segment Dependency Graph:** Interactive supplier, customer, competitor, and business segment relationship graph.
+- **Forensic Accounting & Risk Dashboard:** Beneish M-Score (earnings manipulation detection) and Altman Z-Score (bankruptcy risk assessment) with red flag breakdown.
 
 ### 4. Natural-Language Strategy Backtester (Headline Feature)
 - **Pure Vectorized Python Math Engine:** Deterministic backtest simulation engine computing equity curves, trade logs, and risk statistics (Total Return %, CAGR, Max Drawdown %, Sharpe Ratio, Win Rate %, Total Trades). Zero licensing risk.
@@ -121,6 +127,13 @@ Open **http://localhost:3000** to launch Nivesh!
 | `/api/companies/{ticker}/chart` | `GET` | OHLCV price bars + SMA/EMA/RSI/MACD indicators |
 | `/api/companies/{ticker}/peers` | `GET` | Sector peer benchmark matrix |
 | `/api/companies/{ticker}/pros-cons` | `GET` | Screener.in-style rule-based pros/cons flags |
+| `/api/companies/{ticker}/financials` | `GET` | Complete P&L, Balance Sheet & Cash Flow statements |
+| `/api/companies/{ticker}/quarterly-results` | `GET` | Quarterly revenue, margin & profit breakdown |
+| `/api/companies/{ticker}/ratios` | `GET` | Financial ratio history & multi-year trends |
+| `/api/companies/{ticker}/shareholding` | `GET` | Promoter, FII, DII & Public holding breakdown |
+| `/api/companies/{ticker}/forensic` | `GET` | Beneish M-Score & Altman Z-Score risk analysis |
+| `/api/companies/{ticker}/supply-chain` | `GET` | Supplier, customer & segment network graph |
+| `/api/companies/{ticker}/valuation-bands` | `GET` | Historical P/E and P/B valuation band channels |
 | `/api/companies/{ticker}/insider-activity` | `GET` | Promoter & insider disclosures feed |
 | `/api/companies/{ticker}/documents` | `GET` | Filings & announcements list |
 | `/api/companies/{ticker}/research-notes` | `GET` | Pseudo-Brain AI Research Digest |
@@ -135,6 +148,7 @@ Open **http://localhost:3000** to launch Nivesh!
 | `/api/alerts` | `GET/POST` | Active indicator/price alert triggers |
 | `/api/leaderboard` | `GET` | Community strategy leaderboard |
 | `/api/keepalive` | `GET` | GitHub Actions keep-alive cron endpoint |
+
 
 ---
 
