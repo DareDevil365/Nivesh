@@ -147,6 +147,62 @@ def get_company_research_notes(ticker: str) -> Dict[str, Any]:
                     "text": f"Strong current ratio of {current_ratio:.2f}x — healthy short-term liquidity", "status": "positive"
                 })
 
+        # Revenue growth trend
+        rev_growth = profile.get("revenue_growth_3yr")
+        if rev_growth is not None:
+            if rev_growth > 15.0:
+                rule_based_flags.append({
+                    "type": "numeric_check", "label": "Revenue Growth",
+                    "text": f"Strong revenue CAGR of {rev_growth:.1f}% — top-line momentum intact", "status": "positive"
+                })
+            elif rev_growth < 0:
+                rule_based_flags.append({
+                    "type": "numeric_check", "label": "Revenue Trend",
+                    "text": f"Revenue shrinking at {rev_growth:.1f}% — investigate structural demand headwinds", "status": "negative"
+                })
+
+        # ROCE vs ROE divergence (earnings quality signal)
+        if roe is not None and roce is not None and roe > 0 and roce > 0:
+            divergence = roe - roce
+            if divergence > 12.0:
+                rule_based_flags.append({
+                    "type": "numeric_check", "label": "Earnings Quality",
+                    "text": f"ROE ({roe:.1f}%) significantly exceeds ROCE ({roce:.1f}%) — may signal high financial leverage inflating returns", "status": "neutral"
+                })
+            elif roe > 18.0 and roce > 18.0:
+                rule_based_flags.append({
+                    "type": "numeric_check", "label": "Earnings Quality",
+                    "text": f"Both ROE ({roe:.1f}%) and ROCE ({roce:.1f}%) above 18% — genuinely high-quality returns business", "status": "positive"
+                })
+
+        # EPS growth momentum
+        eps_growth = profile.get("eps_growth_3yr")
+        if eps_growth is not None:
+            if eps_growth > 20.0:
+                rule_based_flags.append({
+                    "type": "numeric_check", "label": "EPS Growth",
+                    "text": f"EPS compounding at {eps_growth:.1f}% — strong earnings per share momentum", "status": "positive"
+                })
+            elif eps_growth < -5.0:
+                rule_based_flags.append({
+                    "type": "numeric_check", "label": "EPS Growth",
+                    "text": f"Declining EPS growth of {eps_growth:.1f}% — profitability per share is eroding", "status": "negative"
+                })
+
+        # Payout ratio sustainability
+        payout = profile.get("payout_ratio")
+        if payout is not None and payout > 0:
+            if payout > 80.0:
+                rule_based_flags.append({
+                    "type": "numeric_check", "label": "Dividend Sustainability",
+                    "text": f"Payout ratio of {payout:.0f}% — dividend may be unsustainable if earnings slip", "status": "neutral"
+                })
+            elif payout > 0 and payout <= 50.0 and div_yield and div_yield > 1.0:
+                rule_based_flags.append({
+                    "type": "numeric_check", "label": "Dividend Sustainability",
+                    "text": f"Healthy payout ratio of {payout:.0f}% with {div_yield:.1f}% yield — dividend appears well-covered", "status": "positive"
+                })
+
     except Exception as e:
         logger.warning(f"Could not load profile for research flags ({ticker}): {e}")
 

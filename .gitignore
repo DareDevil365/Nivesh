@@ -15,6 +15,7 @@ __pycache__/
 .env.local
 .env.production
 .env.development
+.env.vercel
 future_plans.md
 USA_Specifics
 USA_Specifics.md

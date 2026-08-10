@@ -58,18 +58,20 @@ def get_company_supply_chain(ticker: str) -> Dict[str, Any]:
     if ticker_clean in NSE_SUPPLY_CHAIN_MASTER:
         return NSE_SUPPLY_CHAIN_MASTER[ticker_clean]
 
-    # Dynamic fallback ecosystem layout for any other stock
+    # No fabricated data — return honest unavailable state
     symbol_bare = ticker_clean.replace(".NS", "").replace(".BO", "")
+    nse_url = f"https://www.nseindia.com/companies-listing/corporate-filings-annual-reports?symbol={symbol_bare}"
     return {
         "ticker": ticker_clean,
-        "name": f"{symbol_bare} Limited",
+        "name": symbol_bare,
         "sector": "NSE Equity",
-        "upstream_suppliers": [
-            {"name": "Raw Material & Component Suppliers", "category": "Input Materials", "relationship": "Primary Supply Chain"},
-            {"name": "Capital Equipment & Industrial Vendors", "category": "Machinery", "relationship": "Equipment Vendors"},
-        ],
-        "downstream_customers": [
-            {"name": "B2B Wholesale Buyers & Distributors", "category": "Commercial Sales", "relationship": "Distribution Channel"},
-            {"name": "Retail Consumer Market", "category": "End Users", "relationship": "Consumer Base"},
-        ]
+        "upstream_suppliers": [],
+        "downstream_customers": [],
+        "data_source": "unavailable",
+        "message": (
+            f"Detailed supply chain mapping is not yet available for {symbol_bare}. "
+            "Currently mapped: TATAMOTORS, RELIANCE, TCS. "
+            "View the company's Annual Report for segment & business dependency details."
+        ),
+        "annual_report_url": nse_url,
     }

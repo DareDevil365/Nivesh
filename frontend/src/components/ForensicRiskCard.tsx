@@ -60,7 +60,21 @@ export default function ForensicRiskCard({ ticker }: { ticker: string }) {
     );
   }
 
-  if (!data) return null;
+  if (!data) {
+    return (
+      <div className="border border-border bg-surface rounded-card p-8 text-center space-y-3">
+        <ShieldAlert className="w-8 h-8 text-amber-400 mx-auto" />
+        <h3 className="font-heading font-semibold text-base text-neutralText">Forensic Data Unavailable</h3>
+        <p className="text-xs text-mutedText max-w-sm mx-auto leading-relaxed">
+          Forensic accounting scores require balance sheet and income statement data.
+          This stock may have insufficient financial history available from the exchange provider.
+        </p>
+        <p className="text-[11px] text-mutedText">
+          Try a large-cap stock like RELIANCE, TCS, or HDFCBANK for forensic analysis.
+        </p>
+      </div>
+    );
+  }
 
   const { altman_z, beneish_m, cash_conversion_cycle, promoter_pledge } = data;
 

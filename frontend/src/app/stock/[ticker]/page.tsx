@@ -501,14 +501,19 @@ Investors are advised to review the forensic risk metrics, PE/PB valuation bands
           </div>
           <SnowflakeChart scores={snowflake_scores} />
           <div className="grid grid-cols-5 gap-1 text-center mt-4 pt-4 border-t border-border text-[11px]">
-            {(["value", "future", "past", "health", "dividend"] as const).map((k) => (
-              <div key={k}>
-                <div className="text-mutedText uppercase">{k.slice(0, 3)}</div>
-                <div className={`font-bold ${getScoreColor(snowflake_scores[k])}`}>
-                  {snowflake_scores[k]}/6
+            {(["value", "future", "past", "health", "dividend"] as const).map((k) => {
+              const LABELS: Record<string, string> = {
+                value: "Value", future: "Future", past: "Past", health: "Health", dividend: "Divid."
+              };
+              return (
+                <div key={k}>
+                  <div className="text-mutedText uppercase text-[9px]">{LABELS[k]}</div>
+                  <div className={`font-bold ${getScoreColor(snowflake_scores[k])}`}>
+                    {snowflake_scores[k]}/6
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

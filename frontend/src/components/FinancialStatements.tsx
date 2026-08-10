@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { FileSpreadsheet, TrendingUp, TrendingDown, Loader2, AlertCircle } from "lucide-react";
+import FinancialsBarChart from "./FinancialsBarChart";
 
 interface StatementRow {
   metric: string;
@@ -143,6 +144,13 @@ export const FinancialStatements: React.FC<FinancialStatementsProps> = ({ ticker
           ))}
         </div>
       </div>
+
+      {/* Revenue & Net Profit bar chart — only on income tab */}
+      {activeTab === "income" && (
+        <div className="px-6 pt-4">
+          <FinancialsBarChart ticker={ticker} />
+        </div>
+      )}
 
       {/* Table */}
       {currentRows.length === 0 ? (

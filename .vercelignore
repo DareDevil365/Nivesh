@@ -1,0 +1,9 @@
+.git
+.github
+backend/.venv
+frontend/node_modules
+node_modules
+future trash
+.env
+.env.local
+*.log

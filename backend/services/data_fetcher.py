@@ -739,7 +739,8 @@ def get_company_shareholding(ticker: str) -> Dict[str, Any]:
             "breakdown": breakdown,
             "pledged_pct": 0.0,
             "data_source": "live",
-            "note": "FII/DII split is estimated. Promoter holding sourced from exchange insider data."
+            "fii_dii_estimated": True,
+            "note": "FII/DII split is a 50/50 estimate. Official quarterly breakdown requires NSE shareholding data. Promoter holding sourced from exchange insider data."
         }
         cache_manager.set(cache_key, res, ttl=3600)
         return res

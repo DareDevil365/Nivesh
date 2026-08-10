@@ -18,6 +18,9 @@ interface SupplyChainData {
   sector: string;
   upstream_suppliers: SupplyChainNode[];
   downstream_customers: SupplyChainNode[];
+  data_source?: string;
+  message?: string;
+  annual_report_url?: string;
 }
 
 export default function SupplyChainGraph({ ticker }: { ticker: string }) {
@@ -49,6 +52,39 @@ export default function SupplyChainGraph({ ticker }: { ticker: string }) {
   }
 
   if (!data) return null;
+
+  // Honest unavailable state — no fabricated data
+  if (data.data_source === "unavailable" || (!data.upstream_suppliers.length && !data.downstream_customers.length)) {
+    const symbolBare = data.ticker.replace(".NS", "").replace(".BO", "");
+    return (
+      <div className="border border-border bg-surface rounded-card p-8 space-y-4">
+        <div className="flex items-center gap-2">
+          <Network className="w-4 h-4 text-primary" />
+          <h3 className="font-heading font-semibold text-base text-neutralText">Supply Chain & Value Chain Ecosystem</h3>
+        </div>
+        <div className="flex items-start gap-3 p-4 bg-bg border border-border/60 rounded-lg">
+          <Info className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+          <div className="space-y-2 text-xs text-mutedText">
+            <p className="leading-relaxed">{data.message || `Detailed supply chain mapping is not yet available for ${symbolBare}.`}</p>
+            <p className="font-semibold text-neutralText/80">
+              Currently mapped: RELIANCE · TCS · TATAMOTORS
+            </p>
+            {data.annual_report_url && (
+              <a
+                href={data.annual_report_url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 mt-1 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-primary font-semibold hover:bg-primary/20 transition-colors"
+              >
+                <ArrowRight className="w-3.5 h-3.5" />
+                View Annual Report on NSE
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="border border-border bg-surface rounded-card p-6 space-y-6">

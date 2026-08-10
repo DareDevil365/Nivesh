@@ -74,9 +74,15 @@ function BacktesterContent() {
   const [takeProfitPct, setTakeProfitPct] = useState("15.0");
   const [capital, setCapital] = useState("100000");
 
-  const [startDate, setStartDate] = useState("2020-02-01");
-  const [endDate, setEndDate] = useState("2020-08-31");
-  const [scenarioLabel, setScenarioLabel] = useState("COVID-19 Crash & Recovery");
+  const today = new Date();
+  const threeYearsAgo = new Date(today);
+  threeYearsAgo.setFullYear(today.getFullYear() - 3);
+  const defaultStart = threeYearsAgo.toISOString().split("T")[0];
+  const defaultEnd = new Date(today.getFullYear(), today.getMonth(), 0).toISOString().split("T")[0]; // last day of prev month
+
+  const [startDate, setStartDate] = useState(defaultStart);
+  const [endDate, setEndDate] = useState(defaultEnd);
+  const [scenarioLabel, setScenarioLabel] = useState("Recent 3-Year Performance");
 
   const [isRunning, setIsRunning] = useState(false);
   const [results, setResults] = useState<BacktestResults | null>(null);

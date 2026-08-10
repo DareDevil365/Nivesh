@@ -85,7 +85,7 @@ export default function HomePage() {
         <SectorHeatmap />
       </div>
 
-      {/* 4bundled Core Features Grid */}
+      {/* 4 Core Feature Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-surface border border-border rounded-card p-6 space-y-3">
           <div className="w-10 h-10 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center text-positive">

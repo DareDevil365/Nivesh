@@ -24,11 +24,11 @@ interface SnowflakeChartProps {
 
 export default function SnowflakeChart({ scores }: SnowflakeChartProps) {
   const data = [
-    { subject: "VALUE", score: scores.value, full: 6 },
-    { subject: "FUTURE", score: scores.future, full: 6 },
-    { subject: "PAST", score: scores.past, full: 6 },
-    { subject: "HEALTH", score: scores.health, full: 6 },
-    { subject: "DIVIDEND", score: scores.dividend, full: 6 },
+    { subject: "Value", score: scores.value, full: 6 },
+    { subject: "Future", score: scores.future, full: 6 },
+    { subject: "Past", score: scores.past, full: 6 },
+    { subject: "Health", score: scores.health, full: 6 },
+    { subject: "Dividends", score: scores.dividend, full: 6 },
   ];
 
   const totalScore =
@@ -47,7 +47,7 @@ export default function SnowflakeChart({ scores }: SnowflakeChartProps) {
             <PolarGrid stroke="#223028" />
             <PolarAngleAxis
               dataKey="subject"
-              tick={{ fill: "#E6EDEA", fontSize: 11, fontWeight: 600 }}
+              tick={{ fill: "#8FA096", fontSize: 10, fontWeight: 600 }}
             />
             <PolarRadiusAxis
               angle={90}

@@ -31,6 +31,7 @@ interface ShareholdingData {
   data_source: string;
   message?: string;
   note?: string;
+  fii_dii_estimated?: boolean;
 }
 
 interface ShareholdingChartProps {
@@ -216,8 +217,26 @@ export const ShareholdingChart: React.FC<ShareholdingChartProps> = ({ ticker }) 
         </ResponsiveContainer>
       </div>
 
-      {/* Note if data is estimated */}
-      {data.note && (
+      {/* FII/DII Estimated Split Warning */}
+      {data.fii_dii_estimated && (
+        <div className="mx-6 mb-3 mt-2 flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/25 rounded-lg text-[11px] text-amber-300">
+          <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-400" />
+          <span>
+            <span className="font-semibold">Estimated Split:</span> FII and DII figures are a 50/50 approximation of total institutional holdings — official quarterly breakdown is not available from this data source.
+            {" "}
+            <a
+              href={`https://www.nseindia.com/get-quotes/equity?symbol=${ticker.replace(".NS","").replace(".BO","")}`}
+              target="_blank" rel="noreferrer"
+              className="underline font-semibold hover:text-amber-200 transition-colors"
+            >
+              View NSE Official Data →
+            </a>
+          </span>
+        </div>
+      )}
+
+      {/* Older general note if any */}
+      {data.note && !data.fii_dii_estimated && (
         <div className="px-6 py-2 border-t border-border/50 text-[10px] text-mutedText flex items-center gap-1">
           <AlertCircle className="w-3 h-3 text-amber-400 flex-shrink-0" />
           {data.note}

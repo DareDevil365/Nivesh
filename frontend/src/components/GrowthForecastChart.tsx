@@ -140,10 +140,16 @@ export default function GrowthForecastChart({ ticker }: GrowthForecastChartProps
   const lastRev = data.revenue[data.revenue.length - 1] ?? 0;
   const lastNet = data.earnings[data.earnings.length - 1] ?? 0;
 
+  const currentFY = new Date().getMonth() >= 3
+    ? new Date().getFullYear() - 1999  // Apr–Dec: FY is current year - 2000 + 1
+    : new Date().getFullYear() - 2000;  // Jan–Mar: FY hasn't turned yet
+
+  let isForecastStale = false;
   if (lastRev > 0 && companyRevG !== null) {
     const revGrowth = companyRevG / 100;
     const netGrowth = (companyNetG ?? companyRevG) / 100;
-    const yrNum = parseInt(lastYear.replace("FY", "")) || 26;
+    const yrNum = parseInt(lastYear.replace("FY", "")) || currentFY;
+    isForecastStale = yrNum + 1 < currentFY; // forecast year already passed
     const f1Year = `FY${(yrNum + 1).toString().padStart(2, "0")} (Est)`;
     const f2Year = `FY${(yrNum + 2).toString().padStart(2, "0")} (Est)`;
 
@@ -196,20 +202,30 @@ export default function GrowthForecastChart({ ticker }: GrowthForecastChartProps
           <div className="font-heading font-bold text-xl text-neutralText flex items-center justify-center gap-1">
             <Sparkles className="w-4 h-4 text-amber-400" />
             {companyRevG != null && companyNetG != null
-              ? companyRevG > companyNetG ? "Margin Expanding" : companyNetG > companyRevG ? "Earnings Outpacing" : "Even Growth"
+              ? companyNetG > companyRevG ? "Margin Expanding" : companyRevG > companyNetG ? "Revenue Growing Faster" : "Even Growth"
               : "Data Limited"
             }
           </div>
           <div className="text-[10px] text-mutedText font-semibold">
             {companyRevG != null && companyNetG != null
-              ? companyRevG > companyNetG
-                ? `Rev grows faster by +${(companyRevG - companyNetG).toFixed(1)}%`
-                : `Earnings grow faster by +${(companyNetG - companyRevG).toFixed(1)}%`
+              ? companyNetG > companyRevG
+                ? `Earnings grow faster by +${(companyNetG - companyRevG).toFixed(1)}%`
+                : companyRevG > companyNetG
+                ? `Revenue grows faster by +${(companyRevG - companyNetG).toFixed(1)}%`
+                : "Revenue and earnings growing at same pace"
               : "Based on available financial data"
             }
           </div>
         </div>
       </div>
+
+      {/* Stale forecast warning */}
+      {isForecastStale && (
+        <div className="mx-6 mb-0 mt-3 flex items-start gap-2 p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-[11px] text-amber-400">
+          <span className="font-semibold shrink-0">⚠ Note:</span>
+          <span>Financial data may be up to 1–2 years old. Estimate projections shown may overlap with actual reported quarters. Verify against latest exchange filings.</span>
+        </div>
+      )}
 
       {/* Chart */}
       <div className="p-6">
@@ -253,8 +269,8 @@ export default function GrowthForecastChart({ ticker }: GrowthForecastChartProps
       </div>
 
       <div className="px-6 py-2.5 border-t border-border/50 text-[10px] text-mutedText flex items-center justify-between">
-        <span>Historical financials in ₹ Crores. Projected estimates extrapolated from historical CAGR. Source: Exchange data via yfinance.</span>
-        <span className="text-amber-400">Exchange data · No AI estimates</span>
+        <span>Historical financials in ₹ Crores. Estimates extrapolated from historical CAGR — not analyst forecasts. Source: Exchange data via yfinance.</span>
+        <span className="text-amber-400 shrink-0 ml-2">Exchange data · No AI estimates</span>
       </div>
     </div>
   );
