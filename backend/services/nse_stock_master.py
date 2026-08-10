@@ -5,7 +5,18 @@ TICKER_ALIASES: Dict[str, str] = {
     "ZOMATO.NS": "ETERNAL.NS",
     "ZOMATO": "ETERNAL.NS",
     "ETERNAL": "ETERNAL.NS",
-    "ETERNAL.NS": "ETERNAL.NS"
+    "ETERNAL.NS": "ETERNAL.NS",
+    "KRISHNA DEFE": "KRISHNADEF.NS",
+    "KRISHNA DEFE.NS": "KRISHNADEF.NS",
+    "KRISHNADEFE": "KRISHNADEF.NS",
+    "KRISHNADEFE.NS": "KRISHNADEF.NS",
+    "KRISHNA DEFENCE": "KRISHNADEF.NS",
+    "KRISHNA DEFENCE.NS": "KRISHNADEF.NS",
+    "FORCEMOT": "FORCEMOT.NS",
+    "FORCE MOTORS": "FORCEMOT.NS",
+    "FORCE MOTORS.NS": "FORCEMOT.NS",
+    "MAZAGON DOCK": "MAZDOCK.NS",
+    "MAZAGON DOCK.NS": "MAZDOCK.NS",
 }
 
 def resolve_symbol_alias(ticker: str) -> str:
@@ -13,12 +24,17 @@ def resolve_symbol_alias(ticker: str) -> str:
     if ticker_clean in TICKER_ALIASES:
         return TICKER_ALIASES[ticker_clean]
     
-    if not ticker_clean.endswith(".NS") and not ticker_clean.endswith(".BO"):
-        ns_version = f"{ticker_clean}.NS"
+    no_spaces = ticker_clean.replace(" ", "")
+    if no_spaces in TICKER_ALIASES:
+        return TICKER_ALIASES[no_spaces]
+
+    if not no_spaces.endswith(".NS") and not no_spaces.endswith(".BO"):
+        ns_version = f"{no_spaces}.NS"
         if ns_version in TICKER_ALIASES:
             return TICKER_ALIASES[ns_version]
+        return ns_version
             
-    return ticker_clean
+    return no_spaces
 
 # Nifty 500 Constituent Universe Master List
 NSE_MASTER_LIST: Dict[str, Dict[str, str]] = {

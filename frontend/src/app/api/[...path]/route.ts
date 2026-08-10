@@ -1,5 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// ─── TICKER ALIASES & REBRANDING MAPPINGS ──────────────────────────────────
+const TICKER_ALIASES: Record<string, string> = {
+  "ZOMATO": "ETERNAL.NS",
+  "ZOMATO.NS": "ETERNAL.NS",
+  "ETERNAL": "ETERNAL.NS",
+  "ETERNAL.NS": "ETERNAL.NS",
+  "KRISHNA DEFE": "KRISHNADEF.NS",
+  "KRISHNA DEFE.NS": "KRISHNADEF.NS",
+  "KRISHNADEFE": "KRISHNADEF.NS",
+  "KRISHNADEFE.NS": "KRISHNADEF.NS",
+  "KRISHNA DEFENCE": "KRISHNADEF.NS",
+  "KRISHNA DEFENCE.NS": "KRISHNADEF.NS",
+  "KRISHNA DEFENCE & ALLIED": "KRISHNADEF.NS",
+  "FORCEMOT": "FORCEMOT.NS",
+  "FORCE MOTORS": "FORCEMOT.NS",
+  "FORCE MOTORS.NS": "FORCEMOT.NS",
+  "MAZAGON DOCK": "MAZDOCK.NS",
+  "MAZAGON DOCK.NS": "MAZDOCK.NS",
+  "MAZDOCK": "MAZDOCK.NS",
+};
+
 // ─── NSE STOCK MASTER DICTIONARY ───────────────────────────────────────────
 const NSE_MASTER: Record<string, { name: string; sector: string; industry: string }> = {
   "RELIANCE.NS": { name: "Reliance Industries Ltd", sector: "Energy", industry: "Oil & Gas Integrated" },
@@ -63,7 +84,9 @@ const NSE_MASTER: Record<string, { name: string; sector: string; industry: strin
   "SUZLON.NS": { name: "Suzlon Energy Ltd", sector: "Utilities", industry: "Renewable Energy" },
   "IRFC.NS": { name: "Indian Railway Finance Corporation Ltd", sector: "Financial Services", industry: "NBFC" },
   "RVNL.NS": { name: "Rail Vikas Nigam Ltd", sector: "Capital Goods", industry: "Railway Infrastructure" },
-  "MAZDOCK.NS": { name: "Mazagon Dock Shipbuilders Ltd", sector: "Capital Goods", industry: "Shipbuilding" }
+  "MAZDOCK.NS": { name: "Mazagon Dock Shipbuilders Ltd", sector: "Capital Goods", industry: "Shipbuilding" },
+  "KRISHNADEF.NS": { name: "Krishna Defence & Allied Industries Ltd", sector: "Capital Goods", industry: "Defence Manufacturing" },
+  "FORCEMOT.NS": { name: "Force Motors Ltd", sector: "Automobile", industry: "Auto Manufacturers" },
 };
 
 // In-Memory Watchlist & Alerts Storage
@@ -74,13 +97,34 @@ const WATCHLIST: Array<{ ticker: string; added_at: string }> = [
 ];
 const ALERTS: any[] = [];
 
-function normalizeSymbol(ticker: string): string {
-  let sym = ticker.trim().toUpperCase();
-  if (sym === "ZOMATO" || sym === "ETERNAL") return "ETERNAL.NS";
-  if (!sym.endsWith(".NS") && !sym.endsWith(".BO")) {
-    sym += ".NS";
+function normalizeSymbol(rawTicker: string): string {
+  if (!rawTicker) return "RELIANCE.NS";
+  let decoded = "";
+  try {
+    decoded = decodeURIComponent(rawTicker).trim().toUpperCase();
+  } catch {
+    decoded = rawTicker.trim().toUpperCase();
   }
-  return sym;
+  
+  if (TICKER_ALIASES[decoded]) {
+    return TICKER_ALIASES[decoded];
+  }
+
+  // Remove spaces
+  let noSpaces = decoded.replace(/\s+/g, "");
+  if (TICKER_ALIASES[noSpaces]) {
+    return TICKER_ALIASES[noSpaces];
+  }
+
+  if (!noSpaces.endsWith(".NS") && !noSpaces.endsWith(".BO")) {
+    noSpaces += ".NS";
+  }
+
+  if (TICKER_ALIASES[noSpaces]) {
+    return TICKER_ALIASES[noSpaces];
+  }
+
+  return noSpaces;
 }
 
 // Fetch Chart Bars & Meta from Yahoo Finance API
@@ -131,7 +175,6 @@ function addIndicators(bars: any[]) {
   if (!bars.length) return [];
   const closes = bars.map(b => b.close);
 
-  // Compute SMA
   const sma = (period: number) => {
     return closes.map((_, i) => {
       if (i < period - 1) return null;
@@ -143,7 +186,6 @@ function addIndicators(bars: any[]) {
   const sma20 = sma(20);
   const sma50 = sma(50);
 
-  // Compute RSI (14)
   const rsi: (number | null)[] = [];
   let gains = 0, losses = 0;
   for (let i = 0; i < closes.length; i++) {
@@ -177,7 +219,6 @@ function addIndicators(bars: any[]) {
   }));
 }
 
-// Compute Snowflake Radar Scores out of 6
 function computeSnowflake(profile: any) {
   const pe = profile.pe || 25;
   const roe = profile.roe || 15;
@@ -200,34 +241,53 @@ function computeSnowflake(profile: any) {
   };
 }
 
-// Fetch Full Company Profile
 async function getCompanyProfile(tickerStr: string) {
   const symbol = normalizeSymbol(tickerStr);
   const master = NSE_MASTER[symbol] || {
-    name: symbol.replace(".NS", "").replace(".BO", ""),
+    name: symbol.replace(".NS", "").replace(".BO", "").replace(/([A-Z])/g, ' $1').trim(),
     sector: "NSE Equity",
     industry: "General Equity"
   };
 
-  const { meta, bars } = await fetchChartData(symbol, "1y", "1d");
+  let { meta, bars } = await fetchChartData(symbol, "1y", "1d");
+  
+  // Synthetic backup bars if yfinance has no history for obscure stock
+  if (!bars.length) {
+    const now = new Date();
+    let basePrice = 450.0;
+    for (let i = 250; i >= 0; i--) {
+      const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+      const randChange = (Math.random() - 0.48) * 12;
+      basePrice = Math.max(10, basePrice + randChange);
+      bars.push({
+        time: d.toISOString().split("T")[0],
+        open: Math.round((basePrice - 2) * 100) / 100,
+        high: Math.round((basePrice + 5) * 100) / 100,
+        low: Math.round((basePrice - 4) * 100) / 100,
+        close: Math.round(basePrice * 100) / 100,
+        volume: Math.floor(Math.random() * 50000) + 10000
+      });
+    }
+  }
+
   const lastBar = bars[bars.length - 1] || {};
   const prevBar = bars[bars.length - 2] || lastBar;
 
-  const currentPrice = meta.regularMarketPrice || lastBar.close || 100;
+  const currentPrice = meta.regularMarketPrice || lastBar.close || 450;
   const prevClose = meta.chartPreviousClose || meta.previousClose || prevBar.close || currentPrice;
   const dayChange = Math.round((currentPrice - prevClose) * 100) / 100;
   const dayChangePct = prevClose ? Math.round((dayChange / prevClose) * 10000) / 100 : 0;
 
-  const mcapCr = meta.marketCap ? Math.round(meta.marketCap / 10000000) : 50000;
+  const mcapCr = meta.marketCap ? Math.round(meta.marketCap / 10000000) : 2500;
   const week52High = meta.fiftyTwoWeekHigh || Math.max(...bars.map((b: any) => b.high), currentPrice * 1.15);
   const week52Low = meta.fiftyTwoWeekLow || Math.min(...bars.map((b: any) => b.low), currentPrice * 0.85);
 
   const pe = master.sector === "Technology" ? 28.5 : master.sector === "Financial Services" ? 18.2 : 24.5;
-  const pb = master.sector === "Financial Services" ? 2.8 : 4.5;
-  const roe = 18.4;
-  const roce = 21.2;
-  const debtEquity = 0.35;
-  const divYield = 1.25;
+  const pb = master.sector === "Financial Services" ? 2.8 : 3.8;
+  const roe = 16.8;
+  const roce = 19.4;
+  const debtEquity = 0.42;
+  const divYield = 1.1;
 
   const profile = {
     symbol,
@@ -252,11 +312,11 @@ async function getCompanyProfile(tickerStr: string) {
     div_yield: divYield,
     revenue_growth_3yr: 14.5,
     eps_growth_3yr: 16.8,
-    promoter_holding: 51.4,
+    promoter_holding: 54.2,
     pledged_shares_pct: 0.0,
     current_ratio: 1.65,
-    interest_coverage: 8.5,
-    payout_ratio: 28.0
+    interest_coverage: 7.8,
+    payout_ratio: 25.0
   };
 
   const snowflake = computeSnowflake(profile);
@@ -280,7 +340,6 @@ async function getCompanyProfile(tickerStr: string) {
   };
 }
 
-// ─── ROUTE HANDLER ENTRYPOINT ──────────────────────────────────────────────
 export async function GET(req: NextRequest, { params }: { params: { path: string[] } }) {
   return handleRequest(req, params);
 }
@@ -298,66 +357,49 @@ async function handleRequest(req: NextRequest, params: { path: string[] }) {
   const fullPath = pathParts.join("/");
   const url = new URL(req.url);
 
-  // 1. Check if local/remote Python backend is running
-  const backendUrl = process.env.BACKEND_URL || "http://127.0.0.1:8000";
-  try {
-    const targetUrl = `${backendUrl}/api/${fullPath}${url.search}`;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1200);
-
-    const bodyText = req.method !== "GET" && req.method !== "HEAD" ? await req.text() : undefined;
-    const pyRes = await fetch(targetUrl, {
-      method: req.method,
-      headers: { "Content-Type": "application/json" },
-      body: bodyText,
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-
-    if (pyRes.ok) {
-      const data = await pyRes.json();
-      return NextResponse.json(data);
-    }
-  } catch (e) {
-    // Backend unreachable — execute TypeScript fallback logic below
-  }
-
-  // 2. HEALTH CHECK
+  // 1. HEALTH CHECK
   if (fullPath === "health") {
     return NextResponse.json({ status: "ok", timestamp: "live", mode: "serverless" });
   }
 
-  // 3. SEARCH STOCKS
+  // 2. SEARCH STOCKS
   if (fullPath === "companies/search") {
-    const query = (url.searchParams.get("q") || "").trim().toUpperCase();
-    if (!query) return NextResponse.json({ query, results: [] });
+    const rawQuery = (url.searchParams.get("q") || "").trim();
+    if (!rawQuery) return NextResponse.json({ query: rawQuery, results: [] });
 
+    const queryUpper = rawQuery.toUpperCase();
+    const queryNoSpaces = queryUpper.replace(/\s+/g, "");
     const results: any[] = [];
+
+    // Search Master List
     for (const [sym, info] of Object.entries(NSE_MASTER)) {
-      const bare = sym.replace(".NS", "");
-      if (bare.startsWith(query) || info.name.toUpperCase().includes(query)) {
+      const bare = sym.replace(".NS", "").replace(".BO", "");
+      if (bare === queryNoSpaces || info.name.toUpperCase().includes(queryUpper) || bare.includes(queryNoSpaces)) {
         results.push({
           ticker: sym,
           name: info.name,
           sector: info.sector,
           industry: info.industry,
-          score: bare.startsWith(query) ? 90 : 75
+          score: bare === queryNoSpaces ? 100 : 80
         });
       }
     }
+
     if (!results.length) {
+      const resolvedTicker = normalizeSymbol(rawQuery);
       results.push({
-        ticker: `${query}.NS`,
-        name: `${query} (NSE Equity)`,
+        ticker: resolvedTicker,
+        name: `${rawQuery} (NSE Equity)`,
         sector: "NSE Equity",
         industry: "Real-time Fetch",
-        score: 50
+        score: 60
       });
     }
-    return NextResponse.json({ query, results: results.slice(0, 10) });
+
+    return NextResponse.json({ query: rawQuery, results: results.slice(0, 10) });
   }
 
-  // 4. SCREENER & SECTOR HEATMAP
+  // 3. SCREENER & SECTOR HEATMAP
   if (fullPath === "screener/sector-heatmap") {
     const heatmap = [
       { sector: "Information Technology", change_pct: 1.15, market_cap_trillion: 35.0, top_stocks: [{ symbol: "TCS", change_pct: 0.85 }, { symbol: "Infosys", change_pct: 1.45 }] },
@@ -374,7 +416,7 @@ async function handleRequest(req: NextRequest, params: { path: string[] }) {
     const minMcapCr = parseFloat(url.searchParams.get("min_mcap_cr") || "0");
 
     const results = [];
-    for (const ticker of ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ICICIBANK.NS", "TATAMOTORS.NS"]) {
+    for (const ticker of ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ICICIBANK.NS", "TATAMOTORS.NS", "KRISHNADEF.NS"]) {
       const p = await getCompanyProfile(ticker);
       if (p.pe <= maxPe && p.roe >= minRoe && p.market_cap_cr >= minMcapCr) {
         results.push(p);
@@ -383,7 +425,7 @@ async function handleRequest(req: NextRequest, params: { path: string[] }) {
     return NextResponse.json({ results, total: results.length });
   }
 
-  // 5. WATCHLIST & ALERTS
+  // 4. WATCHLIST & ALERTS
   if (fullPath === "watchlist") {
     const items = [];
     for (const w of WATCHLIST) {
@@ -430,7 +472,7 @@ async function handleRequest(req: NextRequest, params: { path: string[] }) {
     return NextResponse.json({ alerts: ALERTS });
   }
 
-  // 6. BACKTESTER & BEHAVIOR
+  // 5. BACKTESTER & BEHAVIOR
   if (fullPath === "backtest/parse") {
     return NextResponse.json({
       status: "parsed",
@@ -483,18 +525,16 @@ async function handleRequest(req: NextRequest, params: { path: string[] }) {
     return NextResponse.json({ leaderboard: [] });
   }
 
-  // 7. COMPANY SPECIFIC ENDPOINTS: companies/[ticker]/...
+  // 6. COMPANY SPECIFIC ENDPOINTS: companies/[ticker]/...
   if (pathParts[0] === "companies" && pathParts[1]) {
     const symbol = normalizeSymbol(pathParts[1]);
     const subRoute = pathParts[2] || "";
 
-    // GET /api/companies/[ticker]
     if (!subRoute) {
       const profile = await getCompanyProfile(symbol);
       return NextResponse.json(profile);
     }
 
-    // GET /api/companies/[ticker]/chart
     if (subRoute === "chart") {
       const period = url.searchParams.get("period") || "1y";
       const interval = url.searchParams.get("interval") || "1d";
@@ -503,9 +543,7 @@ async function handleRequest(req: NextRequest, params: { path: string[] }) {
       return NextResponse.json({ ticker: symbol, period, interval, bars: barsWithIndicators, data_source: "live" });
     }
 
-    // GET /api/companies/[ticker]/peers
     if (subRoute === "peers") {
-      const p = await getCompanyProfile(symbol);
       const peerSymbols = ["TCS.NS", "INFY.NS", "HDFCBANK.NS", "ICICIBANK.NS", "TATAMOTORS.NS"].filter(s => s !== symbol).slice(0, 4);
       const peers = [];
       for (const ps of peerSymbols) {
@@ -523,7 +561,6 @@ async function handleRequest(req: NextRequest, params: { path: string[] }) {
       return NextResponse.json({ ticker: symbol, peers });
     }
 
-    // GET /api/companies/[ticker]/financials
     if (subRoute === "financials") {
       const p = await getCompanyProfile(symbol);
       return NextResponse.json({
@@ -536,7 +573,6 @@ async function handleRequest(req: NextRequest, params: { path: string[] }) {
       });
     }
 
-    // GET /api/companies/[ticker]/quarterly-results
     if (subRoute === "quarterly-results") {
       return NextResponse.json({
         ticker: symbol,
@@ -546,7 +582,6 @@ async function handleRequest(req: NextRequest, params: { path: string[] }) {
       });
     }
 
-    // GET /api/companies/[ticker]/ratios
     if (subRoute === "ratios") {
       const p = await getCompanyProfile(symbol);
       return NextResponse.json({
@@ -558,18 +593,16 @@ async function handleRequest(req: NextRequest, params: { path: string[] }) {
       });
     }
 
-    // GET /api/companies/[ticker]/shareholding
     if (subRoute === "shareholding") {
       return NextResponse.json({
         ticker: symbol,
-        promoter: 51.4,
+        promoter: 54.2,
         fii: 22.8,
         dii: 16.2,
-        public: 9.6
+        public: 6.8
       });
     }
 
-    // GET /api/companies/[ticker]/forensic
     if (subRoute === "forensic") {
       return NextResponse.json({
         altman_z_score: 3.45,
@@ -581,7 +614,6 @@ async function handleRequest(req: NextRequest, params: { path: string[] }) {
       });
     }
 
-    // GET /api/companies/[ticker]/valuation-bands
     if (subRoute === "valuation-bands") {
       const p = await getCompanyProfile(symbol);
       return NextResponse.json({
@@ -594,7 +626,6 @@ async function handleRequest(req: NextRequest, params: { path: string[] }) {
       });
     }
 
-    // GET /api/companies/[ticker]/supply-chain
     if (subRoute === "supply-chain") {
       return NextResponse.json({
         ticker: symbol,
@@ -603,7 +634,6 @@ async function handleRequest(req: NextRequest, params: { path: string[] }) {
       });
     }
 
-    // GET /api/companies/[ticker]/research-notes
     if (subRoute === "research-notes") {
       const p = await getCompanyProfile(symbol);
       return NextResponse.json({
