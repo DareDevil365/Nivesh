@@ -1,0 +1,49 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Sora:wght@600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-color: #0B1210;
+  --surface-color: #131B18;
+  --primary-accent: #1E7A4C;
+  --secondary-accent: #C9A227;
+  --positive-color: #2ECC71;
+  --negative-color: #E74C3C;
+  --text-color: #E6EDEA;
+  --muted-text: #8FA096;
+  --border-color: #223028;
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+  margin: 0;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6, .font-heading {
+  font-family: 'Sora', sans-serif;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0B1210;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #223028;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #1E7A4C;
+}

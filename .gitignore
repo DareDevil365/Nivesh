@@ -1,0 +1,39 @@
+# Node dependencies
+node_modules/
+.next/
+out/
+
+# Python virtual environments & bytecode
+.venv/
+env/
+venv/
+__pycache__/
+*.pyc
+
+# Environment secrets & private docs
+.env
+.env.local
+.env.production
+.env.development
+future_plans.md
+USA_Specifics
+USA_Specifics.md
+USA_Specifics/
+future trash
+future trash/
+future_trash
+future_trash/
+*.md.private
+
+# Internal implementation plans & notes
+nivesh imple file
+nivesh imple*
+Main/
+
+# Logs & temp
+*.log
+.DS_Store
+Gemeni api keys.txt
+*.tsbuildinfo
+.antigravity/
+
