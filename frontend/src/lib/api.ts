@@ -1,8 +1,16 @@
 /**
  * Centralized API Helper for Nivesh Frontend
- * Reads NEXT_PUBLIC_API_URL from environment with fallback to http://localhost:8000
+ *
+ * - In production (Vercel): NEXT_PUBLIC_API_URL is unset → API_BASE = ""
+ *   All fetch("/api/...") calls are relative, handled by the Vercel Python serverless function.
+ *
+ * - In development: next.config.mjs rewrites /api/* → http://127.0.0.1:8000/api/*
+ *   so NEXT_PUBLIC_API_URL does NOT need to be set locally either.
+ *
+ * - Override: Set NEXT_PUBLIC_API_URL to an absolute URL only if you need to point
+ *   to a remote backend explicitly (e.g., a staging backend).
  */
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
