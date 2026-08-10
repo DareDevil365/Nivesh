@@ -1,13 +1,12 @@
-"""
-Vercel Serverless Function Entrypoint for Nivesh FastAPI Backend.
-This file lives at the repo root api/index.py so Vercel's @vercel/python
-builder picks it up and routes all /api/* requests here.
-"""
-
 import sys
 import os
 
-# Add the backend directory to Python path so all imports resolve correctly
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
+root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+backend_dir = os.path.join(root_dir, "backend")
 
-from main import app  # noqa: F401 — 'app' is what Vercel's ASGI adapter looks for
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
+from backend.main import app  # noqa: F401
