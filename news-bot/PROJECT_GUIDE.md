@@ -1,8 +1,10 @@
 # Independent Nivesh news bot
 
-This deployable news-only project runs on GitHub-hosted runners with Gemini and Gmail SMTP/IMAP. Runtime requires no Codex, browser, Nivesh web server or powered-on laptop. Code/workflow creation alone does not activate hosting: merge deployment to the default branch, configure secrets and enable the schedule after a live delivery check.
+This deployable news-only project runs on GitHub-hosted runners with Gemini and personal Telegram delivery. Gmail remains an optional legacy adapter. Runtime requires no Codex, browser, Nivesh web server or powered-on laptop. Code/workflow creation alone does not activate hosting: merge deployment to the default branch, configure secrets and enable the schedule after a live delivery check. Hosting this bot is separate from hosting the full website.
 
 ## Architecture and flow
+
+The collection/model pipeline below is shared. The Gmail-specific delivery steps describe the legacy adapter. The current Telegram transport, pairing and recovery behavior are documented under Telegram delivery below; Telegram does not require Gmail credentials.
 
 1. GitHub Actions targets 00:30 UTC, equivalent to 06:00 IST. Manual runs default to a non-sending dry run. Pull requests run independent offline tests without secrets or mail.
 2. Before collection, the CLI checks persistent delivery status and narrowly searches Gmail Sent for a deterministic per-date/per-recipient Message-ID. It never downloads unrelated mailbox bodies.
@@ -18,11 +20,11 @@ Python/httpx/BeautifulSoup/Pydantic and existing source/rotation helpers were re
 
 Canonical implementation lives in the parent project's backend. Run `python backend/scripts/export_news_bot.py` to regenerate this self-contained `news-bot/` distribution and hash manifest. Do not hand-edit generated implementation copies. An explicit export allowlist excludes `.env`, private data, other project changes and unrelated features. Publishing this folder does not publish all local Nivesh work.
 
-The bundle includes `config.py`, `services/`, `scripts/standalone_news.py`, `tests/`, `requirements.txt`, a blank environment example and this guide. Run `python -m unittest discover -s tests` from the bundle to test it without the web application. The root `.github/workflows/daily-news.yml` runs those tests on Linux/Python 3.12.
+The bundle includes `config.py`, `services/`, `scripts/standalone_news.py`, `scripts/setup_telegram.py`, `tests/`, `requirements.txt`, a blank environment example and this guide. Run `python -m unittest discover -s tests` from the bundle to test it without the web application. The root `.github/workflows/daily-news.yml` runs those tests on Linux/Python 3.12.
 
 ## Setup and commands
 
-Configure these GitHub Actions repository secrets:
+For legacy email delivery only, configure these GitHub Actions repository secrets. Telegram configuration is below:
 
 - `GEMINI_API_KEYS`: existing comma-separated credentials.
 - `GEMINI_KEY_PROJECTS`: matching project labels, or blank for a conservative shared quota group.
@@ -51,4 +53,27 @@ GitHub schedules can be delayed/dropped during load and must exist on the defaul
 
 Workflow concurrency and optimistic persistent claims reduce duplicates. If SMTP accepts but status recording fails, a later run checks the stable Message-ID in Gmail Sent. If acceptance versus failure cannot be established, the job retains its pending record and fails clearly. Investigate Sent/bounces and state before a deliberate retry; never delete claims automatically. State records are public metadata when the repository is public; they intentionally omit plain addresses, credentials and content. No external mail action occurs in tests.
 
-Keep the old Codex heartbeat only during migration. Disable it once independent delivery is verified to avoid duplicate schedulers. Disabling it alone is not cloud activation. Actual validation and deployment status are recorded in the parent project guide and validation log.
+The old Codex heartbeat is paused. Keep it paused to avoid duplicate schedulers. Disabling it alone is not cloud activation. Actual validation and deployment status are recorded in the parent project guide and validation log.
+
+## Telegram delivery (current default)
+
+`NEWS_DELIVERY=telegram` selects the Telegram adapter; `email` explicitly selects the legacy Gmail adapter. The standalone CLI checks the daily ledger before collecting/model work, then verifies the bot identity and exact paired private chat. A dry run does not contact either delivery service. No Telegram token, chat ID or other delivery credentials enter model input or reports. No always-running bot process, webhook server or Telegram SDK is needed: the existing small Python/httpx runtime uses verified HTTPS.
+
+One `sendDocument` request sends the complete UTF-8 text report with a concise caption. The caption includes six shortened category previews, explicit headline-fallback labels and one finance term. The attachment retains complete summaries, reasons, original source links, publication/access labels, all terms and coverage limits. A maximum of 1024 UTF-16 units is enforced without splitting Unicode code points. No Markdown/HTML parse mode is enabled. One message avoids partially delivered multi-message briefings; reading all details requires opening the attachment. The bot does not currently answer chat questions or process research commands.
+
+Before sending, the existing exclusive ledger stores an opaque per-day/per-bot/per-chat ID and pending status. A positive message ID, document and exact private-chat receipt are required before marking API acceptance. Acceptance does not prove notifications, readership or semantic accuracy. The public ledger never stores raw chat IDs, bot tokens, message bodies or private pairing codes. Tokens/chat IDs are excluded from logs, generated reports and model input. HTTP errors omit token-bearing URLs/provider bodies and are not automatically retried.
+
+Telegram has no general bot Sent-history lookup or idempotency key. If a send times out after acceptance, or recording acceptance fails, the pending claim remains and subsequent runs stop for that day/destination. Inspect the private chat and claim before a deliberate retry; claims are never automatically removed. New days have separate claims. This favours avoiding duplicate reports over blind retries and is not a distributed exactly-once guarantee. Bot token rotation preserves the same destination ID when the bot identity remains unchanged.
+
+### Private setup
+
+1. In the official [BotFather](https://t.me/BotFather), send `/newbot` and follow its name/username prompts.
+2. Put its token in `NEWS_TELEGRAM_BOT_TOKEN` in private `backend/.env`; set `NEWS_DELIVERY=telegram`. Never paste tokens into chat or commit them.
+3. Run `python backend/scripts/setup_telegram.py --link`. Open the generated private Start link and press Start.
+4. Run `python backend/scripts/setup_telegram.py --bind` within thirty minutes of pressing Start. Only a recent private human message containing the random code can bind. The helper rejects ambiguous recipients, saves `NEWS_TELEGRAM_CHAT_ID` privately and clears the code. It does not send a message or print the chat ID. A new dedicated bot avoids conflicts with webhook/update consumers. A plain unrelated `/start` does not pair.
+5. Set GitHub Actions secrets `GEMINI_API_KEYS`, optional `GEMINI_KEY_PROJECTS`, `NEWS_TELEGRAM_BOT_TOKEN` and `NEWS_TELEGRAM_CHAT_ID`; set repository variable `NEWS_DELIVERY=telegram`. Local environment changes do not automatically update cloud secrets. The deployment helper encrypts them with the repository public key and disables the schedule during configuration.
+6. Run a manual hosted send, inspect its result and the private Telegram chat, then enable `NEWS_BOT_ENABLED=true`. The schedule remains 00:30 UTC / 06:00 IST, subject to GitHub delays and account/platform limits described above.
+
+Pairing reads message updates needed to match the one-time code without printing update bodies or automatically choosing the first/recent person. It does not acknowledge unrelated updates. No background update consumer runs after pairing. Repeat the private-link/Start flow if pairing expires. [Telegram Bot API](https://core.telegram.org/bots/api), [BotFather setup](https://core.telegram.org/bots/features#botfather).
+
+The root project guide and validation log record deployment and actual live-test status. Code presence alone is not schedule activation.

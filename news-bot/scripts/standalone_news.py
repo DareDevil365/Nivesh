@@ -7,7 +7,11 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from services import news_bot, news_digest  # noqa: E402
+from services import (  # noqa: E402
+    news_bot,
+    news_digest,
+    telegram_delivery,  # noqa: E402
+)
 
 
 def main():
@@ -28,8 +32,20 @@ def main():
     )
     args = parser.parse_args()
     try:
-        config = None if args.dry_run else news_bot.MailConfig.load()
+        channel = os.getenv("NEWS_DELIVERY", "email").strip().lower()
+        if channel not in ("email", "telegram"):
+            raise news_bot.BotError("NEWS_DELIVERY must be email or telegram.")
+        transport = telegram_delivery if channel == "telegram" else news_bot
+        config = None
+        if not args.dry_run:
+            config = (
+                telegram_delivery.TelegramConfig.load()
+                if channel == "telegram"
+                else news_bot.MailConfig.load()
+            )
         if args.check_mail:
+            if channel != "email":
+                parser.error("--check-mail applies only to email delivery")
             if config is None:
                 parser.error("--check-mail and --dry-run cannot be combined")
             exists = news_bot.sent_message_exists(
@@ -46,10 +62,12 @@ def main():
                 if os.getenv("GITHUB_ACTIONS") == "true"
                 else news_bot.LocalLedger()
             )
-            prior = news_bot.existing_delivery(news_digest.local_day(), config, ledger)
+            prior = transport.existing_delivery(news_digest.local_day(), config, ledger)
             if prior:
                 print(json.dumps({"status": prior, "date_ist": news_digest.local_day()}))
                 return
+            if channel == "telegram":
+                telegram_delivery.check(config)
         pack = (
             json.loads(args.input.read_text(encoding="utf-8"))
             if args.input
@@ -67,11 +85,12 @@ def main():
         if args.dry_run:
             status = "prepared_without_mail"
         else:
-            status = news_bot.deliver(digest, config, ledger)
+            status = transport.deliver(digest, config, ledger)
         print(
             json.dumps(
                 {
                     "status": status,
+                    "delivery": channel,
                     "date_ist": digest["date_ist"],
                     "summary_status": digest["summary_status"],
                     "summary_modes": digest["summary_modes"],
