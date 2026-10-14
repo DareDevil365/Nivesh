@@ -21,7 +21,7 @@
   },
   "services/telegram_delivery.py": {
     "source": "backend/services/telegram_delivery.py",
-    "sha256": "8510ff47dab8a9afbcd1145a54105266300674e0d8636f4b0d3c47d080458aff"
+    "sha256": "84c667b8986c87b50326c0e5878249fba75b42c64f6eaf8e4b80081d5755c8bc"
   },
   "services/gemini_client.py": {
     "source": "backend/services/gemini_client.py",
@@ -53,10 +53,10 @@
   },
   "tests/test_telegram_delivery.py": {
     "source": "backend/tests/test_telegram_delivery.py",
-    "sha256": "96966b47d7afa1ff02927b192c996a54f9f6d9b1574ce86bfd3c652356392455"
+    "sha256": "86a5c1ef9c273b9f6c96a3be191d206cc67d9562e60cc05f344e0ba997029153"
   },
   "PROJECT_GUIDE.md": {
     "source": "research/STANDALONE_NEWS_BOT.md",
-    "sha256": "87f0c058faaa2eccaa258ebee576092f67f1a90be97194fb3398c33c661e16ce"
+    "sha256": "5f3c2a31304942fd372af87f3bc71ca681c9edb50ccb21ae1f81769f876b17e2"
   }
 }
