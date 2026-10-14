@@ -19,6 +19,10 @@
     "source": "backend/services/news_bot.py",
     "sha256": "416ed2e50d191f0517c1d0ceac60dda250ffb03f1b25fdf137f20e022dca47c8"
   },
+  "services/telegram_delivery.py": {
+    "source": "backend/services/telegram_delivery.py",
+    "sha256": "8510ff47dab8a9afbcd1145a54105266300674e0d8636f4b0d3c47d080458aff"
+  },
   "services/gemini_client.py": {
     "source": "backend/services/gemini_client.py",
     "sha256": "0a8250ee2d552db461f1bebfaa21e0b3c7a048d142cd5931ebc65d64486f8e48"
@@ -37,14 +41,22 @@
   },
   "scripts/standalone_news.py": {
     "source": "backend/scripts/standalone_news.py",
-    "sha256": "35bb8689ee9f1c1bae34c55b2968908a4dbfa6eb8a55b0b3118dfb415230c659"
+    "sha256": "9d5d849bac4f009b7d1606aaaee85e69a511ce173e759a54cc042801db123641"
+  },
+  "scripts/setup_telegram.py": {
+    "source": "backend/scripts/setup_telegram.py",
+    "sha256": "c8c0dd3f7437596477f794101e2ea999e1110ef3acb3b80fc55622ff683effae"
   },
   "tests/test_news_bot.py": {
     "source": "backend/tests/test_news_bot.py",
     "sha256": "3ee7f0587bdc865e282626b77c1b7be412eb706ae2ada22caf4a22b398dd0700"
   },
+  "tests/test_telegram_delivery.py": {
+    "source": "backend/tests/test_telegram_delivery.py",
+    "sha256": "96966b47d7afa1ff02927b192c996a54f9f6d9b1574ce86bfd3c652356392455"
+  },
   "PROJECT_GUIDE.md": {
     "source": "research/STANDALONE_NEWS_BOT.md",
-    "sha256": "54e28958a20fc935f3a1c15ea54cf90e89a3be137296bdc2d5233ac4bcb7fe6b"
+    "sha256": "87f0c058faaa2eccaa258ebee576092f67f1a90be97194fb3398c33c661e16ce"
   }
 }

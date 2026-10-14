@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: Prepare a brief without authenticating to mail or sending
+        description: Prepare a brief without contacting delivery services or sending
         type: boolean
         default: true
   pull_request:
@@ -58,6 +58,9 @@ jobs:
           GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
           GEMINI_KEY_PROJECTS: ${{ secrets.GEMINI_KEY_PROJECTS }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-2.5-flash' }}
+          NEWS_DELIVERY: ${{ vars.NEWS_DELIVERY || 'telegram' }}
+          NEWS_TELEGRAM_BOT_TOKEN: ${{ secrets.NEWS_TELEGRAM_BOT_TOKEN }}
+          NEWS_TELEGRAM_CHAT_ID: ${{ secrets.NEWS_TELEGRAM_CHAT_ID }}
           NEWS_SMTP_USER: ${{ secrets.NEWS_SMTP_USER }}
           NEWS_SMTP_PASSWORD: ${{ secrets.NEWS_SMTP_PASSWORD }}
           NEWS_EMAIL_TO: ${{ secrets.NEWS_EMAIL_TO }}
