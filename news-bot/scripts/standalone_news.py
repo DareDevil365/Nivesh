@@ -8,6 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from services import (  # noqa: E402
+    finance_teacher,
     news_bot,
     news_digest,
     telegram_delivery,  # noqa: E402
@@ -64,7 +65,21 @@ def main():
             )
             prior = transport.existing_delivery(news_digest.local_day(), config, ledger)
             if prior:
-                print(json.dumps({"status": prior, "date_ist": news_digest.local_day()}))
+                teacher_status = None
+                if channel == "telegram":
+                    telegram_delivery.check(config)
+                    teacher_status = finance_teacher.deliver(
+                        news_digest.local_day(), config, ledger
+                    )
+                print(
+                    json.dumps(
+                        {
+                            "status": prior,
+                            "date_ist": news_digest.local_day(),
+                            "daily_teacher": teacher_status,
+                        }
+                    )
+                )
                 return
             if channel == "telegram":
                 telegram_delivery.check(config)
@@ -86,11 +101,15 @@ def main():
             status = "prepared_without_mail"
         else:
             status = transport.deliver(digest, config, ledger)
+        teacher_status = None
+        if channel == "telegram" and not args.dry_run:
+            teacher_status = finance_teacher.deliver(digest["date_ist"], config, ledger, digest)
         print(
             json.dumps(
                 {
                     "status": status,
                     "delivery": channel,
+                    "daily_teacher": teacher_status,
                     "date_ist": digest["date_ist"],
                     "summary_status": digest["summary_status"],
                     "summary_modes": digest["summary_modes"],

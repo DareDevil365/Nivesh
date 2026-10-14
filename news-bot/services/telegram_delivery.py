@@ -148,7 +148,11 @@ def render_messages(digest):
 
 
 def existing_delivery(day, config, ledger):
-    key = hashlib.sha256(config.delivery_id(day).encode()).hexdigest()[:32]
+    return existing_id(config.delivery_id(day), ledger)
+
+
+def existing_id(delivery_id, ledger):
+    key = hashlib.sha256(delivery_id.encode()).hexdigest()[:32]
     previous = ledger.get(key)
     if previous and previous.get("status") == "accepted":
         return "already_accepted"
@@ -164,11 +168,27 @@ def deliver(digest, config, ledger):
     existing = existing_delivery(digest["date_ist"], config, ledger)
     if existing:
         return existing
-    day = digest["date_ist"]
+    return deliver_messages(
+        digest["date_ist"],
+        render_messages(digest),
+        config,
+        ledger,
+        config.delivery_id(digest["date_ist"]),
+    )
+
+
+def deliver_messages(day, messages, config, ledger, delivery_id):
+    existing = existing_id(delivery_id, ledger)
+    if existing:
+        return existing
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", day):
         raise BotError("Invalid Telegram report date.")
-    messages = render_messages(digest)
-    delivery_id = config.delivery_id(day)
+    if (
+        not messages
+        or len(messages) > 20
+        or any(len(message.encode("utf-16-le")) // 2 > 4096 for message in messages)
+    ):
+        raise BotError("Telegram message size is invalid; nothing was sent.")
     key = hashlib.sha256(delivery_id.encode()).hexdigest()[:32]
     record = {
         "status": "pending",

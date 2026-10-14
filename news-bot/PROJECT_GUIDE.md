@@ -77,3 +77,13 @@ Telegram has no general bot Sent-history lookup or idempotency key. If any send 
 Pairing reads message updates needed to match the one-time code without printing update bodies or automatically choosing the first/recent person. It does not acknowledge unrelated updates. No background update consumer runs after pairing. Repeat the private-link/Start flow if pairing expires. [Telegram Bot API](https://core.telegram.org/bots/api), [BotFather setup](https://core.telegram.org/bots/features#botfather).
 
 The root project guide and validation log record deployment and actual live-test status. Code presence alone is not schedule activation.
+
+## Daily finance teacher
+
+The user clarified that the desired daily addition was a teacher, not pictures. `services/finance_teacher.py` provides a 47-lesson calendar course: nine foundations, thirty-two terms in practice and six strategy/failure-case lessons. `finance_curriculum.json` is a reviewed snapshot of the existing Nivesh learning notes; it is educational content, not a company/news dataset. It is deliberately bundled so the cloud bot has no frontend dependency. Changes to the web learning notes do not automatically update this snapshot. Examples and calculations are hypothetical, not live company forecasts. Source links are further reading for original teaching prose.
+
+Each lesson explains a concept, gives a worked example or research case, suggests an evidence-gathering task, asks a self-check and hides the answer under Telegram's tap-to-reveal spoiler formatting. A foundation lesson can link to a keyword-matching source from that day's briefing as an explicitly labelled practice exercise, retaining the source access label. The match does not establish company exposure or impact. There are no additional AI calls or new runtime dependencies for teaching.
+
+`NEWS_LEARNING_START_DATE` sets Day 1; the cloud variable defaults to the migration date. Topics advance by calendar day, even if a delivery is missed. After 47 days the course explicitly enters a review cycle; it does not claim endlessly new material. The bot does not grade replies, remember quiz performance or offer interactive personalised tutoring. Those are future features, not implemented behavior.
+
+News and teaching use separate daily delivery claims. If news is already accepted but the lesson is pending, the CLI sends only the lesson without repeating source/model work or the news. Failed/uncertain lesson sends keep their own claim and do not replay accepted news. A fresh run sends the lesson after the news, with a short pacing delay. Dry runs authenticate/send neither. A single lesson must fit the message limit; all 47 are covered by offline rendering checks.
