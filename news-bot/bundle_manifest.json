@@ -1,0 +1,50 @@
+{
+  "config.py": {
+    "source": "backend/config.py",
+    "sha256": "374481f575e83033d3452a02c1ad86c880449f216765c6681c0419936d6d5def"
+  },
+  "requirements.txt": {
+    "source": "backend/requirements-news.txt",
+    "sha256": "541209e0d48517d0351af79c285624a47e35e9a95dcb204be44d2ba1540bff58"
+  },
+  "services/news_reader.py": {
+    "source": "backend/services/news_reader.py",
+    "sha256": "8fef5c37e65e6eb576fb4a638025a069feaba327089a8ce64a060ae611da0a5a"
+  },
+  "services/news_digest.py": {
+    "source": "backend/services/news_digest.py",
+    "sha256": "b2756e4cace052e2e2ab2bc2e4c46a95f65a74361c03a69afd88daeffd5f5887"
+  },
+  "services/news_bot.py": {
+    "source": "backend/services/news_bot.py",
+    "sha256": "416ed2e50d191f0517c1d0ceac60dda250ffb03f1b25fdf137f20e022dca47c8"
+  },
+  "services/gemini_client.py": {
+    "source": "backend/services/gemini_client.py",
+    "sha256": "0a8250ee2d552db461f1bebfaa21e0b3c7a048d142cd5931ebc65d64486f8e48"
+  },
+  "services/cache_manager.py": {
+    "source": "backend/services/cache_manager.py",
+    "sha256": "a062c25f3f6798c4ea09bb7c8c30f658ab271540d6ea5d26d3d6515d9694c01b"
+  },
+  "services/filing_sources.py": {
+    "source": "backend/services/filing_sources.py",
+    "sha256": "f1c966fc68dd894f957053719d32285d8db0cc8120eb0a870f4c7bb453400a07"
+  },
+  "services/local_store.py": {
+    "source": "backend/services/local_store.py",
+    "sha256": "0de7ddd2be3988f5e014e1bfdbf256808c09e876a9d3831ef9ca89628614ea9c"
+  },
+  "scripts/standalone_news.py": {
+    "source": "backend/scripts/standalone_news.py",
+    "sha256": "35bb8689ee9f1c1bae34c55b2968908a4dbfa6eb8a55b0b3118dfb415230c659"
+  },
+  "tests/test_news_bot.py": {
+    "source": "backend/tests/test_news_bot.py",
+    "sha256": "3ee7f0587bdc865e282626b77c1b7be412eb706ae2ada22caf4a22b398dd0700"
+  },
+  "PROJECT_GUIDE.md": {
+    "source": "research/STANDALONE_NEWS_BOT.md",
+    "sha256": "54e28958a20fc935f3a1c15ea54cf90e89a3be137296bdc2d5233ac4bcb7fe6b"
+  }
+}
