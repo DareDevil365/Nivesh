@@ -97,7 +97,7 @@ def render_messages(digest):
     coverage = digest["coverage"]
     blocks = [
         f"Prepared: {esc(digest['generated_at'])}. News window: last 24 hours.\n"
-        f"Coverage: {coverage['headlines']} headlines; {coverage['article_excerpts']} article excerpts, "
+        f"Collection coverage across all editions: {coverage['headlines']} headlines; {coverage['article_excerpts']} article excerpts, "
         f"{coverage['feed_excerpts']} feed excerpts, {coverage['headline_only']} headline-only.\n"
         "AI interpretation is unverified. Headline fallbacks are labelled below."
     ]
@@ -117,10 +117,11 @@ def render_messages(digest):
                     f'<a href="{esc(url, quote=True)}">{esc(source["publisher"])} — {esc(source["title"])}</a>\n'
                     f"{esc(source['published_at'])} | {esc(source['read_status'].replace('_', ' '))}"
                 )
-    blocks.append("<b>Finance terms to learn</b>")
-    blocks.extend(
-        f"<b>{esc(term['term'])}:</b> {esc(term['meaning'])}" for term in digest["glossary"]
-    )
+    if digest["glossary"]:
+        blocks.append("<b>Finance terms to learn</b>")
+        blocks.extend(
+            f"<b>{esc(term['term'])}:</b> {esc(term['meaning'])}" for term in digest["glossary"]
+        )
     blocks.append("<b>Source coverage and limitations</b>")
     blocks.extend(
         f"{esc(feed['id'])}: {esc(feed['status'])}" + (" (stale)" if feed.get("stale") else "")
@@ -142,13 +143,17 @@ def render_messages(digest):
     if not chunks or len(chunks) > 20:
         raise BotError("Unexpected Telegram report size; nothing was sent.")
     return [
-        f"<b>Nivesh · {esc(digest['date_ist'])} · {index}/{len(chunks)}</b>\n\n" + chunk
+        f"<b>Part {index}/{len(chunks)}</b>\n\n" + chunk
         for index, chunk in enumerate(chunks, 1)
     ]
 
 
 def existing_delivery(day, config, ledger):
-    key = hashlib.sha256(config.delivery_id(day).encode()).hexdigest()[:32]
+    return existing_id(config.delivery_id(day), ledger)
+
+
+def existing_id(delivery_id, ledger):
+    key = hashlib.sha256(delivery_id.encode()).hexdigest()[:32]
     previous = ledger.get(key)
     if previous and previous.get("status") == "accepted":
         return "already_accepted"
@@ -164,11 +169,27 @@ def deliver(digest, config, ledger):
     existing = existing_delivery(digest["date_ist"], config, ledger)
     if existing:
         return existing
-    day = digest["date_ist"]
+    return deliver_messages(
+        digest["date_ist"],
+        render_messages(digest),
+        config,
+        ledger,
+        config.delivery_id(digest["date_ist"]),
+    )
+
+
+def deliver_messages(day, messages, config, ledger, delivery_id):
+    existing = existing_id(delivery_id, ledger)
+    if existing:
+        return existing
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", day):
         raise BotError("Invalid Telegram report date.")
-    messages = render_messages(digest)
-    delivery_id = config.delivery_id(day)
+    if (
+        not messages
+        or len(messages) > 20
+        or any(len(message.encode("utf-16-le")) // 2 > 4096 for message in messages)
+    ):
+        raise BotError("Telegram message size is invalid; nothing was sent.")
     key = hashlib.sha256(delivery_id.encode()).hexdigest()[:32]
     record = {
         "status": "pending",

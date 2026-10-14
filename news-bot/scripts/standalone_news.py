@@ -8,6 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from services import (  # noqa: E402
+    daily_newsletters,
     news_bot,
     news_digest,
     telegram_delivery,  # noqa: E402
@@ -35,7 +36,7 @@ def main():
         channel = os.getenv("NEWS_DELIVERY", "email").strip().lower()
         if channel not in ("email", "telegram"):
             raise news_bot.BotError("NEWS_DELIVERY must be email or telegram.")
-        transport = telegram_delivery if channel == "telegram" else news_bot
+        transport = daily_newsletters if channel == "telegram" else news_bot
         config = None
         if not args.dry_run:
             config = (
@@ -64,7 +65,25 @@ def main():
             )
             prior = transport.existing_delivery(news_digest.local_day(), config, ledger)
             if prior:
-                print(json.dumps({"status": prior, "date_ist": news_digest.local_day()}))
+                bundle = None
+                if channel == "telegram":
+                    telegram_delivery.check(config)
+                    bundle = daily_newsletters.deliver(
+                        None, config, ledger, day=news_digest.local_day()
+                    )
+                print(
+                    json.dumps(
+                        {
+                            "status": prior,
+                            "date_ist": news_digest.local_day(),
+                            "bundle": bundle,
+                        }
+                    )
+                )
+                if bundle and bundle["status"] != "telegram_accepted":
+                    raise news_bot.BotError(
+                        "Some newsletter deliveries are incomplete; inspect their pending claims before retrying."
+                    )
                 return
             if channel == "telegram":
                 telegram_delivery.check(config)
@@ -85,12 +104,16 @@ def main():
         if args.dry_run:
             status = "prepared_without_mail"
         else:
-            status = transport.deliver(digest, config, ledger)
+            result = transport.deliver(digest, config, ledger)
+            status = result["status"] if channel == "telegram" else result
         print(
             json.dumps(
                 {
                     "status": status,
                     "delivery": channel,
+                    "editions": result["editions"]
+                    if channel == "telegram" and not args.dry_run
+                    else None,
                     "date_ist": digest["date_ist"],
                     "summary_status": digest["summary_status"],
                     "summary_modes": digest["summary_modes"],
@@ -98,6 +121,10 @@ def main():
                 }
             )
         )
+        if status == "partial_delivery":
+            raise news_bot.BotError(
+                "Some newsletter deliveries are incomplete; inspect their pending claims before retrying."
+            )
     except news_bot.BotError as error:
         print(str(error), file=sys.stderr)
         raise SystemExit(1) from None

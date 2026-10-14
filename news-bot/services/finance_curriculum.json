@@ -1,0 +1,395 @@
+{
+  "provenance": "Reviewed snapshot of Nivesh learning notes; original educational prose, source links are further reading.",
+  "sources": {
+    "accounts": {
+      "label": "SEC: reading financial statements",
+      "url": "https://www.sec.gov/about/reports-publications/investorpubsbegfinstmtguide"
+    },
+    "fundamentals": {
+      "label": "Zerodha Varsity: fundamental analysis",
+      "url": "https://zerodha.com/varsity/module/fundamental-analysis/"
+    },
+    "risk": {
+      "label": "Investor.gov: allocation and diversification",
+      "url": "https://www.investor.gov/introduction-investing/getting-started/asset-allocation"
+    },
+    "index": {
+      "label": "Investor.gov: index funds",
+      "url": "https://www.investor.gov/introduction-investing/investing-basics/investment-products/mutual-funds-and-exchange-traded-4"
+    },
+    "factors": {
+      "label": "MSCI: factor investing",
+      "url": "https://www.msci.com/research-and-insights/blog-post/what-is-factor-investing"
+    },
+    "rbi": {
+      "label": "RBI: original policy releases",
+      "url": "https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx"
+    },
+    "budget": {
+      "label": "Government of India: Union Budget",
+      "url": "https://www.indiabudget.gov.in/"
+    },
+    "filings": {
+      "label": "NSE: company announcements",
+      "url": "https://www.nseindia.com/companies-listing/corporate-filings-announcements"
+    }
+  },
+  "foundations": [
+    {
+      "id": "business",
+      "title": "1. Start with the business",
+      "minutes": 15,
+      "note": "A stock represents an ownership interest. Before forecasting its price, explain who pays the company, what they buy and why they return. Sketch inputs → operations → customers. A sector name is only a starting label; businesses within it can have different economics.",
+      "task": "Pick two understandable sectors. Write one measurable demand question for each; favour the one whose customers and evidence you can explain.",
+      "source": "fundamentals",
+      "question": "Which is the best starting research question?",
+      "options": [
+        "Which stock will double?",
+        "Who buys this product, and what changes their spending?",
+        "Which ticker is trending?"
+      ],
+      "answer": 1,
+      "explanation": "Customer economics gives you a testable business question; a desired return or popularity does not."
+    },
+    {
+      "id": "evidence",
+      "title": "2. Choose companies and collect evidence",
+      "minutes": 20,
+      "note": "Compare two or three companies with similar products and geography. Confirm legal names, symbols, dates and reporting basis. Use filings for disclosed facts; label management guidance, outside estimates and your assumptions separately. Missing evidence is a research task.",
+      "task": "Open the screener, shortlist two peers, then save their original annual-report links and three unanswered questions in a company notebook.",
+      "source": "filings",
+      "question": "A news story mentions a project bid. What is established?",
+      "options": [
+        "Revenue is guaranteed",
+        "The company has won",
+        "A reported bid needs checking against an original disclosure"
+      ],
+      "answer": 2,
+      "explanation": "Bid, award, execution, recognised revenue and collected cash are different stages."
+    },
+    {
+      "id": "statements",
+      "title": "3. Read the accounts together",
+      "minutes": 25,
+      "note": "The balance sheet is a dated snapshot; income and cash-flow statements cover periods. Profit and operating cash can diverge. Read notes and auditor commentary, then compare the same consolidated or standalone basis and units.",
+      "task": "For two years, record revenue, profit, operating cash, debt and receivables with page references. Explain one change using the notes.",
+      "source": "accounts",
+      "question": "Profit rose but receivables grew much faster. What next?",
+      "options": [
+        "Assume fraud",
+        "Inspect collection, revenue recognition and cash flow",
+        "Ignore it because profit rose"
+      ],
+      "answer": 1,
+      "explanation": "This is a reason to investigate cash conversion, not proof of misconduct."
+    },
+    {
+      "id": "drivers",
+      "title": "4. Build a demand and supply model",
+      "minutes": 25,
+      "note": "Build revenue from operating drivers: units × realised price, or customers × spending. Check capacity, utilisation, competition and substitutes. A growing market does not guarantee company growth. Avoid counting both market share gains and the same volume gains twice.",
+      "task": "Choose one company; write three drivers, their sources and the evidence that would contradict each. Banks and insurers need specialised models.",
+      "source": "fundamentals",
+      "question": "An industry adds substantial capacity. What should you test?",
+      "options": [
+        "Only demand growth",
+        "Pricing, utilisation and competitor response",
+        "An automatic rise in margins"
+      ],
+      "answer": 1,
+      "explanation": "Supply can grow faster than demand, putting pressure on prices and returns."
+    },
+    {
+      "id": "news",
+      "title": "5. Turn news into research questions",
+      "minutes": 20,
+      "note": "Use event → actual company exposure → operating change → financial effect → timing. Check the original release, effective date and counterarguments. A policy proposal, funding allocation and paid order are different evidence. Good business news can already be reflected in the price.",
+      "task": "Read one India and one world headline. Record who benefits, who pays, what must happen first and what evidence would prove you wrong.",
+      "source": "rbi",
+      "question": "Oil falls. Does every cement company benefit equally?",
+      "options": [
+        "Yes",
+        "No; check fuel mix, contracts, freight and selling prices",
+        "All share prices must rise"
+      ],
+      "answer": 1,
+      "explanation": "Exposure and pass-through determine the business effect; expectations also affect stock prices."
+    },
+    {
+      "id": "valuation",
+      "title": "6. Separate a good company from its price",
+      "minutes": 25,
+      "note": "Valuation asks what assumptions a price requires. Compare bear, base and bull operating cases. For profitable non-financial firms, a simplified EPS × assumed P/E exercise can reveal sensitivity. Losses, cyclicals, banks and insurers require different treatment.",
+      "task": "Use the practice lab. Raise profit but lower the assumed multiple; explain how a stronger business can still produce a lower price scenario.",
+      "source": "fundamentals",
+      "question": "EPS rises 10%, while P/E falls 20%. What happens to EPS × P/E?",
+      "options": [
+        "Rises 10%",
+        "Falls 12%",
+        "Stays flat"
+      ],
+      "answer": 1,
+      "explanation": "1.10 × 0.80 = 0.88. A multiple change can outweigh earnings growth."
+    },
+    {
+      "id": "risk",
+      "title": "7. Think about losses and portfolios",
+      "minutes": 20,
+      "note": "Risk includes permanent loss, funding pressure, concentration and being forced to sell. Match investments to horizon and liquidity needs. Diversification reduces some concentration risk, but does not eliminate losses. Several funds can still hold overlapping exposures.",
+      "task": "List three ways your thesis fails. Check whether your other ideas depend on the same rate, commodity or customer cycle.",
+      "source": "risk",
+      "question": "Five stocks all depend on the same commodity. Are you broadly diversified?",
+      "options": [
+        "Yes, five tickers are enough",
+        "No, their business risks may overlap",
+        "Diversification prevents any loss"
+      ],
+      "answer": 1,
+      "explanation": "Count underlying exposures, not just tickers."
+    },
+    {
+      "id": "strategies",
+      "title": "8. Compare strategies honestly",
+      "minutes": 20,
+      "note": "A strategy needs explicit selection, sizing, entry, exit and review rules. Test costs, liquidity, benchmark choice and unseen periods. A backtest can accidentally use future information or omit failed companies. A convincing historical chart is not a promise.",
+      "task": "Compare two strategy cards. Write the environment where each could fail, then inspect the assumptions in the backtester before running an example.",
+      "source": "factors",
+      "question": "A test uses today's index members for ten years of history. What is a concern?",
+      "options": [
+        "Survivorship bias",
+        "Guaranteed diversification",
+        "No issue if returns look strong"
+      ],
+      "answer": 0,
+      "explanation": "Today's members exclude some firms that failed or left; results can be distorted."
+    },
+    {
+      "id": "pitch",
+      "title": "9. Write and challenge a stock pitch",
+      "minutes": 30,
+      "note": "Present a business, a differentiated thesis, evidence, scenarios, catalysts and failure conditions. Separate fact from interpretation. Show what expectations you disagree with and why. Keep a dated record and compare later results with your original assumptions.",
+      "task": "Use the pitch worksheet. Ask a club member to argue the opposite case. A watch or insufficient-evidence conclusion is valid.",
+      "source": "filings",
+      "question": "Which thesis is most testable?",
+      "options": [
+        "Management is great",
+        "The stock looks cheap",
+        "Collections improve by next results; track receivable days and CFO"
+      ],
+      "answer": 2,
+      "explanation": "A measurable outcome and review date make it possible to revise a view honestly."
+    }
+  ],
+  "terms": [
+    {
+      "term": "Revenue",
+      "meaning": "Sales recognised in a period, before expenses; not necessarily cash collected.",
+      "source": "accounts"
+    },
+    {
+      "term": "Net profit / PAT",
+      "meaning": "Earnings after expenses and tax; inspect one-off items.",
+      "source": "accounts"
+    },
+    {
+      "term": "Balance sheet",
+      "meaning": "Assets, liabilities and equity at a specified date.",
+      "source": "accounts"
+    },
+    {
+      "term": "Operating cash flow / CFO",
+      "meaning": "Cash from operations after relevant non-cash and working-capital adjustments.",
+      "source": "accounts"
+    },
+    {
+      "term": "EPS",
+      "meaning": "Profit attributable to ordinary shareholders divided by weighted-average shares; check dilution.",
+      "source": "accounts"
+    },
+    {
+      "term": "P/E",
+      "meaning": "Price per share ÷ EPS. Non-positive EPS makes this comparison unhelpful.",
+      "source": "accounts"
+    },
+    {
+      "term": "Net margin",
+      "meaning": "Net profit ÷ revenue × 100; compare matching periods and basis.",
+      "source": "accounts"
+    },
+    {
+      "term": "Debt",
+      "meaning": "Borrowed obligations; examine interest, maturity and covenants, not only totals.",
+      "source": "accounts"
+    },
+    {
+      "term": "Working capital",
+      "meaning": "Operating funds tied up in items such as inventory and receivables, net of payables.",
+      "source": "fundamentals"
+    },
+    {
+      "term": "Capex",
+      "meaning": "Spending on long-lived assets; distinguish maintenance from expansion.",
+      "source": "fundamentals"
+    },
+    {
+      "term": "Free cash flow",
+      "meaning": "Cash remaining after relevant reinvestment; specify your equity or enterprise definition.",
+      "source": "fundamentals"
+    },
+    {
+      "term": "ROE",
+      "meaning": "Net income ÷ average equity; leverage and unusual equity can distort it.",
+      "source": "fundamentals"
+    },
+    {
+      "term": "ROCE",
+      "meaning": "Return on capital employed; state profit and capital definitions before comparison.",
+      "source": "fundamentals"
+    },
+    {
+      "term": "Enterprise value",
+      "meaning": "Value of operating claims; commonly equity value plus debt less cash, with adjustments.",
+      "source": "fundamentals"
+    },
+    {
+      "term": "Dilution",
+      "meaning": "More shares can reduce each existing share's participation in earnings.",
+      "source": "fundamentals"
+    },
+    {
+      "term": "Consolidated",
+      "meaning": "Accounts including controlled subsidiaries; do not mix with standalone figures.",
+      "source": "filings"
+    },
+    {
+      "term": "YoY / QoQ",
+      "meaning": "Year-on-year versus quarter-on-quarter; seasonality affects interpretation.",
+      "source": "filings"
+    },
+    {
+      "term": "Order book",
+      "meaning": "Unfulfilled orders; cancellation, timing and execution determine eventual revenue.",
+      "source": "filings"
+    },
+    {
+      "term": "Related-party transaction",
+      "meaning": "A transaction with a connected party; inspect terms, approvals and disclosures.",
+      "source": "filings"
+    },
+    {
+      "term": "Catalyst",
+      "meaning": "An event that might change expectations; neither its timing nor impact is assured.",
+      "source": "filings"
+    },
+    {
+      "term": "Inflation",
+      "meaning": "Change in a price index over a stated period; headline and component measures differ.",
+      "source": "rbi"
+    },
+    {
+      "term": "Policy rate",
+      "meaning": "A central-bank instrument influencing funding conditions; transmission varies.",
+      "source": "rbi"
+    },
+    {
+      "term": "Basis point",
+      "meaning": "0.01 percentage point; 100 basis points equal one percentage point.",
+      "source": "rbi"
+    },
+    {
+      "term": "Currency exposure",
+      "meaning": "Net sensitivity to exchange rates after revenues, costs, debt and hedges.",
+      "source": "rbi"
+    },
+    {
+      "term": "Fiscal deficit",
+      "meaning": "Government spending less non-borrowed receipts; inspect the period and definition.",
+      "source": "budget"
+    },
+    {
+      "term": "Allocation vs expenditure",
+      "meaning": "Budgeted money differs from money actually spent or collected by a company.",
+      "source": "budget"
+    },
+    {
+      "term": "Diversification",
+      "meaning": "Spreading underlying exposures; it does not guarantee protection from losses.",
+      "source": "risk"
+    },
+    {
+      "term": "Liquidity",
+      "meaning": "Ability to meet cash needs or trade without a large price impact.",
+      "source": "risk"
+    },
+    {
+      "term": "Index fund",
+      "meaning": "A fund following an index; fees, trading and tracking differences affect returns.",
+      "source": "index"
+    },
+    {
+      "term": "Benchmark",
+      "meaning": "A relevant comparison portfolio; use consistent currency, periods and dividends.",
+      "source": "index"
+    },
+    {
+      "term": "Momentum",
+      "meaning": "A strategy characteristic based on past relative price strength; reversals can hurt.",
+      "source": "factors"
+    },
+    {
+      "term": "Drawdown",
+      "meaning": "Fall from a previous peak; a 50% loss needs a 100% gain to recover.",
+      "source": "risk"
+    }
+  ],
+  "strategies": [
+    {
+      "name": "Value",
+      "idea": "Pay less than a justified estimate of business value.",
+      "evidence": "Normalised earnings, assets, cash generation and valuation scenarios.",
+      "failure": "A cheap business can deteriorate; a catalyst may never arrive.",
+      "task": "Explain why a low multiple is deserved or mistaken.",
+      "source": "factors"
+    },
+    {
+      "name": "Growth",
+      "idea": "Study durable expansion and reinvestment opportunities.",
+      "evidence": "Customer demand, unit economics, competitive supply and financing.",
+      "failure": "Overpaying or disappointing growth can overwhelm business progress.",
+      "task": "Separate market growth from company share gains.",
+      "source": "fundamentals"
+    },
+    {
+      "name": "Quality",
+      "idea": "Seek resilient profitability and financial strength.",
+      "evidence": "Cash conversion, leverage, repeat demand and capital allocation.",
+      "failure": "Quality can be overpriced or weaken as competition changes.",
+      "task": "Challenge one apparently strong metric using the accounts.",
+      "source": "factors"
+    },
+    {
+      "name": "Momentum",
+      "idea": "Use explicit rules based on past relative price strength.",
+      "evidence": "Adjusted prices, turnover, liquidity and realistic transaction costs.",
+      "failure": "Sharp reversals, crowding and trading costs.",
+      "task": "Specify formation period, rebalancing and exit rules before testing.",
+      "source": "factors"
+    },
+    {
+      "name": "Broad index investing",
+      "idea": "Follow a defined broad market index.",
+      "evidence": "Index coverage, concentration, fees and tracking difference.",
+      "failure": "Market losses remain; a sector index can be concentrated.",
+      "task": "Read an index methodology and a fund factsheet.",
+      "source": "index"
+    },
+    {
+      "name": "Event-driven research",
+      "idea": "Investigate a specific change such as capacity, a policy or an award.",
+      "evidence": "Original disclosures, conditions, timing and cash consequences.",
+      "failure": "The event can fail, be delayed or already be priced in.",
+      "task": "Track bid → award → execution → collection separately.",
+      "source": "filings"
+    }
+  ]
+}
