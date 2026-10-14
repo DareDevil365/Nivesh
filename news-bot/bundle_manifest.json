@@ -17,7 +17,7 @@
   },
   "services/news_bot.py": {
     "source": "backend/services/news_bot.py",
-    "sha256": "b904dbc5cbd961190f9f7cad6c9f1923b44387f400375bb9a980af847a065db3"
+    "sha256": "9a5c0b068b686161e29c2ea992a533a821a21c515ae0ef72dc8a16e00a2c2fed"
   },
   "services/telegram_delivery.py": {
     "source": "backend/services/telegram_delivery.py",
