@@ -21,7 +21,7 @@
   },
   "services/telegram_delivery.py": {
     "source": "backend/services/telegram_delivery.py",
-    "sha256": "44eebf178c505cc5e73ccc3ba933025dec8923ad0b4475becc43cbe56b4f3e58"
+    "sha256": "2cd988d107b23bd78b684abd37b59f9141f9ec45eb317b99d5123c55ccd2225d"
   },
   "services/finance_teacher.py": {
     "source": "backend/services/finance_teacher.py",

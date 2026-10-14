@@ -117,10 +117,11 @@ def render_messages(digest):
                     f'<a href="{esc(url, quote=True)}">{esc(source["publisher"])} — {esc(source["title"])}</a>\n'
                     f"{esc(source['published_at'])} | {esc(source['read_status'].replace('_', ' '))}"
                 )
-    blocks.append("<b>Finance terms to learn</b>")
-    blocks.extend(
-        f"<b>{esc(term['term'])}:</b> {esc(term['meaning'])}" for term in digest["glossary"]
-    )
+    if digest["glossary"]:
+        blocks.append("<b>Finance terms to learn</b>")
+        blocks.extend(
+            f"<b>{esc(term['term'])}:</b> {esc(term['meaning'])}" for term in digest["glossary"]
+        )
     blocks.append("<b>Source coverage and limitations</b>")
     blocks.extend(
         f"{esc(feed['id'])}: {esc(feed['status'])}" + (" (stale)" if feed.get("stale") else "")
