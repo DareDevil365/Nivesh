@@ -69,7 +69,7 @@
   },
   "tests/test_finance_teacher.py": {
     "source": "backend/tests/test_finance_teacher.py",
-    "sha256": "5caddc5fd7cf31de1e210689eaf466ff9f00ab92257ea7a415cceba29bf05d00"
+    "sha256": "2a0a2a4b97431431ebe30fe1efcd48988ccf7e8d1fd720d252089c2c5f242d79"
   },
   "tests/test_daily_newsletters.py": {
     "source": "backend/tests/test_daily_newsletters.py",
