@@ -1,15 +1,18 @@
 """Private-chat Telegram delivery; no token, chat ID or response body is logged."""
 
 import hashlib
+import html
+import json
 import os
 import re
 import secrets
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 import httpx
 
-from services import news_digest
+from services import news_reader
 from services.news_bot import BotError
 
 
@@ -32,7 +35,12 @@ class TelegramConfig:
 
     def delivery_id(self, day):
         destination = self.token.split(":", 1)[0] + ":" + self.chat_id
-        return "telegram-" + day + "-" + hashlib.sha256(destination.encode()).hexdigest()[:20]
+        return (
+            "telegram-messages-v2-"
+            + day
+            + "-"
+            + hashlib.sha256(destination.encode()).hexdigest()[:20]
+        )
 
 
 def api(config, method, *, data=None, files=None):
@@ -83,44 +91,60 @@ def check(config):
         raise BotError("Telegram destination must match the paired private chat.")
 
 
-def shorten(text, units):
-    """Bound UTF-16 units conservatively, preserving Unicode code points."""
-    text = " ".join(str(text).split())
-    if len(text.encode("utf-16-le")) // 2 <= units:
-        return text
-    output, used = [], 0
-    for character in text:
-        width = len(character.encode("utf-16-le")) // 2
-        if used + width > units - 1:
-            break
-        output.append(character)
-        used += width
-    return "".join(output).rstrip() + "…"
-
-
-def caption(digest):
-    lines = [
-        f"Nivesh morning brief · {digest['date_ist']}",
-        "Section previews (full text attached):",
+def render_messages(digest):
+    """Keep complete HTML blocks/links together, conservatively below 4096 units."""
+    esc = html.escape
+    coverage = digest["coverage"]
+    blocks = [
+        f"Prepared: {esc(digest['generated_at'])}. News window: last 24 hours.\n"
+        f"Coverage: {coverage['headlines']} headlines; {coverage['article_excerpts']} article excerpts, "
+        f"{coverage['feed_excerpts']} feed excerpts, {coverage['headline_only']} headline-only.\n"
+        "AI interpretation is unverified. Headline fallbacks are labelled below."
     ]
-    for section in digest["sections"][:6]:
-        fallback = digest.get("summary_modes", {}).get(section["id"]) == "headline_fallback"
-        label = shorten(section["label"], 26) + (" [headlines]" if fallback else "")
-        lines.append(label + ": " + shorten(section["bullets"][0]["text"], 72))
-    if digest.get("glossary"):
-        term = digest["glossary"][0]
-        lines.append("Learn: " + shorten(term["term"] + " — " + term["meaning"], 110))
-    lines.append(
-        "Sources, context and coverage gaps are in the attached report. AI interpretation is unverified."
+    for section in digest["sections"]:
+        mode = digest.get("summary_modes", {}).get(section["id"], "unverified")
+        blocks.append(
+            f"<b>{esc(section['label'])}</b>\nSummary mode: {esc(mode.replace('_', ' '))}"
+        )
+        for bullet in section["bullets"]:
+            blocks.append(esc(bullet["text"]))
+            blocks.append("<b>Why it may matter:</b> " + esc(bullet["why_it_matters"]))
+            for source in bullet["sources"]:
+                url = news_reader.safe_link(source["url"])
+                if not url:
+                    raise BotError("Unsafe Telegram citation URL; nothing was sent.")
+                blocks.append(
+                    f'<a href="{esc(url, quote=True)}">{esc(source["publisher"])} — {esc(source["title"])}</a>\n'
+                    f"{esc(source['published_at'])} | {esc(source['read_status'].replace('_', ' '))}"
+                )
+    blocks.append("<b>Finance terms to learn</b>")
+    blocks.extend(
+        f"<b>{esc(term['term'])}:</b> {esc(term['meaning'])}" for term in digest["glossary"]
     )
-    return shorten_lines(lines, 1024)
-
-
-def shorten_lines(lines, limit):
-    text = "\n\n".join(lines)
-    if len(text.encode("utf-16-le")) // 2 > limit:
-        raise BotError("Telegram preview exceeds the caption limit; refusing an incomplete send.")
-    return text
+    blocks.append("<b>Source coverage and limitations</b>")
+    blocks.extend(
+        f"{esc(feed['id'])}: {esc(feed['status'])}" + (" (stale)" if feed.get("stale") else "")
+        for feed in digest["feeds"]
+    )
+    blocks.append(esc(digest["limitations"]))
+    chunks, current = [], ""
+    for block in blocks:
+        if len(block.encode("utf-16-le")) // 2 > 3500:
+            raise BotError("A Telegram report block exceeds the safe limit; nothing was sent.")
+        candidate = current + ("\n\n" if current else "") + block
+        if len(candidate.encode("utf-16-le")) // 2 > 3500:
+            chunks.append(current)
+            current = block
+        else:
+            current = candidate
+    if current:
+        chunks.append(current)
+    if not chunks or len(chunks) > 20:
+        raise BotError("Unexpected Telegram report size; nothing was sent.")
+    return [
+        f"<b>Nivesh · {esc(digest['date_ist'])} · {index}/{len(chunks)}</b>\n\n" + chunk
+        for index, chunk in enumerate(chunks, 1)
+    ]
 
 
 def existing_delivery(day, config, ledger):
@@ -143,42 +167,49 @@ def deliver(digest, config, ledger):
     day = digest["date_ist"]
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", day):
         raise BotError("Invalid Telegram report date.")
-    text = news_digest.email_text(digest).encode("utf-8")
-    preview = caption(digest)
+    messages = render_messages(digest)
     delivery_id = config.delivery_id(day)
     key = hashlib.sha256(delivery_id.encode()).hexdigest()[:32]
-    ledger.reserve(
-        key,
-        {
-            "status": "pending",
-            "delivery_id": delivery_id,
-            "claimed_at": datetime.now(timezone.utc).isoformat(),
-            "attempt": secrets.token_hex(8),
-        },
-    )
-    result = api(
-        config,
-        "sendDocument",
-        data={"chat_id": config.chat_id, "caption": preview},
-        files={"document": (f"nivesh-{day}.txt", text, "text/plain; charset=utf-8")},
-    )
-    if (
-        not isinstance(result, dict)
-        or type(result.get("message_id")) is not int
-        or result["message_id"] <= 0
-        or not isinstance(result.get("chat"), dict)
-        or str(result["chat"].get("id")) != config.chat_id
-        or result["chat"].get("type") != "private"
-        or not result.get("document")
-    ):
-        raise BotError("Telegram returned an unexpected receipt; review the pending delivery.")
-    ledger.accepted(
-        key,
-        {
-            "status": "accepted",
-            "delivery_id": delivery_id,
-            "accepted_at": datetime.now(timezone.utc).isoformat(),
-            "basis": "telegram_api_acceptance",
-        },
-    )
+    record = {
+        "status": "pending",
+        "delivery_id": delivery_id,
+        "claimed_at": datetime.now(timezone.utc).isoformat(),
+        "attempt": secrets.token_hex(8),
+        "total_parts": len(messages),
+        "confirmed_parts": 0,
+        "body_sha256": hashlib.sha256(
+            json.dumps(messages, ensure_ascii=False).encode()
+        ).hexdigest(),
+    }
+    ledger.reserve(key, record)
+    for index, text in enumerate(messages, 1):
+        if index > 1:
+            time.sleep(1.1)
+        result = api(
+            config,
+            "sendMessage",
+            data={
+                "chat_id": config.chat_id,
+                "text": text,
+                "parse_mode": "HTML",
+                "link_preview_options": '{"is_disabled":true}',
+            },
+        )
+        if (
+            not isinstance(result, dict)
+            or type(result.get("message_id")) is not int
+            or result["message_id"] <= 0
+            or not isinstance(result.get("chat"), dict)
+            or str(result["chat"].get("id")) != config.chat_id
+            or result["chat"].get("type") != "private"
+        ):
+            raise BotError("Telegram returned an unexpected receipt; review the pending delivery.")
+        record = {**record, "confirmed_parts": index}
+        if index == len(messages):
+            record.update(
+                status="accepted",
+                accepted_at=datetime.now(timezone.utc).isoformat(),
+                basis="telegram_api_acceptance",
+            )
+        ledger.accepted(key, record)
     return "telegram_accepted"
