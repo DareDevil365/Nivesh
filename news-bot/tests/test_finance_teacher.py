@@ -48,7 +48,7 @@ class FinanceTeacherTests(unittest.TestCase):
         review = teacher.lesson_for_day(review_day, "2026-10-15")
         self.assertEqual(review["cycle"], 2)
         self.assertEqual(review["id"], "business")
-        self.assertIn("review cycle 2", teacher.render(review))
+        self.assertIn("review cycle 2", teacher.heading(review))
         for day, start in (
             ("wrong", "2026-10-15"),
             ("2026-10-15", "wrong"),
@@ -97,8 +97,8 @@ class FinanceTeacherTests(unittest.TestCase):
             with patch.dict("os.environ", {"NEWS_LEARNING_START_DATE": day}):
                 self.assertEqual(teacher.deliver(day, self.config, ledger), "telegram_accepted")
                 self.assertEqual(teacher.deliver(day, self.config, ledger), "already_accepted")
-            self.assertEqual(api.call_count, 1)
-            self.assertIn("Daily finance teacher", api.call_args.kwargs["data"]["text"])
+            self.assertEqual(api.call_count, 2)
+            self.assertIn("Today's learnings · Day 1", api.call_args_list[0].kwargs["data"]["text"])
             self.assertEqual(ledger.get(news_key)["status"], "accepted")
 
     def test_failed_teacher_send_does_not_replay_or_change_news_claim(self):
@@ -130,9 +130,18 @@ class FinanceTeacherTests(unittest.TestCase):
             patch("sys.argv", ["standalone_news.py"]),
             patch.dict("os.environ", {"NEWS_DELIVERY": "telegram"}),
             patch.object(tg.TelegramConfig, "load", return_value=self.config),
-            patch.object(tg, "existing_delivery", return_value="already_accepted"),
+            patch.object(
+                cli.daily_newsletters, "existing_delivery", return_value="already_accepted"
+            ),
             patch.object(tg, "check"),
-            patch.object(teacher, "deliver", return_value="telegram_accepted") as lesson,
+            patch.object(
+                cli.daily_newsletters,
+                "deliver",
+                return_value={
+                    "status": "telegram_accepted",
+                    "editions": {"learning": "telegram_accepted"},
+                },
+            ) as lesson,
             patch.object(news_digest, "collect") as collect,
             patch.object(news_bot, "summarise") as summarise,
             patch.object(tg, "deliver") as news,
@@ -143,7 +152,9 @@ class FinanceTeacherTests(unittest.TestCase):
         summarise.assert_not_called()
         news.assert_not_called()
         lesson.assert_called_once()
-        self.assertEqual(json.loads(output.getvalue())["daily_teacher"], "telegram_accepted")
+        self.assertEqual(
+            json.loads(output.getvalue())["bundle"]["editions"]["learning"], "telegram_accepted"
+        )
 
     def test_dry_run_uses_no_delivery_credentials_or_teacher_send(self):
         cli = self.cli()

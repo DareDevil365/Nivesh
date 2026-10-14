@@ -125,15 +125,15 @@ def lesson_for_day(day, start=None):
     }
 
 
+def heading(lesson):
+    review = " · review cycle " + str(lesson["cycle"]) if lesson["cycle"] > 1 else ""
+    return f"<b>Today's learnings · Day {lesson['day']}{review}</b>"
+
+
 def render(lesson, digest=None):
     esc = html.escape
-    title = (
-        "Daily finance teacher"
-        if lesson["cycle"] == 1
-        else "Finance teacher · review cycle " + str(lesson["cycle"])
-    )
     parts = [
-        f"<b>{title} · Day {lesson['day']}</b>\n{esc(lesson['phase'])} · {lesson['course_size']}-lesson course",
+        f"{esc(lesson['phase'])} · {lesson['course_size']}-lesson course",
         f"<b>{esc(lesson['title'])}</b>\n{esc(lesson['note'])}",
         "<b>Worked example / research case</b>\n" + esc(lesson["example"]),
         "<b>Try it in your research</b>\n" + esc(lesson["task"]),
@@ -207,4 +207,6 @@ def deliver(day, config, ledger, digest=None):
     lesson = lesson_for_day(day)
     message = render(lesson, digest)
     time.sleep(1.1)
-    return telegram_delivery.deliver_messages(day, [message], config, ledger, identifier)
+    return telegram_delivery.deliver_messages(
+        day, [heading(lesson), message], config, ledger, identifier
+    )

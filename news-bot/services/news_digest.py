@@ -24,10 +24,44 @@ from services.filing_sources import fetch_public
 from services.local_store import DATA_DIR
 
 IST = timezone(timedelta(hours=5, minutes=30))
+EXTRA_DESKS = {
+    "world_general": {
+        "label": "World general news",
+        "query": '("world news" OR "international news") -sports -celebrity',
+        "locale": "US",
+        "question": "What happened, where, and what is confirmed rather than commentary?",
+    },
+    "india_general": {
+        "label": "India general news",
+        "query": '("India news" OR "India government" OR "India education" OR "India weather") -stocks -Sensex -Nifty',
+        "locale": "IN",
+        "question": "What is the original announcement, affected place, timing and remaining uncertainty?",
+    },
+}
+CATEGORIES = {**news_reader.CATEGORIES, **EXTRA_DESKS}
 DIRECT_FEEDS = (
     ("BBC News Business", "https://feeds.bbci.co.uk/news/business/rss.xml", "world"),
-    ("BBC News World", "https://feeds.bbci.co.uk/news/world/rss.xml", "events"),
+    ("BBC News World", "https://feeds.bbci.co.uk/news/world/rss.xml", "world_general"),
     ("The Guardian Business", "https://www.theguardian.com/business/rss", "world"),
+    ("Financial Times", "https://www.ft.com/rss/home/international", "world"),
+    (
+        "Economic Times Markets",
+        "https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms",
+        "india",
+    ),
+    (
+        "Economic Times Economy",
+        "https://economictimes.indiatimes.com/news/economy/rssfeeds/1373380680.cms",
+        "india",
+    ),
+    ("Mint Markets", "https://www.livemint.com/rss/markets", "india"),
+    ("Business Standard Markets", "https://www.business-standard.com/rss/markets-106.rss", "india"),
+    (
+        "Economic Times India",
+        "https://economictimes.indiatimes.com/news/india/rssfeeds/81582957.cms",
+        "india_general",
+    ),
+    ("The Guardian World", "https://www.theguardian.com/world/rss", "world_general"),
 )
 DIRECT_DOMAINS = ("bbc.com", "bbc.co.uk", "theguardian.com")
 DIGEST_DIR = DATA_DIR / "news-digests"
@@ -52,16 +86,18 @@ def direct_feed(name, url, category):
             title = news_reader.clean_text(node.findtext("title"), 350)
             if not link or not date or not title:
                 continue
+            excerpt = news_reader.clean_text(node.findtext("description"), 1200)
             items.append(
                 {
                     "id": hashlib.sha256((link + title).encode()).hexdigest()[:24],
                     "title": title,
                     "url": link,
                     "publisher": name,
+                    "publisher_url": url,
                     "published_at": date.isoformat(),
                     "category": category,
-                    "evidence_text": news_reader.clean_text(node.findtext("description"), 1200),
-                    "read_status": "publisher_feed_excerpt",
+                    "evidence_text": excerpt,
+                    "read_status": "publisher_feed_excerpt" if excerpt else "headline_only",
                 }
             )
         return {"id": name, "status": "available" if items else "no_matches", "items": items}
@@ -130,6 +166,24 @@ def enrich(item):
 def collect(now=None, read_articles=True):
     now = now or datetime.now(timezone.utc)
     desk = news_reader.reading_desk(refresh=True)
+    # Bot-only general-news desks leave the website's finance categories unchanged.
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        extra = list(
+            pool.map(
+                lambda entry: (
+                    entry[0],
+                    news_reader.feed(entry[1]["query"], locale=entry[1]["locale"], refresh=True),
+                ),
+                EXTRA_DESKS.items(),
+            )
+        )
+    desk = {
+        **desk,
+        "sections": [
+            *desk["sections"],
+            *[{**result, "id": category} for category, result in extra],
+        ],
+    }
     feeds = [
         {
             "id": section["id"],
@@ -191,7 +245,7 @@ def collect(now=None, read_articles=True):
             "feed_excerpts": sum(item["read_status"] == "publisher_feed_excerpt" for item in items),
             "headline_only": sum(item["read_status"] == "headline_only" for item in items),
         },
-        "limitations": "A bounded 24-hour discovery window, not all world news. All retained headlines are supplied to the assistant; at most 12 accessible BBC/Guardian articles are attempted and excerpts truncated to 6000 characters. Google News wrapper links are not bypassed. Feed excerpts and headlines are not full articles. Duplicate titles are merged, but syndication and semantic duplicates may remain. Sources may be delayed, unavailable, restricted or wrong. No price predictions or certified impact analysis.",
+        "limitations": "A bounded 24-hour discovery window, not all news. Finance and general-news searches plus publisher feeds are capped at 360 retained headlines. At most 12 accessible BBC/Guardian articles are attempted and excerpts truncated to 6000 characters. FT, Economic Times, Mint and Business Standard are read through their public feeds, not claimed as full articles. Google News wrapper links and paywalls are not bypassed. Feed excerpts and headlines are not full articles. Duplicate titles are merged, but syndication, cross-edition overlap and semantic duplicates may remain. Topic/geography routing is heuristic; a publisher's home country does not establish every story's exposure. Sources may be delayed, unavailable, restricted or wrong. No price predictions or certified impact analysis.",
     }
 
 
@@ -216,7 +270,7 @@ class Section(BaseModel):
 
 class Summary(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    sections: list[Section] = Field(min_length=1, max_length=6)
+    sections: list[Section] = Field(min_length=1, max_length=8)
     reviewed_ids: list[str] = Field(max_length=360)
 
 
@@ -228,7 +282,7 @@ def validate_summary(pack, raw):
     seen = set()
     sections = []
     for section in summary.sections:
-        if section.category not in news_reader.CATEGORIES or section.category in seen:
+        if section.category not in CATEGORIES or section.category in seen:
             raise ValueError("Unknown or repeated category")
         seen.add(section.category)
         bullets = []
@@ -272,7 +326,7 @@ def validate_summary(pack, raw):
         sections.append(
             {
                 "id": section.category,
-                "label": news_reader.CATEGORIES[section.category]["label"],
+                "label": CATEGORIES[section.category]["label"],
                 "bullets": bullets,
             }
         )

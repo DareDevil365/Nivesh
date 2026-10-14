@@ -97,7 +97,7 @@ def render_messages(digest):
     coverage = digest["coverage"]
     blocks = [
         f"Prepared: {esc(digest['generated_at'])}. News window: last 24 hours.\n"
-        f"Coverage: {coverage['headlines']} headlines; {coverage['article_excerpts']} article excerpts, "
+        f"Collection coverage across all editions: {coverage['headlines']} headlines; {coverage['article_excerpts']} article excerpts, "
         f"{coverage['feed_excerpts']} feed excerpts, {coverage['headline_only']} headline-only.\n"
         "AI interpretation is unverified. Headline fallbacks are labelled below."
     ]
@@ -142,7 +142,7 @@ def render_messages(digest):
     if not chunks or len(chunks) > 20:
         raise BotError("Unexpected Telegram report size; nothing was sent.")
     return [
-        f"<b>Nivesh · {esc(digest['date_ist'])} · {index}/{len(chunks)}</b>\n\n" + chunk
+        f"<b>Part {index}/{len(chunks)}</b>\n\n" + chunk
         for index, chunk in enumerate(chunks, 1)
     ]
 

@@ -13,19 +13,23 @@
   },
   "services/news_digest.py": {
     "source": "backend/services/news_digest.py",
-    "sha256": "b2756e4cace052e2e2ab2bc2e4c46a95f65a74361c03a69afd88daeffd5f5887"
+    "sha256": "534c78441bfccf47a8f4c7b2c3b145e4e2bd7904cff47b76e2e05ecaacc4754d"
   },
   "services/news_bot.py": {
     "source": "backend/services/news_bot.py",
-    "sha256": "416ed2e50d191f0517c1d0ceac60dda250ffb03f1b25fdf137f20e022dca47c8"
+    "sha256": "b904dbc5cbd961190f9f7cad6c9f1923b44387f400375bb9a980af847a065db3"
   },
   "services/telegram_delivery.py": {
     "source": "backend/services/telegram_delivery.py",
-    "sha256": "acc220348d15fba0e6a7f191c1e5db3d14ee09b54566114a065f39f4434ef747"
+    "sha256": "44eebf178c505cc5e73ccc3ba933025dec8923ad0b4475becc43cbe56b4f3e58"
   },
   "services/finance_teacher.py": {
     "source": "backend/services/finance_teacher.py",
-    "sha256": "82310ce600c483266b76a48bd3bbeb57a5d746f3eff831765acb2e2c2b6ce578"
+    "sha256": "124ce9cf70b43f5c9f89039a79f192960ea9ae4a216b67dc2e71c857cdee07a4"
+  },
+  "services/daily_newsletters.py": {
+    "source": "backend/services/daily_newsletters.py",
+    "sha256": "da6b6daef3014e080361f8fc3adbda7e1369fe152fa6dff0d2640cd40a243f42"
   },
   "services/finance_curriculum.json": {
     "source": "backend/services/finance_curriculum.json",
@@ -49,7 +53,7 @@
   },
   "scripts/standalone_news.py": {
     "source": "backend/scripts/standalone_news.py",
-    "sha256": "048affdae9ff50b1cea2c3b066d5669c316d0944a635b72a428d965a1da79b5d"
+    "sha256": "3476a6c3170f682cae926215a6dca569f81f48d7fd603d9ab96a327e0d866fef"
   },
   "scripts/setup_telegram.py": {
     "source": "backend/scripts/setup_telegram.py",
@@ -65,10 +69,14 @@
   },
   "tests/test_finance_teacher.py": {
     "source": "backend/tests/test_finance_teacher.py",
-    "sha256": "417f3140b1c15aa756733f4240d6f060aaef68d4deacfb730945a33bd401df0f"
+    "sha256": "5caddc5fd7cf31de1e210689eaf466ff9f00ab92257ea7a415cceba29bf05d00"
+  },
+  "tests/test_daily_newsletters.py": {
+    "source": "backend/tests/test_daily_newsletters.py",
+    "sha256": "3f4da85ee14c5b058bc937e2e325f4ba84696021114f44dc680559beb39a7fe6"
   },
   "PROJECT_GUIDE.md": {
     "source": "research/STANDALONE_NEWS_BOT.md",
-    "sha256": "b2437d80577e3f2b60989fa4f31d064f86060a809ba995cf6af37f2eb7d16d00"
+    "sha256": "950c2a8b32b1a345422d94ec76996a3240fb6167cafe4e78a9ec6fef884395f6"
   }
 }
