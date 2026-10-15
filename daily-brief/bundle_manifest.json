@@ -1,114 +1,134 @@
 {
   "config.py": {
-    "source": "backend/config.py",
-    "sha256": "374481f575e83033d3452a02c1ad86c880449f216765c6681c0419936d6d5def"
+    "sha256": "fb2b6d428c2fde4bce5f5d6305f13eaab8eefd23c3b06e70707639f8e554b732"
   },
   "requirements.txt": {
-    "source": "backend/requirements-news.txt",
     "sha256": "541209e0d48517d0351af79c285624a47e35e9a95dcb204be44d2ba1540bff58"
   },
+  "requirements-deploy.txt": {
+    "sha256": "f12e1c34851c1b3e82e7d681456852da8db8fc7c7f3c8f0d524e76e4827b63eb"
+  },
+  "pyproject.toml": {
+    "sha256": "5bf15c5152f4fae0e734a5679eade42e491dcf26c89c1781a6730457d187fcfa"
+  },
+  ".gitignore": {
+    "sha256": "3fd19456fc1a9082d43a220e90a24fda460c17be0d3da90f7fd497a9ca6b5c3d"
+  },
+  ".env.example": {
+    "sha256": "9f64bd29ec0b3d23171dbc5b4c8f4dd4099ebfaf912d7679e7535d15a2b44970"
+  },
+  "PROJECT_GUIDE.md": {
+    "sha256": "537a34fe219811da526629be18eea06117a55acd2014ad1a408cf094e6e7f99d"
+  },
+  "README.md": {
+    "sha256": "f6250809f71bf2574a52d95ad4edb147e2417a89c098732e6057e817572c6dfa"
+  },
+  "NEWSLETTER_SOURCES.md": {
+    "sha256": "166bb345c829bf3a9011ad9d6e5c3042c5b58a0f306fb22d8c3db52b564ff5c9"
+  },
+  "newsletter_sources.json": {
+    "sha256": "76fdaa8a0434c3c2e5d937a502ac3d8cf51de2c311190a84e12b3ea5fefa2bbd"
+  },
+  "services/__init__.py": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "tests/__init__.py": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
   "services/news_reader.py": {
-    "source": "backend/services/news_reader.py",
     "sha256": "a87f71e8515418f4ae4f67a65f98b9333dcf3f14b4d33943658f7fcadc086195"
   },
   "services/news_digest.py": {
-    "source": "backend/services/news_digest.py",
     "sha256": "0908f34342d80373ab46f46a4ca29e71d27e42aa1f0eea5da84916bebad77b43"
   },
   "services/news_bot.py": {
-    "source": "backend/services/news_bot.py",
-    "sha256": "6f45417c4ec0fb0134e3b194e35dbd79efadfe970059d691270de9e733477698"
+    "sha256": "7ab18887cfd7ee184323893d4fd455f485f40c6c477441eacd83c56cd4ea8dbe"
   },
   "services/telegram_delivery.py": {
-    "source": "backend/services/telegram_delivery.py",
     "sha256": "59250590eefc5b12b4091a36daf9dcc53a04f81b8600e2832c885a57be2e3ca9"
   },
   "services/finance_teacher.py": {
-    "source": "backend/services/finance_teacher.py",
     "sha256": "988f267500c5765c4086626376515fab08dd02231140b4d0746f3f522ae73e9a"
   },
   "services/finance_class.py": {
-    "source": "backend/services/finance_class.py",
     "sha256": "22ca57bdaff606675ef6381946f752b4ca8cf01bd0664b88bda316dbe7d0f86b"
   },
   "services/finance_foundations.json": {
-    "source": "backend/services/finance_foundations.json",
     "sha256": "5d027ca8ae97299bd000b7e7810a98d61752b6a54476798f3feae95b2eb047c9"
   },
   "services/finance_lesson_depth.json": {
-    "source": "backend/services/finance_lesson_depth.json",
     "sha256": "9d8ee5c3f79a1b9b7a20ff50c7a42fa505a1d82482db7e9ba569adb760d8115a"
   },
   "services/finance_textbook.py": {
-    "source": "backend/services/finance_textbook.py",
     "sha256": "391cceff3f8a1ae92431150d45d56b6325692521c97d8b1d20917a860e39ebfd"
   },
   "services/finance_textbook.json": {
-    "source": "backend/services/finance_textbook.json",
     "sha256": "3649498940ddd797e3b9834d6467e84f5e401122ba6088c2d75c36a24c2d61d8"
   },
   "services/news_memory.py": {
-    "source": "backend/services/news_memory.py",
     "sha256": "25985b5b0fdab05b56e35850dfd7b498fa38489f487cf43a88418c8a3cb506de"
   },
   "services/daily_newsletters.py": {
-    "source": "backend/services/daily_newsletters.py",
-    "sha256": "e8ece13bb0b01e29b5cc742a581e83a94f2507915e57d4a528f7647526485ea0"
+    "sha256": "eb677fae78d57702c162dc8c4155c5d95cb8dd28262bb1e669f4d884675564cc"
   },
   "services/finance_curriculum.json": {
-    "source": "backend/services/finance_curriculum.json",
     "sha256": "e2ee324573e01738b48298aab7eb9ffe303b702f976746d7bb195a2193a34734"
   },
   "services/gemini_client.py": {
-    "source": "backend/services/gemini_client.py",
     "sha256": "0a8250ee2d552db461f1bebfaa21e0b3c7a048d142cd5931ebc65d64486f8e48"
   },
   "services/cache_manager.py": {
-    "source": "backend/services/cache_manager.py",
     "sha256": "a062c25f3f6798c4ea09bb7c8c30f658ab271540d6ea5d26d3d6515d9694c01b"
   },
   "services/filing_sources.py": {
-    "source": "backend/services/filing_sources.py",
     "sha256": "f1c966fc68dd894f957053719d32285d8db0cc8120eb0a870f4c7bb453400a07"
   },
   "services/local_store.py": {
-    "source": "backend/services/local_store.py",
-    "sha256": "0de7ddd2be3988f5e014e1bfdbf256808c09e876a9d3831ef9ca89628614ea9c"
+    "sha256": "29f282903e556a41f8ba77f7c4a31f425ba65b6dbef9e144db6ae691448de939"
+  },
+  "services/ai_newsletter.py": {
+    "sha256": "e8f487a2580b3078eea85b5678f323ee186d7b6bcdcb34ef1e8cfd2722ff75db"
+  },
+  "services/newsletter_mail.py": {
+    "sha256": "6ad789ce04886de5e3d73a547a495e0241c4b706c347c9ad76bf210ba8907fc0"
   },
   "scripts/standalone_news.py": {
-    "source": "backend/scripts/standalone_news.py",
-    "sha256": "cc66a5ef6fa386f081ad3309128f755656ecdbecee05de2c3b145fe5346c3dce"
+    "sha256": "2d32c1eb5a93b27ac40ad6259071d88fd9b5519a7d3d31925c9aa63461fb9b62"
   },
   "scripts/setup_telegram.py": {
-    "source": "backend/scripts/setup_telegram.py",
     "sha256": "c8c0dd3f7437596477f794101e2ea999e1110ef3acb3b80fc55622ff683effae"
   },
+  "scripts/setup_newsletters.py": {
+    "sha256": "cfd8f952e77dffbc0f84ab510254c6432a0b39aa7734ade2fa4d33d1f7dae981"
+  },
+  "scripts/build_manifest.py": {
+    "sha256": "f2ac91dcc8d0ad6f878de45dc50d34cf7785b74f33832281597087033a05b1f4"
+  },
+  "scripts/deploy.py": {
+    "sha256": "b64a8c8aed9b92ad1edc36cd0da400b35f516d9f9e5e43706fea205bef0a50db"
+  },
   "tests/test_news_bot.py": {
-    "source": "backend/tests/test_news_bot.py",
     "sha256": "3ee7f0587bdc865e282626b77c1b7be412eb706ae2ada22caf4a22b398dd0700"
   },
   "tests/test_telegram_delivery.py": {
-    "source": "backend/tests/test_telegram_delivery.py",
     "sha256": "86a5c1ef9c273b9f6c96a3be191d206cc67d9562e60cc05f344e0ba997029153"
   },
   "tests/test_finance_teacher.py": {
-    "source": "backend/tests/test_finance_teacher.py",
     "sha256": "a9f5ef7ad6c7e2b2af111c2d8b3fb5e6c66bb996108409efa28d29f74d070e65"
   },
   "tests/test_daily_newsletters.py": {
-    "source": "backend/tests/test_daily_newsletters.py",
     "sha256": "808198ccbd09355d9394c3ccb37326a2b9ccc0bb71c27aebb0eaa61599929942"
   },
   "tests/test_finance_class.py": {
-    "source": "backend/tests/test_finance_class.py",
     "sha256": "add07e9d1647c4a334e50ce9a6bf8c85e448a2d269f1aafdb4072ecc7a8a92c1"
   },
   "tests/test_news_memory.py": {
-    "source": "backend/tests/test_news_memory.py",
     "sha256": "8cfeeec409a1824808d4cae10b87b7da5c4801ecb7745d3b8c974a5c9406028d"
   },
-  "PROJECT_GUIDE.md": {
-    "source": "research/STANDALONE_NEWS_BOT.md",
-    "sha256": "d84b3feb51311df5ecb507f4d23c97c6bee5dd03375235a2e02321c4c6ef00af"
+  "tests/test_ai_newsletter.py": {
+    "sha256": "03c79df36761c6ca61e0df339a01ba515f8db1353d4abe74b1470d3c5582ab6b"
+  },
+  "tests/test_newsletter_mail.py": {
+    "sha256": "5f6668843de71aeb5cf0d09245e09adb153788a52e9a74de498dbf5191ee0861"
   }
 }

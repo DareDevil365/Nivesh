@@ -7,7 +7,7 @@ load_dotenv(Path(__file__).resolve().parent / ".env")
 
 
 class Settings:
-    PROJECT_NAME: str = "Nivesh Backend"
+    PROJECT_NAME: str = "Daily Brief"
     SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
     SUPABASE_KEY: str = os.getenv("SUPABASE_KEY", "")
     SUPABASE_SERVICE_KEY: str = os.getenv("SUPABASE_SERVICE_KEY", "")

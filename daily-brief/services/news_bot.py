@@ -89,6 +89,7 @@ def generate_section(pack, category, items, purpose=None):
                 for key in ("id", "title", "publisher", "published_at", "read_status")
             },
             "evidence_text": item["evidence_text"][:1800],
+            "source_kind": item.get("source_kind", item["read_status"]),
         }
         for item in items
     ]
