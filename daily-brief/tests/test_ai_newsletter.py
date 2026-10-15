@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from services import ai_newsletter as ai
-from services import daily_newsletters, news_bot, news_digest
+from services import daily_newsletters, news_bot, news_digest, news_memory
 from services import telegram_delivery as tg
 from tests.test_news_bot import fixture, provider
 from tests.test_newsletter_mail import NOW
@@ -35,6 +35,21 @@ def pack():
 
 
 class AINewsletterTests(unittest.TestCase):
+    def test_distinct_newsletter_issues_with_same_subject_are_not_suppressed(self):
+        source = {
+            **pack()["items"][0],
+            "source_kind": "newsletter_commentary",
+            "id": "mail-issue-one",
+        }
+        history = {
+            "version": 1,
+            "entries": news_memory.entries_for([ai.memory_source(source)], "2026-10-15"),
+        }
+        received = {**pack(), "items": [source]}
+        self.assertEqual(ai.prepare(received, history, use_ai=False)["items"], [])
+        received["items"] = [{**source, "id": "mail-issue-two"}]
+        self.assertEqual(len(ai.prepare(received, history, use_ai=False)["items"]), 1)
+
     def test_valid_synthesis_passes_shared_schema_with_complete_pack_metadata(self):
         candidate = {
             "category": "policy",

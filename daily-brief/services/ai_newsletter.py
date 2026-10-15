@@ -214,7 +214,9 @@ def select(items):
 
 
 def prepare(pack, history, use_ai=True):
-    items = select([item for item in pack["items"] if news_memory.unseen(item, history)])
+    items = select(
+        [item for item in pack["items"] if news_memory.unseen(memory_source(item), history)]
+    )
     section = None
     evidence = [item for item in items if item["read_status"] != "headline_only"]
     if use_ai and evidence:
@@ -244,6 +246,14 @@ def prepare(pack, history, use_ai=True):
         except (news_bot.BotError, ValueError, httpx.HTTPError):
             pass
     return {**pack, "items": items, "section": section}
+
+
+def memory_source(item):
+    # Newsletters may reuse the same subject daily. Distinguish received issues by
+    # their already-hashed issue identity, without exposing raw mail identifiers.
+    if item["source_kind"] == "newsletter_commentary":
+        return {**item, "title": item["title"] + " · issue " + item["id"]}
+    return item
 
 
 def messages(digest):
@@ -335,7 +345,9 @@ def deliver(day, config, ledger, use_ai=True, offline=False):
         config,
         ledger,
         identifier,
-        story_entries=news_memory.entries_for(digest["items"], day),
+        story_entries=news_memory.entries_for(
+            [memory_source(item) for item in digest["items"]], day
+        ),
     )
     news_memory.reconcile(ledger, memory_key, day, identifier)
     return result
