@@ -5,6 +5,7 @@ import html
 import re
 import threading
 import time
+import unicodedata
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
@@ -16,6 +17,14 @@ from bs4 import BeautifulSoup
 from fastapi import HTTPException
 
 from services.cache_manager import cache_manager
+
+
+def headline_fingerprint(title):
+    normalized = unicodedata.normalize("NFKC", title).casefold()
+    # Keep decimal values distinct: 3.0 and 30 must never become the same story.
+    tokens = re.findall(r"\d+(?:[.,]\d+)*%?|[^\W\d_]+", normalized, re.UNICODE)
+    return hashlib.sha256("|".join(tokens).encode()).hexdigest()
+
 
 CATEGORIES = {
     "world": {

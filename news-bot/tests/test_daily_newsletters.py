@@ -5,16 +5,19 @@ import html
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from services import daily_newsletters as daily
-from services import finance_teacher, news_bot, news_digest
+from services import finance_class, finance_teacher, news_bot, news_digest
 from services import telegram_delivery as tg
 from tests.test_news_bot import fixture, provider
 
 
 class DailyNewsletterTests(unittest.TestCase):
     def setUp(self):
+        env = patch.dict("os.environ", {"NEWS_FINANCE_START_DATE": "2026-10-14"})
+        env.start()
+        self.addCleanup(env.stop)
         self.config = tg.TelegramConfig("123456:" + "x" * 35, "7654321")
         self.digest = news_bot.summarise(fixture()[0], use_ai=False)
 
@@ -49,7 +52,7 @@ class DailyNewsletterTests(unittest.TestCase):
     def test_success_order_headings_content_teacher_and_one_closing(self):
         sent = []
 
-        def send(day, messages, config, ledger, identifier):
+        def send(day, messages, config, ledger, identifier, **kwargs):
             sent.append((identifier, messages))
             return "telegram_accepted"
 
@@ -60,18 +63,22 @@ class DailyNewsletterTests(unittest.TestCase):
         with (
             patch.object(tg, "deliver_messages", side_effect=send),
             patch.object(finance_teacher, "deliver", side_effect=teach),
+            patch.object(finance_class, "deliver", return_value="telegram_accepted"),
             patch.object(daily.time, "sleep"),
         ):
-            result = daily.deliver(self.digest, self.config, object())
+            ledger = MagicMock()
+            ledger.get.return_value = None
+            result = daily.deliver(self.digest, self.config, ledger)
         self.assertEqual(result["status"], "telegram_accepted")
-        self.assertEqual(len(sent), 6)
+        self.assertEqual(len(sent), 7)
         self.assertIn("World news &amp; finance", sent[0][1][0])
         self.assertIn("India news &amp; finance", sent[1][1][0])
-        self.assertEqual(sent[4][0], "lesson")
-        self.assertIn("Your next step", sent[5][1][0])
+        self.assertIn("7-day follow-up", sent[4][1][0])
+        self.assertEqual(sent[5][0], "lesson")
+        self.assertIn("Your next step", sent[6][1][0])
 
     def test_one_failed_edition_does_not_block_others_or_teacher_and_withholds_cta(self):
-        def send(day, messages, config, ledger, identifier):
+        def send(day, messages, config, ledger, identifier, **kwargs):
             if "world_finance-" in identifier:
                 raise news_bot.BotError("uncertain")
             return "telegram_accepted"
@@ -79,10 +86,13 @@ class DailyNewsletterTests(unittest.TestCase):
         with (
             patch.object(tg, "deliver_messages", side_effect=send) as delivery,
             patch.object(finance_teacher, "deliver", return_value="telegram_accepted") as teacher,
+            patch.object(finance_class, "deliver", return_value="telegram_accepted"),
             patch.object(daily.time, "sleep"),
         ):
-            result = daily.deliver(self.digest, self.config, object())
-        self.assertEqual(delivery.call_count, 4)
+            ledger = MagicMock()
+            ledger.get.return_value = None
+            result = daily.deliver(self.digest, self.config, ledger)
+        self.assertEqual(delivery.call_count, 5)
         teacher.assert_called_once()
         self.assertEqual(result["editions"]["india_general"], "telegram_accepted")
         self.assertEqual(result["status"], "partial_delivery")
@@ -100,6 +110,11 @@ class DailyNewsletterTests(unittest.TestCase):
                     daily.identifier("2026-10-14", self.config, edition).encode()
                 ).hexdigest()[:32]
                 ledger.reserve(key, {"status": "accepted"})
+            self.assertIsNone(daily.existing_delivery("2026-10-14", self.config, ledger))
+            weekly_key = hashlib.sha256(
+                daily.identifier("2026-10-14", self.config, "weekly").encode()
+            ).hexdigest()[:32]
+            ledger.reserve(weekly_key, {"status": "accepted"})
             self.assertEqual(
                 daily.existing_delivery("2026-10-14", self.config, ledger), "already_accepted"
             )
@@ -153,6 +168,53 @@ class DailyNewsletterTests(unittest.TestCase):
         result = news_bot.summarise(pack, use_ai=False)
         self.assertEqual(result["sections"][0]["id"], "world_general")
         self.assertEqual(result["summary_modes"]["world_general"], "headline_fallback")
+
+    def test_raw_technical_footer_never_spills_into_a_newsletter_part(self):
+        self.digest["limitations"] = "internal implementation bookkeeping " * 500
+        text = "\n".join(tg.render_messages(self.digest))
+        self.assertNotIn("internal implementation bookkeeping", text)
+        self.assertIn("<b>Reading notes</b>", text)
+        self.assertIn("• Open the original links", text)
+        self.assertIn('href="https://example.com/story"', text)
+
+    def test_complete_bundle_records_sent_stories_and_repeat_makes_no_requests(self):
+        from services import news_memory
+
+        weekly_item = {
+            **fixture()[0]["items"][0],
+            "id": "older",
+            "title": "Historic central bank funding crisis",
+            "url": "https://example.com/older",
+            "published_at": "2026-10-12T00:00:00+00:00",
+        }
+        with (
+            tempfile.TemporaryDirectory() as folder,
+            patch.object(news_digest, "DIGEST_DIR", Path(folder)),
+            patch.object(daily.time, "sleep"),
+            patch.dict("os.environ", {"NEWS_LEARNING_START_DATE": "2026-10-14"}),
+            patch.object(
+                tg,
+                "api",
+                return_value={"message_id": 12, "chat": {"id": 7654321, "type": "private"}},
+            ) as api,
+        ):
+            ledger = news_bot.LocalLedger()
+            first = daily.deliver(
+                self.digest, self.config, ledger, weekly_pack={"items": [weekly_item]}
+            )
+            self.assertEqual(first["status"], "telegram_accepted")
+            history = news_memory.load(ledger, news_memory.history_key(self.config), "2026-10-14")
+            self.assertFalse(news_memory.unseen(weekly_item, history))
+            self.assertFalse(news_memory.unseen(fixture()[0]["items"][0], history))
+            count = api.call_count
+            second = daily.deliver(
+                self.digest, self.config, ledger, weekly_pack={"items": [weekly_item]}
+            )
+            self.assertEqual(second["status"], "telegram_accepted")
+            self.assertTrue(
+                all(status == "already_accepted" for status in second["editions"].values())
+            )
+            self.assertEqual(api.call_count, count)
 
 
 if __name__ == "__main__":

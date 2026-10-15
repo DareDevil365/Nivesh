@@ -122,12 +122,18 @@ def render_messages(digest):
         blocks.extend(
             f"<b>{esc(term['term'])}:</b> {esc(term['meaning'])}" for term in digest["glossary"]
         )
-    blocks.append("<b>Source coverage and limitations</b>")
-    blocks.extend(
-        f"{esc(feed['id'])}: {esc(feed['status'])}" + (" (stale)" if feed.get("stale") else "")
+    unavailable = [
+        feed["id"]
         for feed in digest["feeds"]
+        if feed.get("status") not in ("available", "no_matches")
+    ]
+    blocks.append(
+        "<b>Reading notes</b>\n"
+        "• Source labels show headlines, feed excerpts or article excerpts.\n"
+        "• Coverage is selective; AI explanations and causal interpretations need checking.\n"
+        "• Open the original links for full context."
+        + ("\n• Unavailable feeds: " + esc(", ".join(unavailable)) + "." if unavailable else "")
     )
-    blocks.append(esc(digest["limitations"]))
     chunks, current = [], ""
     for block in blocks:
         if len(block.encode("utf-16-le")) // 2 > 3500:
@@ -143,8 +149,7 @@ def render_messages(digest):
     if not chunks or len(chunks) > 20:
         raise BotError("Unexpected Telegram report size; nothing was sent.")
     return [
-        f"<b>Part {index}/{len(chunks)}</b>\n\n" + chunk
-        for index, chunk in enumerate(chunks, 1)
+        f"<b>Part {index}/{len(chunks)}</b>\n\n" + chunk for index, chunk in enumerate(chunks, 1)
     ]
 
 
@@ -178,7 +183,7 @@ def deliver(digest, config, ledger):
     )
 
 
-def deliver_messages(day, messages, config, ledger, delivery_id):
+def deliver_messages(day, messages, config, ledger, delivery_id, story_entries=None):
     existing = existing_id(delivery_id, ledger)
     if existing:
         return existing
@@ -202,6 +207,8 @@ def deliver_messages(day, messages, config, ledger, delivery_id):
             json.dumps(messages, ensure_ascii=False).encode()
         ).hexdigest(),
     }
+    if story_entries:
+        record["story_entries"] = story_entries
     ledger.reserve(key, record)
     for index, text in enumerate(messages, 1):
         if index > 1:

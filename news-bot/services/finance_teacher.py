@@ -127,7 +127,7 @@ def lesson_for_day(day, start=None):
 
 def heading(lesson):
     review = " · review cycle " + str(lesson["cycle"]) if lesson["cycle"] > 1 else ""
-    return f"<b>Today's learnings · Day {lesson['day']}{review}</b>"
+    return f"<b>Stock Daddy · Day {lesson['day']}{review}</b>"
 
 
 def render(lesson, digest=None):
@@ -200,7 +200,7 @@ def render(lesson, digest=None):
 
 
 def deliver(day, config, ledger, digest=None):
-    identifier = "teacher-v1-" + config.delivery_id(day)
+    identifier = "stock-daddy-v1-" + config.delivery_id(day)
     previous = telegram_delivery.existing_id(identifier, ledger)
     if previous:
         return previous

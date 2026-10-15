@@ -5,7 +5,7 @@ import html
 import time
 from datetime import date
 
-from services import finance_teacher
+from services import finance_class, finance_teacher, news_memory, news_reader
 from services import telegram_delivery as tg
 from services.news_bot import BotError
 
@@ -18,13 +18,13 @@ EDITIONS = (
 
 
 def identifier(day, config, edition):
-    return "universal-v1-" + edition + "-" + config.delivery_id(day)
+    return "universal-v2-" + edition + "-" + config.delivery_id(day)
 
 
 def existing_delivery(day, config, ledger):
     # Missing/uncertain editions do not prevent other editions from being attempted.
     complete = []
-    for edition, _, _ in EDITIONS:
+    for edition in [entry[0] for entry in EDITIONS] + ["weekly"]:
         key = hashlib.sha256(identifier(day, config, edition).encode()).hexdigest()[:32]
         record = ledger.get(key)
         complete.append(bool(record and record.get("status") == "accepted"))
@@ -47,16 +47,44 @@ def edition_messages(digest, title, categories):
 def closing(day, config, ledger):
     text = (
         "<b>Your next step</b>\n"
-        "Read in order: world finance → India finance → world headlines → India headlines → today's learning.\n\n"
-        "Choose one source link and read the original. Write three lines: what changed, which business might be exposed, and what evidence would change your view. Then try today's lesson before revealing its answer.\n\n"
+        "Read the news, check the seven-day follow-up, then try Finance Class and its case study. Stock Daddy is the separate company-research track.\n\n"
+        "Open one original source. Explain one new finance concept in your own words, and name one fact you would check before believing an explanation. Try the lesson's question before revealing its answer.\n\n"
         "Headlines and AI summaries are starting points, not verified investment conclusions."
     )
     return tg.deliver_messages(day, [text], config, ledger, identifier(day, config, "closing"))
 
 
-def deliver(digest, config, ledger, day=None):
+def weekly_messages(items, day):
+    blocks = [
+        "<b>7-day follow-up · New to your briefing</b>\n"
+        + date.fromisoformat(day).strftime("%A, %d %B %Y")
+    ]
+    content = [
+        "<b>Earlier developments worth revisiting</b>\nPublished between one and seven days ago; matching sent headlines from the last fourteen days are suppressed. Selection is a significance heuristic, not an exhaustive events calendar."
+    ]
+    for item in items:
+        url = news_reader.safe_link(item["url"])
+        if not url:
+            raise BotError("Unsafe weekly citation URL.")
+        content.append(
+            f'<a href="{html.escape(url, quote=True)}">{html.escape(item["title"])}</a>\n{html.escape(item["publisher"])} · {html.escape(item["published_at"])}\nEvidence: {html.escape(item["read_status"].replace("_", " "))}. Read the source for the development and its event date.'
+        )
+        if item.get("previous_link_seen"):
+            content.append(
+                "<i>Updated headline at a link seen previously; check what actually changed.</i>"
+            )
+    if not items:
+        content.append(
+            "No additional qualifying unseen stories were found in this bounded scan. This does not establish that all major events have been covered."
+        )
+    return [*blocks, *finance_class.pack_blocks(content)]
+
+
+def deliver(digest, config, ledger, day=None, weekly_pack=None):
     day = day or digest["date_ist"]
     results = {}
+    memory_key = news_memory.history_key(config)
+    history = news_memory.load(ledger, memory_key, day)
     # Render before any send, so invalid links/blocks fail without half a bundle.
     prepared = (
         [
@@ -72,14 +100,57 @@ def deliver(digest, config, ledger, day=None):
         try:
             time.sleep(1.1)
             results[edition] = tg.deliver_messages(
-                day, messages, config, ledger, identifier(day, config, edition)
+                day,
+                messages,
+                config,
+                ledger,
+                identifier(day, config, edition),
+                story_entries=news_memory.entries_for(
+                    news_memory.sources_in(
+                        digest, next(entry[2] for entry in EDITIONS if entry[0] == edition)
+                    ),
+                    day,
+                ),
             )
         except BotError:
             results[edition] = "failed_or_pending"
+    # Reconciliation heals a history write failure without replaying accepted messages.
+    for edition, _, _ in EDITIONS:
+        try:
+            news_memory.reconcile(ledger, memory_key, day, identifier(day, config, edition))
+        except BotError:
+            results[edition] = "history_update_failed"
+    history = news_memory.load(ledger, memory_key, day)
+    weekly = news_memory.weekly_candidates(weekly_pack, history) if weekly_pack else []
     try:
-        results["learning"] = finance_teacher.deliver(day, config, ledger, digest)
+        time.sleep(1.1)
+        results["weekly"] = tg.deliver_messages(
+            day,
+            weekly_messages(weekly, day),
+            config,
+            ledger,
+            identifier(day, config, "weekly"),
+            story_entries=news_memory.entries_for(weekly, day),
+        )
+        news_memory.reconcile(ledger, memory_key, day, identifier(day, config, "weekly"))
     except BotError:
-        results["learning"] = "failed_or_pending"
+        results["weekly"] = "failed_or_pending"
+    teaching = digest.get("finance_teaching") if digest else None
+    teaching = teaching or finance_class.prepare(day, use_ai=False)
+    try:
+        results["finance_class"] = finance_class.deliver(day, config, ledger, teaching)
+    except BotError:
+        results["finance_class"] = "failed_or_pending"
+    try:
+        results["finance_context"] = finance_class.deliver(
+            day, config, ledger, teaching, context=True
+        )
+    except BotError:
+        results["finance_context"] = "failed_or_pending"
+    try:
+        results["stock_daddy"] = finance_teacher.deliver(day, config, ledger, digest)
+    except BotError:
+        results["stock_daddy"] = "failed_or_pending"
     successful = {"telegram_accepted", "already_accepted"}
     if all(status in successful for status in results.values()):
         try:

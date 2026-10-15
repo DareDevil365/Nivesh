@@ -62,6 +62,7 @@ jobs:
           NEWS_TELEGRAM_BOT_TOKEN: ${{ secrets.NEWS_TELEGRAM_BOT_TOKEN }}
           NEWS_TELEGRAM_CHAT_ID: ${{ secrets.NEWS_TELEGRAM_CHAT_ID }}
           NEWS_LEARNING_START_DATE: ${{ vars.NEWS_LEARNING_START_DATE || '2026-10-15' }}
+          NEWS_FINANCE_START_DATE: ${{ vars.NEWS_FINANCE_START_DATE || vars.NEWS_LEARNING_START_DATE || '2026-10-15' }}
           NEWS_SMTP_USER: ${{ secrets.NEWS_SMTP_USER }}
           NEWS_SMTP_PASSWORD: ${{ secrets.NEWS_SMTP_PASSWORD }}
           NEWS_EMAIL_TO: ${{ secrets.NEWS_EMAIL_TO }}

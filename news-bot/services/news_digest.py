@@ -1,7 +1,6 @@
-"""Source pack and validated email rendering for the scheduled reading assistant.
+"""Bounded public-news collection and validation shared by standalone/legacy readers.
 
-The Codex heartbeat reads this pack and writes the summary. This service never
-reads mailbox contents, sends email or invokes a language model by itself.
+This service itself never reads mailboxes, sends messages or calls a model.
 """
 
 import hashlib
@@ -163,9 +162,23 @@ def enrich(item):
         }
 
 
-def collect(now=None, read_articles=True):
+def collect(now=None, read_articles=True, window_hours=24, older_than_hours=0):
     now = now or datetime.now(timezone.utc)
-    desk = news_reader.reading_desk(refresh=True)
+    if not 24 <= window_hours <= 168 or not 0 <= older_than_hours < window_hours:
+        raise ValueError("News window must be 24–168 hours with a smaller lower-age bound.")
+    if window_hours > 24:
+        upper = now - timedelta(hours=older_than_hours)
+
+        def load_week(entry):
+            category, settings = entry
+            query = settings["query"] + " before:" + (upper + timedelta(days=1)).date().isoformat()
+            result = news_reader.feed(query, days=7, locale=settings["locale"], refresh=True)
+            return {**result, "id": category}
+
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            desk = {"sections": list(pool.map(load_week, CATEGORIES.items()))}
+    else:
+        desk = news_reader.reading_desk(refresh=True)
     # Bot-only general-news desks leave the website's finance categories unchanged.
     with ThreadPoolExecutor(max_workers=2) as pool:
         extra = list(
@@ -174,7 +187,7 @@ def collect(now=None, read_articles=True):
                     entry[0],
                     news_reader.feed(entry[1]["query"], locale=entry[1]["locale"], refresh=True),
                 ),
-                EXTRA_DESKS.items(),
+                EXTRA_DESKS.items() if window_hours == 24 else (),
             )
         )
     desk = {
@@ -208,9 +221,14 @@ def collect(now=None, read_articles=True):
     for feed in feeds:
         for item in feed["items"]:
             date = news_reader.parse_date(item["published_at"])
-            if not date or date < now - timedelta(hours=24) or date > now + timedelta(minutes=5):
+            if (
+                not date
+                or date < now - timedelta(hours=window_hours)
+                or date > now + timedelta(minutes=5)
+                or (older_than_hours and date >= now - timedelta(hours=older_than_hours))
+            ):
                 continue
-            identity = re.sub(r"\W+", "", item["title"].casefold())
+            identity = news_reader.headline_fingerprint(item["title"])
             if identity in records:
                 prior = records[identity]
                 categories = sorted(set(prior["categories"] + [item["category"]]))
@@ -236,7 +254,8 @@ def collect(now=None, read_articles=True):
         "version": 1,
         "date_ist": local_day(now),
         "generated_at": now.isoformat(),
-        "window_hours": 24,
+        "window_hours": window_hours,
+        "older_than_hours": older_than_hours,
         "feeds": [{k: v for k, v in feed.items() if k != "items"} for feed in feeds],
         "items": items,
         "coverage": {
@@ -245,7 +264,7 @@ def collect(now=None, read_articles=True):
             "feed_excerpts": sum(item["read_status"] == "publisher_feed_excerpt" for item in items),
             "headline_only": sum(item["read_status"] == "headline_only" for item in items),
         },
-        "limitations": "A bounded 24-hour discovery window, not all news. Finance and general-news searches plus publisher feeds are capped at 360 retained headlines. At most 12 accessible BBC/Guardian articles are attempted and excerpts truncated to 6000 characters. FT, Economic Times, Mint and Business Standard are read through their public feeds, not claimed as full articles. Google News wrapper links and paywalls are not bypassed. Feed excerpts and headlines are not full articles. Duplicate titles are merged, but syndication, cross-edition overlap and semantic duplicates may remain. Topic/geography routing is heuristic; a publisher's home country does not establish every story's exposure. Sources may be delayed, unavailable, restricted or wrong. No price predictions or certified impact analysis.",
+        "limitations": f"A bounded {window_hours}-hour discovery window, not all news. Finance and general-news searches plus publisher feeds are capped at 360 retained headlines. At most 12 accessible BBC/Guardian articles are attempted and excerpts truncated to 6000 characters. FT, Economic Times, Mint and Business Standard are read through their public feeds, not claimed as full articles. Google News wrapper links and paywalls are not bypassed. Feed excerpts and headlines are not full articles. Duplicate titles are merged, but syndication, cross-edition overlap and semantic duplicates may remain. Topic/geography routing is heuristic; a publisher's home country does not establish every story's exposure. Sources may be delayed, unavailable, restricted or wrong. No price predictions or certified impact analysis.",
     }
 
 

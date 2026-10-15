@@ -9,8 +9,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from services import (  # noqa: E402
     daily_newsletters,
+    finance_class,
     news_bot,
     news_digest,
+    news_memory,
     telegram_delivery,  # noqa: E402
 )
 
@@ -94,9 +96,32 @@ def main():
         )
         if not args.dry_run and pack["date_ist"] != news_digest.local_day():
             raise news_bot.BotError("Refusing to email an old pack as today's brief.")
-        digest = news_bot.summarise(pack, use_ai=not args.no_ai)
+        teaching, weekly_pack = None, None
+        if channel == "telegram":
+            teaching = finance_class.prepare(pack["date_ist"], pack, use_ai=not args.no_ai)
+            history = (
+                news_memory.load(ledger, news_memory.history_key(config), pack["date_ist"])
+                if config
+                else {"version": 1, "entries": {}}
+            )
+            pack = news_memory.filter_pack(pack, history)
+            # --input smoke runs are offline: weekly retrieval is explicit only for live collection.
+            if not args.input:
+                weekly_pack = news_digest.collect(
+                    window_hours=168, older_than_hours=24, read_articles=False
+                )
+        digest = (
+            news_bot.summarise(pack, use_ai=not args.no_ai)
+            if pack["items"]
+            else news_memory.empty_digest(pack)
+        )
+        if teaching:
+            digest["finance_teaching"] = teaching
         folder = news_digest.DIGEST_DIR
+        news_memory.cleanup_local(folder, pack["date_ist"])
         news_digest.atomic_json(folder / f"{pack['date_ist']}-input.json", pack)
+        if weekly_pack:
+            news_digest.atomic_json(folder / f"{pack['date_ist']}-weekly-input.json", weekly_pack)
         news_digest.atomic_json(folder / f"{pack['date_ist']}-digest.json", digest)
         (folder / f"{pack['date_ist']}-email.txt").write_text(
             news_digest.email_text(digest), encoding="utf-8"
@@ -104,7 +129,11 @@ def main():
         if args.dry_run:
             status = "prepared_without_mail"
         else:
-            result = transport.deliver(digest, config, ledger)
+            result = (
+                daily_newsletters.deliver(digest, config, ledger, weekly_pack=weekly_pack)
+                if channel == "telegram"
+                else transport.deliver(digest, config, ledger)
+            )
             status = result["status"] if channel == "telegram" else result
         print(
             json.dumps(
@@ -118,6 +147,15 @@ def main():
                     "summary_status": digest["summary_status"],
                     "summary_modes": digest["summary_modes"],
                     "coverage": digest["coverage"],
+                    "weekly_coverage": weekly_pack["coverage"] if weekly_pack else None,
+                    "teaching_modes": {
+                        "finance_class": "quote_checked_ai"
+                        if teaching["explanation"]
+                        else "curated_lesson",
+                        "context": "quote_checked_ai" if teaching["case"] else "curated_exercise",
+                    }
+                    if teaching
+                    else None,
                 }
             )
         )

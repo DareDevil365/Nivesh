@@ -81,7 +81,7 @@ def fallback_section(category, items):
     }
 
 
-def generate_section(pack, category, items):
+def generate_section(pack, category, items, purpose=None):
     evidence = [
         {
             **{
@@ -108,6 +108,8 @@ def generate_section(pack, category, items):
         "why_it_matters (10-400 chars), and support [{source_id,quote}]. No other fields. "
         f"Required category: {category}. SOURCE_DATA=" + json.dumps(evidence, ensure_ascii=False)
     )
+    if purpose:
+        instruction += "\nADDITIONAL TASK (same source/quote/numeric constraints): " + purpose
     schema = {
         "type": "OBJECT",
         "properties": {
