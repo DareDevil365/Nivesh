@@ -11,7 +11,7 @@ from pathlib import Path
 
 import httpx
 
-from services import news_bot, news_reader
+from services import finance_textbook, news_bot, news_reader
 from services import telegram_delivery as tg
 from services.news_bot import BotError
 
@@ -19,7 +19,7 @@ DATA = json.loads(Path(__file__).with_name("finance_foundations.json").read_text
 DEPTH = json.loads(
     Path(__file__).with_name("finance_lesson_depth.json").read_text(encoding="utf-8")
 )
-CLASS_VERSION = "finance-class-v2-"
+CLASS_VERSION = "finance-class-v3-"
 
 
 def course():
@@ -260,11 +260,7 @@ def class_messages(prepared):
         for index, paragraph in enumerate(depth["worked"], 1)
     )
     blocks.append("<b>Where people get confused</b>\n" + esc(depth["mistake"]))
-    if prepared["explanation"]:
-        blocks.extend(
-            "<b>Optional AI explanation</b>\n" + esc(bullet["text"])
-            for bullet in prepared["explanation"]["bullets"]
-        )
+    teaching_end = len(blocks)
     blocks.extend(
         [
             "<b>Quick check · answer before tapping</b>\n"
@@ -283,10 +279,19 @@ def class_messages(prepared):
             + "\nOriginal teaching notes; linked source is further reading. Examples are hypothetical unless labelled historical.",
         ]
     )
-    words = len(html.unescape(re.sub(r"<[^>]+>", " ", " ".join(blocks))).split())
+    chapter = finance_textbook.chapter_blocks(
+        lesson, course(), DATA["sources"], finance_textbook.word_count(blocks)
+    )
+    if prepared["explanation"]:
+        chapter.extend(
+            "<b>Optional AI explanation</b>\n" + esc(bullet["text"])
+            for bullet in prepared["explanation"]["bullets"]
+        )
+    blocks[teaching_end:teaching_end] = chapter
+    words = finance_textbook.word_count(blocks)
     blocks.insert(
         1,
-        f"<i>About {math.ceil(words / 160)} min reading + 3–5 min practice. Pause at the examples; no prior finance study needed.</i>",
+        f"<i>Textbook edition · about {math.ceil(words / 160)} min reading at 160 words/min + 5–10 min practice. Reading speed varies; no prior finance study needed.</i>",
     )
     chunks = pack_blocks(blocks)
     return [
