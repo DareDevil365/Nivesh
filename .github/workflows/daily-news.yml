@@ -1,4 +1,4 @@
-name: Independent morning news
+name: Daily Brief
 on:
   schedule:
     # 00:30 UTC = 06:00 IST. Scheduled starts can be delayed by GitHub.
@@ -11,7 +11,7 @@ on:
         default: true
   pull_request:
     paths:
-      - 'news-bot/**'
+      - 'daily-brief/**'
       - '.github/workflows/daily-news.yml'
 permissions:
   contents: read
@@ -21,14 +21,14 @@ jobs:
     timeout-minutes: 5
     defaults:
       run:
-        working-directory: news-bot
+        working-directory: daily-brief
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: pip
-          cache-dependency-path: news-bot/requirements.txt
+          cache-dependency-path: daily-brief/requirements.txt
       - run: pip install -r requirements.txt
       - run: python -m unittest discover -s tests
   news:
@@ -44,20 +44,25 @@ jobs:
       contents: write
     defaults:
       run:
-        working-directory: news-bot
+        working-directory: daily-brief
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: pip
-          cache-dependency-path: news-bot/requirements.txt
+          cache-dependency-path: daily-brief/requirements.txt
       - run: pip install -r requirements.txt
       - name: Collect, summarise and deliver
         env:
           GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
           GEMINI_KEY_PROJECTS: ${{ secrets.GEMINI_KEY_PROJECTS }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-2.5-flash' }}
+          AI_NEWSLETTER_ENABLED: ${{ vars.AI_NEWSLETTER_ENABLED || 'true' }}
+          NEWSLETTER_IMAP_ENABLED: ${{ vars.NEWSLETTER_IMAP_ENABLED || 'false' }}
+          NEWSLETTER_IMAP_USER: ${{ secrets.NEWSLETTER_IMAP_USER }}
+          NEWSLETTER_IMAP_PASSWORD: ${{ secrets.NEWSLETTER_IMAP_PASSWORD }}
+          NEWSLETTER_ALLOWED_SENDERS: ${{ secrets.NEWSLETTER_ALLOWED_SENDERS }}
           NEWS_DELIVERY: ${{ vars.NEWS_DELIVERY || 'telegram' }}
           NEWS_TELEGRAM_BOT_TOKEN: ${{ secrets.NEWS_TELEGRAM_BOT_TOKEN }}
           NEWS_TELEGRAM_CHAT_ID: ${{ secrets.NEWS_TELEGRAM_CHAT_ID }}

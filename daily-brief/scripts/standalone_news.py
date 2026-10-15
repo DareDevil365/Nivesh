@@ -8,6 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from services import (  # noqa: E402
+    ai_newsletter,
     daily_newsletters,
     finance_class,
     news_bot,
@@ -71,7 +72,13 @@ def main():
                 if channel == "telegram":
                     telegram_delivery.check(config)
                     bundle = daily_newsletters.deliver(
-                        None, config, ledger, day=news_digest.local_day()
+                        None,
+                        config,
+                        ledger,
+                        day=news_digest.local_day(),
+                        include_ai=ai_newsletter.enabled(),
+                        ai_use_ai=not args.no_ai,
+                        ai_offline=bool(args.input),
                     )
                 print(
                     json.dumps(
@@ -130,7 +137,15 @@ def main():
             status = "prepared_without_mail"
         else:
             result = (
-                daily_newsletters.deliver(digest, config, ledger, weekly_pack=weekly_pack)
+                daily_newsletters.deliver(
+                    digest,
+                    config,
+                    ledger,
+                    weekly_pack=weekly_pack,
+                    include_ai=ai_newsletter.enabled(),
+                    ai_use_ai=not args.no_ai,
+                    ai_offline=bool(args.input),
+                )
                 if channel == "telegram"
                 else transport.deliver(digest, config, ledger)
             )

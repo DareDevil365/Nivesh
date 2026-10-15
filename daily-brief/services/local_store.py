@@ -11,7 +11,12 @@ from pathlib import Path
 
 from fastapi import Request, Response
 
-DATA_DIR = Path(os.getenv("NIVESH_DATA_DIR", str(Path(__file__).resolve().parents[1] / "data")))
+DATA_DIR = Path(
+    os.getenv(
+        "DAILY_BRIEF_DATA_DIR",
+        os.getenv("NIVESH_DATA_DIR", str(Path(__file__).resolve().parents[1] / "data")),
+    )
+)
 COOKIE = "nivesh_workspace"
 _secret_lock = threading.Lock()
 
