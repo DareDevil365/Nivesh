@@ -32,6 +32,11 @@ class NewsMemoryTests(unittest.TestCase):
             memory.url_key({**self.source, "url": self.source["url"] + "?utm_source=test"}),
         )
 
+    def test_numeric_updates_are_not_collapsed_by_punctuation_normalisation(self):
+        decimal = {**self.source, "title": "Inflation reaches 3.0 percent"}
+        integer = {**self.source, "title": "Inflation reaches 30 percent"}
+        self.assertNotEqual(memory.title_key(decimal), memory.title_key(integer))
+
     def test_only_presented_sources_are_recorded_not_scraped_candidates(self):
         pack, _ = fixture()
         pack["items"].append({**self.source, "id": "not-presented", "title": "Unselected story"})

@@ -90,8 +90,23 @@ class FinanceClassTests(unittest.TestCase):
         body = "\n".join(classroom.case_messages(prepared))
         self.assertIn("Hypothetical case", body)
         self.assertIn("not a claim", body)
-        self.assertIn("Call option", body)
+        self.assertNotIn("Keep these terms separate", body)
+
+    def test_current_case_selects_relevant_authored_concepts(self):
+        pack, _ = fixture()
+        pack["items"][0].update(
+            title="Investors face margin calls on leveraged positions",
+            read_status="publisher_feed_excerpt",
+            evidence_text="A reported article discusses margin calls, leveraged accounts and collateral pressure. "
+            * 3,
+        )
+        prepared = classroom.prepare("2026-10-15", pack, use_ai=False)
+        self.assertTrue(
+            {"leverage", "calls"} & {concept["id"] for concept in prepared["case_concepts"]}
+        )
+        body = "\n".join(classroom.case_messages(prepared))
         self.assertIn("Margin call", body)
+        self.assertIn("Call option", body)
 
     def test_margin_case_history_is_dated_allegation_not_recent_identification(self):
         pack, _ = fixture()

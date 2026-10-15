@@ -17,7 +17,7 @@ def title_key(source):
     publisher = source.get("publisher", "").casefold()
     if publisher and title.endswith(" - " + publisher):
         title = title[: -(len(publisher) + 3)]
-    return hashlib.sha256(re.sub(r"\W+", "", title).encode()).hexdigest()
+    return news_reader.headline_fingerprint(title)
 
 
 def url_key(source):

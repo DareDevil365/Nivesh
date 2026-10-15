@@ -228,7 +228,7 @@ def collect(now=None, read_articles=True, window_hours=24, older_than_hours=0):
                 or (older_than_hours and date >= now - timedelta(hours=older_than_hours))
             ):
                 continue
-            identity = re.sub(r"\W+", "", item["title"].casefold())
+            identity = news_reader.headline_fingerprint(item["title"])
             if identity in records:
                 prior = records[identity]
                 categories = sorted(set(prior["categories"] + [item["category"]]))

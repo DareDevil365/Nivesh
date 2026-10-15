@@ -9,11 +9,11 @@
   },
   "services/news_reader.py": {
     "source": "backend/services/news_reader.py",
-    "sha256": "8fef5c37e65e6eb576fb4a638025a069feaba327089a8ce64a060ae611da0a5a"
+    "sha256": "a87f71e8515418f4ae4f67a65f98b9333dcf3f14b4d33943658f7fcadc086195"
   },
   "services/news_digest.py": {
     "source": "backend/services/news_digest.py",
-    "sha256": "c3b7aa401885bd50863a445241e9c7f4d22a66ec713a11dcb59e74f9bbfe8bfe"
+    "sha256": "0908f34342d80373ab46f46a4ca29e71d27e42aa1f0eea5da84916bebad77b43"
   },
   "services/news_bot.py": {
     "source": "backend/services/news_bot.py",
@@ -29,7 +29,7 @@
   },
   "services/finance_class.py": {
     "source": "backend/services/finance_class.py",
-    "sha256": "535d1e4e2fa9e583bb1ff2871e343dbe7ce6822c680b91c26970975ad7e562ad"
+    "sha256": "0c4a3fcb97a6c2f87abf826787aedc567122612ec8b82aed5ea1702887d49437"
   },
   "services/finance_foundations.json": {
     "source": "backend/services/finance_foundations.json",
@@ -37,7 +37,7 @@
   },
   "services/news_memory.py": {
     "source": "backend/services/news_memory.py",
-    "sha256": "49612154de156e172d71e2251caed9353301710079b74a5f64e1d1640a2006b7"
+    "sha256": "c3808f82617a158525986b4ad39ad2cdb0d6d5f8fe19def3e0cb864e7c5918d1"
   },
   "services/daily_newsletters.py": {
     "source": "backend/services/daily_newsletters.py",
@@ -89,14 +89,14 @@
   },
   "tests/test_finance_class.py": {
     "source": "backend/tests/test_finance_class.py",
-    "sha256": "5c52c617accd8f02d476ebc14ee1283ab40a7d1b3c523626b990ea114ab0a669"
+    "sha256": "83c107367938613ed0cb0a0b024ffe382b4cc7ca61ded8d023c8936995ea2748"
   },
   "tests/test_news_memory.py": {
     "source": "backend/tests/test_news_memory.py",
-    "sha256": "2ecbddf5b42cbc55f597e1c0576ac3bac5f65512fce0d450b5a487de9eb2f7d5"
+    "sha256": "988bdf0e582ca8aa3eff90c2d5d997b4211533986429719845fcc54ace95a3db"
   },
   "PROJECT_GUIDE.md": {
     "source": "research/STANDALONE_NEWS_BOT.md",
-    "sha256": "fdac9fa1bdcc38fe3e2f001608616d9b8b9d2d9bd754555d657421577798014a"
+    "sha256": "b72f53bdef23941187e12780c2f2bd5b6271133a19173dd6321c2927ba3bf999"
   }
 }

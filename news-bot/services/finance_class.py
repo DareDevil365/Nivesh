@@ -3,6 +3,7 @@
 import html
 import json
 import os
+import re
 import time
 from datetime import date
 from pathlib import Path
@@ -113,8 +114,27 @@ def prepare(day, pack=None, use_ai=True):
     candidates.sort(key=lambda entry: entry[:3], reverse=True)
     current = candidates[0][3] if candidates else None
     case_sources = [source]
+    concepts = []
     if current:
         case_sources.insert(0, {**current, "categories": ["policy"]})
+        text = current["title"] + " " + current["evidence_text"]
+        matches = [
+            (
+                sum(
+                    bool(re.search(r"\b" + re.escape(word) + r"s?\b", text, re.I))
+                    for word in candidate["keywords"]
+                ),
+                candidate,
+            )
+            for candidate in course()
+            if candidate["id"] != lesson["id"]
+        ]
+        matches.sort(key=lambda entry: entry[0], reverse=True)
+        concepts = [candidate for score, candidate in matches[:2] if score]
+        for concept in concepts:
+            case_sources.append(
+                lesson_source({**concept, "source_info": DATA["sources"][concept["source"]]}, day)
+            )
     historical = None
     if current and any(
         word in (current["title"] + " " + current["evidence_text"]).casefold()
@@ -157,6 +177,7 @@ def prepare(day, pack=None, use_ai=True):
         "case": context,
         "current": current,
         "historical": historical,
+        "case_concepts": concepts,
     }
 
 
@@ -237,11 +258,13 @@ def case_messages(prepared):
             for bullet in prepared["case"]["bullets"]
         )
     else:
+        example_lesson = (prepared.get("case_concepts") or [prepared["lesson"]])[0]
         blocks.extend(
             [
-                "<b>Concept to apply</b>\n" + esc(prepared["lesson"]["note"]),
+                "<b>Concept to investigate — not a confirmed cause</b>\n"
+                + esc(example_lesson["note"]),
                 "<b>Counterfactual exercise</b>\nChange one assumption in today's example. What changes, and what information would you need?\n"
-                + esc(prepared["lesson"]["example"]),
+                + esc(example_lesson["example"]),
             ]
         )
     if prepared["historical"]:
@@ -251,12 +274,24 @@ def case_messages(prepared):
             + "\n"
             + source_link(prepared["historical"])
         )
+    relevant_call_terms = prepared["lesson"]["id"] in {"calls", "leverage"} or (
+        current
+        and re.search(
+            r"margin|hedge fund|call option|buy call|leverage",
+            current["title"] + " " + current["evidence_text"],
+            re.I,
+        )
+    )
+    if relevant_call_terms:
+        blocks.append(
+            "<b>Keep these terms separate</b>\n• Buy call: a recommendation in some commentary.\n• Call option: a contractual right to buy on stated terms.\n• Margin call: a demand to meet collateral/equity requirements.\n"
+            + source_link(DATA["sources"]["options"])
+            + " · "
+            + source_link(DATA["sources"]["margin"])
+            + "\nAn absent warning does not remove losses or automatically prevent contractual liquidation. Explanations are learning hypotheses, not proof of why a reported event happened."
+        )
     blocks.append(
-        "<b>Keep these terms separate</b>\n• Buy call: a recommendation in some commentary.\n• Call option: a contractual right to buy on stated terms.\n• Margin call: a demand to meet collateral/equity requirements.\n"
-        + source_link(DATA["sources"]["options"])
-        + " · "
-        + source_link(DATA["sources"]["margin"])
-        + "\nAn absent warning does not remove losses or automatically prevent contractual liquidation. Explanations are learning hypotheses, not proof of why a reported event happened."
+        "<b>Check the explanation</b>\nThe reported event, a possible mechanism, a historical comparison and a hypothetical alternative are different claims. The supplied evidence does not prove every causal interpretation."
     )
     return ["<b>Finance in context · News, history and what-if</b>", *pack_blocks(blocks)]
 
