@@ -11,7 +11,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from services import finance_class as classroom
-from services import finance_teacher, news_bot, news_digest
+from services import finance_teacher, finance_textbook, news_bot, news_digest
 from services import telegram_delivery as tg
 from tests.test_news_bot import fixture, provider
 
@@ -42,7 +42,12 @@ class FinanceClassTests(unittest.TestCase):
                 messages = classroom.class_messages(prepared)
                 body = "\n".join(messages)
                 # Check delivered pedagogy, not merely presence of data fields.
-                self.assertGreater(len(re.sub(r"<[^>]+>", "", body).split()), 400)
+                self.assertGreaterEqual(finance_textbook.word_count(messages), 2400)
+                self.assertLessEqual(finance_textbook.word_count(messages), 3200)
+                self.assertLessEqual(len(messages), 20)
+                estimate = int(re.search(r"about (\d+) min reading", body).group(1))
+                self.assertGreaterEqual(estimate, 15)
+                self.assertLessEqual(estimate, 20)
                 for label in (
                     "By the end",
                     "Words you will use",
@@ -52,6 +57,9 @@ class FinanceClassTests(unittest.TestCase):
                     "Your turn",
                     "Worked solution",
                     "Use it outside this lesson",
+                    "Textbook reading",
+                    "Extended hypothetical case",
+                    "Supporting reading",
                 ):
                     self.assertIn(label, body)
                 self.assertLess(
@@ -71,10 +79,51 @@ class FinanceClassTests(unittest.TestCase):
         del broken["money"]
         with patch.object(classroom, "DEPTH", broken), self.assertRaises(news_bot.BotError):
             classroom.course()
+
         broken = copy.deepcopy(classroom.DEPTH)
         broken["finance"]["worked"] = ["Only a definition"]
         with patch.object(classroom, "DEPTH", broken), self.assertRaises(news_bot.BotError):
             classroom.course()
+
+    def test_textbook_rejects_missing_coverage_and_unrelated_or_self_connections(self):
+        broken = copy.deepcopy(finance_textbook.DATA)
+        del broken["connections"]["money"]
+        with patch.object(finance_textbook, "DATA", broken), self.assertRaises(news_bot.BotError):
+            finance_textbook.validate(classroom.course())
+        for value in ("finance", "not-a-lesson"):
+            broken = copy.deepcopy(finance_textbook.DATA)
+            broken["connections"]["finance"][0] = value
+            with (
+                patch.object(finance_textbook, "DATA", broken),
+                self.assertRaises(news_bot.BotError),
+            ):
+                finance_textbook.validate(classroom.course())
+
+    def test_textbook_does_not_fake_reading_time_with_an_incomplete_chapter(self):
+        lesson = classroom.lesson_for_day("2026-10-15", "2026-10-15")
+        with (
+            patch.object(finance_textbook, "MIN_WORDS", 100000),
+            self.assertRaises(news_bot.BotError),
+        ):
+            finance_textbook.chapter_blocks(
+                lesson, classroom.course(), classroom.DATA["sources"], 500
+            )
+
+    def test_textbook_escapes_prose_and_rejects_unsafe_connected_source(self):
+        lesson = classroom.lesson_for_day("2026-10-15", "2026-10-15")
+        data = copy.deepcopy(finance_textbook.DATA)
+        data["modules"][0]["foundation"][0] += ' <script>alert("bad")</script>'
+        with patch.object(finance_textbook, "DATA", data):
+            blocks = finance_textbook.chapter_blocks(
+                lesson, classroom.course(), classroom.DATA["sources"], 500
+            )
+        text = "\n".join(blocks)
+        self.assertNotIn("<script>", text)
+        self.assertIn("&lt;script&gt;", text)
+        sources = copy.deepcopy(classroom.DATA["sources"])
+        sources["money"]["url"] = "javascript:alert(1)"
+        with self.assertRaises(news_bot.BotError):
+            finance_textbook.chapter_blocks(lesson, classroom.course(), sources, 500)
 
     def test_spaced_recall_uses_previous_and_week_old_topics_not_assumed_performance(self):
         first = classroom.lesson_for_day("2026-10-15", "2026-10-15")

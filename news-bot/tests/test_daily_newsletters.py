@@ -236,13 +236,13 @@ class DailyNewsletterTests(unittest.TestCase):
             ) as api,
         ):
             ledger = news_bot.LocalLedger()
-            # Reproduce a previously accepted bundle with the original shallow class.
-            with patch.object(finance_class, "CLASS_VERSION", "finance-class-v1-"):
+            # Reproduce a previously accepted bundle with the previously accepted compact class.
+            with patch.object(finance_class, "CLASS_VERSION", "finance-class-v2-"):
                 self.assertEqual(
                     daily.deliver(digest, config, ledger)["status"], "telegram_accepted"
                 )
             old_key = hashlib.sha256(
-                ("finance-class-v1-" + config.delivery_id(day)).encode()
+                ("finance-class-v2-" + config.delivery_id(day)).encode()
             ).hexdigest()[:32]
             old_record = ledger.get(old_key)
             api.reset_mock()
