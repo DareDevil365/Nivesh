@@ -70,6 +70,7 @@ jobs:
           GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
           GEMINI_KEY_PROJECTS: ${{ secrets.GEMINI_KEY_PROJECTS }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-2.5-flash' }}
+          NEWS_RESEARCH_ENABLED: ${{ vars.NEWS_RESEARCH_ENABLED || 'true' }}
           AI_NEWSLETTER_ENABLED: ${{ vars.AI_NEWSLETTER_ENABLED || 'true' }}
           NEWSLETTER_IMAP_ENABLED: ${{ vars.NEWSLETTER_IMAP_ENABLED || 'false' }}
           NEWSLETTER_IMAP_USER: ${{ secrets.NEWSLETTER_IMAP_USER }}

@@ -36,6 +36,7 @@ FILES = (
     "services/filing_sources.py",
     "services/local_store.py",
     "services/ai_newsletter.py",
+    "services/story_research.py",
     "services/newsletter_mail.py",
     "scripts/standalone_news.py",
     "scripts/setup_telegram.py",
@@ -49,6 +50,7 @@ FILES = (
     "tests/test_finance_class.py",
     "tests/test_news_memory.py",
     "tests/test_ai_newsletter.py",
+    "tests/test_story_research.py",
     "tests/test_newsletter_mail.py",
 )
 
