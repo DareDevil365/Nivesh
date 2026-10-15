@@ -53,7 +53,9 @@ def approved_sender(message, config):
     sender = addresses[0][1].lower()
     domain = sender.rpartition("@")[2]
     for provider in CATALOG["providers"]:
-        if any(domain == root or domain.endswith("." + root) for root in provider["domains"]):
+        if sender in provider.get("senders", []) or any(
+            domain == root or domain.endswith("." + root) for root in provider["domains"]
+        ):
             return provider
     if sender in config.exact_senders:
         # Explicit approvals can support shared platforms; never approve their whole domain.
@@ -89,6 +91,8 @@ def clean_body(message):
         text = soup.get_text("\n", strip=True)
     lines = []
     for line in text.splitlines():
+        # Email preview padding must not consume the evidence/token budget.
+        line = re.sub(r"[\u00ad\u034f\u200b-\u200f\ufeff]", "", line)
         if re.search(
             r"unsubscribe|manage (?:your )?(?:preferences|subscription)|view (?:this )?(?:email|in browser)|sponsored|advertisement|paid partner",
             line,
@@ -102,6 +106,25 @@ def clean_body(message):
         if line:
             lines.append(line)
     return "\n".join(lines)[:6000]
+
+
+def administrative_message(subject, text):
+    """Exclude subscription setup mail even when its subject resembles an issue."""
+    return bool(
+        re.search(
+            r"confirm (?:your )?(?:[\w'-]+ ){0,5}(?:subscription|signup|email)|verify your|"
+            r"reset.*password|sign.in code|^[^\w]*welcome\b",
+            subject,
+            re.I,
+        )
+        or re.search(
+            r"\b(?:thanks for joining|thank you for subscribing|"
+            r"you(?:'|\u2019)re (?:officially )?subscribed|"
+            r"confirm (?:your )?(?:subscription|signup|email))\b",
+            text[:1000],
+            re.I,
+        )
+    )
 
 
 def issue(raw, config, now=None):
@@ -121,9 +144,7 @@ def issue(raw, config, now=None):
     subject = re.sub(r"\s+", " ", str(message.get("Subject", "AI newsletter"))).strip()[:250]
     subject = re.sub(r"[\w.+-]+@[\w.-]+\.[a-z]{2,}", "[email removed]", subject, flags=re.I)
     text = clean_body(message)
-    if len(text) < 100 or re.search(
-        r"confirm your|verify your|welcome to|reset.*password|sign.in code", subject, re.I
-    ):
+    if len(text) < 100 or administrative_message(subject, text):
         return None
     identifier = hashlib.sha256(
         (str(message.get("Message-ID", "")) + subject + published.isoformat()).encode()
@@ -162,10 +183,13 @@ def collect(now=None, factory=imaplib.IMAP4_SSL):
         now = now or datetime.now(timezone.utc)
         since = (now - timedelta(days=7)).strftime("%d-%b-%Y")
         domains = [domain for provider in CATALOG["providers"] for domain in provider["domains"]]
+        provider_senders = [
+            sender for provider in CATALOG["providers"] for sender in provider.get("senders", [])
+        ]
         uids = set()
         budget_hit = False
         stage = "sender_search"
-        for sender in [*domains, *config.exact_senders]:
+        for sender in dict.fromkeys([*domains, *provider_senders, *config.exact_senders]):
             if time.monotonic() - started > MAX_SECONDS:
                 budget_hit = True
                 break

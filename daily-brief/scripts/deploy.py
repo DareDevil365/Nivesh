@@ -13,10 +13,11 @@ import httpx
 from dotenv import dotenv_values
 
 ROOT = Path(__file__).resolve().parents[1]
-STATE = ROOT / "output/research/daily-brief-deployment.json"
-BRANCH = "codex/daily-brief-ai-newsletter"
-PR_TITLE = "Move Daily Brief into its own project and add an AI newsletter"
-PR_BODY = "Daily Brief is now a self-contained sibling project, deployed under daily-brief/ in the existing repository. The old news-bot/ runtime is removed; existing delivery IDs and the state branch are preserved to avoid replay. The existing six-AM schedule and finance courses remain.\n\nA separate AI newsletter combines bounded primary-source web discovery with read-only, sender-approved Gmail newsletter intake. It labels company claims, newsletter commentary and unreviewed research; optional Gemini synthesis retains source, quote and numerical validation. Exact private sender approvals support shared mail platforms. A researched six-provider free-subscription catalog and private setup helper are included. Mail failures degrade to public sources rather than blocking other editions.\n\nValidation includes legacy runtime tests, mailbox privacy/sender/auth/date/size/PEEK checks, primary-feed/date/source validation, citation/rendering, AI evidence rejection and independent no-repeat delivery. No credentials or raw emails are published."
+STATE = ROOT / "output/research/newsletter-intake-deployment.json"
+BRANCH = "codex/newsletter-intake-validation"
+PR_TITLE = "Validate newsletter subscriptions and exclude onboarding mail"
+PR_BODY = "Authenticated live signup mail exposed two intake gaps: welcome emails with unusual subjects were entering news evidence, and some publishers send from domains different from their websites. Exclude bounded onboarding patterns, remove invisible preview padding before the evidence budget, and map three verified exact sender identities to their publishers without approving shared mail domains.\n\nAdd an optional manual read-only mailbox check so hosted credentials can be verified without resetting accepted delivery claims. Preserve Telegram-only delivery, existing state and the six-AM IST schedule. Document editorial selection criteria and confirmed signup outcomes without recipient details.\n\nValidation: 99 offline tests, including observed onboarding shapes, preview padding, publisher identity, exact sender searches and rejection of unrelated Substack senders; live read-only Gmail authentication is successful. Hosted verification and mailbox checks follow before completion."
+
 
 
 def main():
@@ -29,6 +30,7 @@ def main():
     parser.add_argument(
         "--send", action="store_true", help="Manual hosted run sends instead of previewing"
     )
+    parser.add_argument("--check-mailbox", action="store_true", help="Verify read-only mailbox intake on a manual hosted run")
     args = parser.parse_args()
     if not re.fullmatch(r"[\w.-]+/[\w.-]+", args.repository):
         parser.error("Invalid repository")
@@ -155,7 +157,7 @@ def main():
                 "POST",
                 "/git/commits",
                 {
-                    "message": "Move Daily Brief into a standalone project and add AI newsletter",
+                    "message": PR_TITLE,
                     "tree": tree["sha"],
                     "parents": [parent],
                 },
@@ -281,7 +283,7 @@ def main():
             request(
                 "POST",
                 "/actions/workflows/daily-news.yml/dispatches",
-                {"ref": repo["default_branch"], "inputs": {"dry_run": not args.send}},
+                {"ref": repo["default_branch"], "inputs": {"dry_run": not args.send, "check_mailbox": args.check_mailbox}},
             )
             print(json.dumps({"hosted_run_dispatched": True, "dry_run": not args.send}))
         elif args.action == "disable":

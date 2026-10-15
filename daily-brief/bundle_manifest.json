@@ -18,16 +18,16 @@
     "sha256": "9f64bd29ec0b3d23171dbc5b4c8f4dd4099ebfaf912d7679e7535d15a2b44970"
   },
   "PROJECT_GUIDE.md": {
-    "sha256": "0ce5aa983f26f9c277fc1cee7fda0f9c86a02ac2254e7fd097232fdff1eeb892"
+    "sha256": "fce454ac1df85ff790ac9a7c213e50cee0d06ffe2230b7bfd1c151a9b660d329"
   },
   "README.md": {
     "sha256": "f6250809f71bf2574a52d95ad4edb147e2417a89c098732e6057e817572c6dfa"
   },
   "NEWSLETTER_SOURCES.md": {
-    "sha256": "166bb345c829bf3a9011ad9d6e5c3042c5b58a0f306fb22d8c3db52b564ff5c9"
+    "sha256": "ca0f320fa0269a22f689d4723d7d23ca2319fdecc751cb84cb4a01b8f9583d04"
   },
   "newsletter_sources.json": {
-    "sha256": "76fdaa8a0434c3c2e5d937a502ac3d8cf51de2c311190a84e12b3ea5fefa2bbd"
+    "sha256": "0082be03fa845d5c45a819161d12f32badad5f70e63d4d9ae5ea1db8b98cd12a"
   },
   "services/__init__.py": {
     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -90,7 +90,7 @@
     "sha256": "ba8e2a59af9015f4442d267bc6677b54d67a171c54fd3c8ec30a3ceda7ff412a"
   },
   "services/newsletter_mail.py": {
-    "sha256": "3a0e040919e18247b5fb3d748c838c4ea2ea70b534f2e4030fc5847fb5931834"
+    "sha256": "c3fb7ed76e775e79b542f6b45ef33fdb485db003798648a507ecf3595bb7dbc1"
   },
   "scripts/standalone_news.py": {
     "sha256": "2d32c1eb5a93b27ac40ad6259071d88fd9b5519a7d3d31925c9aa63461fb9b62"
@@ -99,13 +99,13 @@
     "sha256": "c8c0dd3f7437596477f794101e2ea999e1110ef3acb3b80fc55622ff683effae"
   },
   "scripts/setup_newsletters.py": {
-    "sha256": "cfd8f952e77dffbc0f84ab510254c6432a0b39aa7734ade2fa4d33d1f7dae981"
+    "sha256": "65c6970beb135c53ecf88c0c2af1eca71bc100c0c679081fb7163ea8b39b2dec"
   },
   "scripts/build_manifest.py": {
     "sha256": "f2ac91dcc8d0ad6f878de45dc50d34cf7785b74f33832281597087033a05b1f4"
   },
   "scripts/deploy.py": {
-    "sha256": "b64a8c8aed9b92ad1edc36cd0da400b35f516d9f9e5e43706fea205bef0a50db"
+    "sha256": "9fed369ee23efaed01f38ef7f781b49f43030f76c310b104f86a22016884c4d3"
   },
   "tests/test_news_bot.py": {
     "sha256": "3ee7f0587bdc865e282626b77c1b7be412eb706ae2ada22caf4a22b398dd0700"
@@ -129,6 +129,6 @@
     "sha256": "0b7c46c58ae148091338dc6bf7f077054bd3edc7e4a225a95c2b4912b52ca872"
   },
   "tests/test_newsletter_mail.py": {
-    "sha256": "c90072d1a702f0c28ef7f19ff9e6f12dd37925f14c169154538a06f07e018222"
+    "sha256": "ff6908606311e282f1a625b7f1ca8fc0ebbac63b91fffc9628cae63f6b617b0b"
   }
 }

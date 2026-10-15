@@ -47,6 +47,8 @@ def main():
                 }
             )
         )
+        if result["status"] in ("unavailable", "not_enabled", "bounded_timeout"):
+            raise SystemExit(1)
 
 
 if __name__ == "__main__":
