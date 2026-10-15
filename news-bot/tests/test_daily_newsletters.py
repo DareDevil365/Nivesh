@@ -216,6 +216,58 @@ class DailyNewsletterTests(unittest.TestCase):
             )
             self.assertEqual(api.call_count, count)
 
+    def test_deeper_class_migration_sends_only_revised_class_then_skips(self):
+        config = tg.TelegramConfig("123456:" + "x" * 35, "7654321")
+        digest = self.digest
+        day = digest["date_ist"]
+        with (
+            tempfile.TemporaryDirectory() as folder,
+            patch.object(news_digest, "DIGEST_DIR", Path(folder)),
+            patch.object(daily.time, "sleep"),
+            patch.object(tg.time, "sleep"),
+            patch.object(finance_teacher.time, "sleep"),
+            patch.dict(
+                "os.environ", {"NEWS_FINANCE_START_DATE": day, "NEWS_LEARNING_START_DATE": day}
+            ),
+            patch.object(
+                tg,
+                "api",
+                return_value={"message_id": 31, "chat": {"id": 7654321, "type": "private"}},
+            ) as api,
+        ):
+            ledger = news_bot.LocalLedger()
+            # Reproduce a previously accepted bundle with the original shallow class.
+            with patch.object(finance_class, "CLASS_VERSION", "finance-class-v1-"):
+                self.assertEqual(
+                    daily.deliver(digest, config, ledger)["status"], "telegram_accepted"
+                )
+            old_key = hashlib.sha256(
+                ("finance-class-v1-" + config.delivery_id(day)).encode()
+            ).hexdigest()[:32]
+            old_record = ledger.get(old_key)
+            api.reset_mock()
+            with patch.object(news_bot, "generate_section") as model:
+                result = daily.deliver(None, config, ledger, day=day)
+            model.assert_not_called()
+            self.assertEqual(result["editions"]["finance_class"], "telegram_accepted")
+            self.assertTrue(
+                all(
+                    status == "already_accepted"
+                    for name, status in result["editions"].items()
+                    if name != "finance_class"
+                )
+            )
+            self.assertGreater(api.call_count, 1)
+            texts = [call.kwargs["data"]["text"] for call in api.call_args_list]
+            self.assertTrue(all("Finance Class" in text for text in texts))
+            self.assertIn("Worked solution", "\n".join(texts))
+            self.assertEqual(ledger.get(old_key), old_record)
+            count = api.call_count
+            self.assertEqual(
+                daily.deliver(None, config, ledger, day=day)["status"], "telegram_accepted"
+            )
+            self.assertEqual(api.call_count, count)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -29,11 +29,15 @@
   },
   "services/finance_class.py": {
     "source": "backend/services/finance_class.py",
-    "sha256": "0c4a3fcb97a6c2f87abf826787aedc567122612ec8b82aed5ea1702887d49437"
+    "sha256": "d1c8d95e677715e89a92e9decb1f2c2405355ec6154c17e8efe9c34d68210358"
   },
   "services/finance_foundations.json": {
     "source": "backend/services/finance_foundations.json",
     "sha256": "5d027ca8ae97299bd000b7e7810a98d61752b6a54476798f3feae95b2eb047c9"
+  },
+  "services/finance_lesson_depth.json": {
+    "source": "backend/services/finance_lesson_depth.json",
+    "sha256": "9d8ee5c3f79a1b9b7a20ff50c7a42fa505a1d82482db7e9ba569adb760d8115a"
   },
   "services/news_memory.py": {
     "source": "backend/services/news_memory.py",
@@ -85,11 +89,11 @@
   },
   "tests/test_daily_newsletters.py": {
     "source": "backend/tests/test_daily_newsletters.py",
-    "sha256": "a1172cd1e1dddc8a8cff166a82198ab5cf48b066a5a4a3fc4a063346cff8a1e3"
+    "sha256": "03b426ad111b4a769d849dc3f13a3e146e66a58cbb8e3a0d7c14d7649b54a3eb"
   },
   "tests/test_finance_class.py": {
     "source": "backend/tests/test_finance_class.py",
-    "sha256": "83c107367938613ed0cb0a0b024ffe382b4cc7ca61ded8d023c8936995ea2748"
+    "sha256": "648729779ac2e2547939b73454e4f69d928e4938afe5d6c2c76dab218ca5014a"
   },
   "tests/test_news_memory.py": {
     "source": "backend/tests/test_news_memory.py",
@@ -97,6 +101,6 @@
   },
   "PROJECT_GUIDE.md": {
     "source": "research/STANDALONE_NEWS_BOT.md",
-    "sha256": "ae0da360443a6e9d5da2c1e904587d584d3baa6698135de20c56ad2db0afb120"
+    "sha256": "a6b32990f4a0b047aab5b60cc3c01ba5fd8f19c1913c186e6c24c295056149c5"
   }
 }
