@@ -2,6 +2,7 @@
 
 import hashlib
 import re
+import time
 import unicodedata
 from datetime import date, timedelta
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
@@ -120,6 +121,17 @@ def empty_digest(pack):
 
 
 def reconcile(ledger, key, day, delivery_id):
+    """Retry state reconciliation once; this never sends a Telegram message."""
+    for attempt in range(2):
+        try:
+            return _reconcile(ledger, key, day, delivery_id)
+        except BotError:
+            if attempt:
+                raise
+            time.sleep(1)
+
+
+def _reconcile(ledger, key, day, delivery_id):
     record = ledger.get(hashlib.sha256(delivery_id.encode()).hexdigest()[:32])
     if not record or record.get("status") != "accepted":
         return
