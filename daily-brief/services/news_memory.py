@@ -70,6 +70,11 @@ def load(ledger, key, day, record=_UNSET):
 def entries_for(sources, day):
     entries = {}
     for source in sources:
+        try:
+            date.fromisoformat(source["published_at"][:10])
+        except (ValueError, TypeError):
+            # Undated primary background is cited as undated, never a dated news claim.
+            continue
         entry = {"sent_on": day, "published_on": source["published_at"][:10]}
         entries[title_key(source)] = {**entry, "kind": "title"}
         entries[url_key(source)] = {**entry, "kind": "url"}

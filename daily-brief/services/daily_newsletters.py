@@ -38,7 +38,13 @@ def edition_messages(digest, title, categories):
     if not sections:
         body = "No validated summary was available for this edition in today's collection. This does not establish that nothing happened. Check original sources."
         return [heading, body]
-    report = {**digest, "sections": sections, "glossary": []}
+    scope = next((edition for edition, label, _ in EDITIONS if label == title), None)
+    report = {
+        **digest,
+        "sections": sections,
+        "glossary": [],
+        "research_cards": [c for c in digest.get("research_cards", []) if c["scope"] == scope],
+    }
     content = tg.render_messages(report)
     # The dated heading is its own message, followed by complete numbered content.
     return [heading, *content]

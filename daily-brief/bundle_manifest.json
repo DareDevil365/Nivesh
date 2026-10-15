@@ -15,16 +15,16 @@
     "sha256": "3fd19456fc1a9082d43a220e90a24fda460c17be0d3da90f7fd497a9ca6b5c3d"
   },
   ".env.example": {
-    "sha256": "9f64bd29ec0b3d23171dbc5b4c8f4dd4099ebfaf912d7679e7535d15a2b44970"
+    "sha256": "8e67b327d8ec13a39ef785a1358fe13aef4b6da2280038aa707676ae036fac7f"
   },
   "PROJECT_GUIDE.md": {
-    "sha256": "fce454ac1df85ff790ac9a7c213e50cee0d06ffe2230b7bfd1c151a9b660d329"
+    "sha256": "fd2101279559f360a58f7354ee27434053b1fb3fc96ae3c13c2019ac7e222b7b"
   },
   "README.md": {
-    "sha256": "f6250809f71bf2574a52d95ad4edb147e2417a89c098732e6057e817572c6dfa"
+    "sha256": "e6e921bb7d1a1d3a711a640b9a836739ce4ef23f6d7341e75b3d0db1d977c752"
   },
   "NEWSLETTER_SOURCES.md": {
-    "sha256": "ca0f320fa0269a22f689d4723d7d23ca2319fdecc751cb84cb4a01b8f9583d04"
+    "sha256": "2027ec0e3248496e11fc710211f0277ec13f0a2cf00851f54633b9dc2fde4944"
   },
   "newsletter_sources.json": {
     "sha256": "0082be03fa845d5c45a819161d12f32badad5f70e63d4d9ae5ea1db8b98cd12a"
@@ -42,10 +42,10 @@
     "sha256": "0908f34342d80373ab46f46a4ca29e71d27e42aa1f0eea5da84916bebad77b43"
   },
   "services/news_bot.py": {
-    "sha256": "7ab18887cfd7ee184323893d4fd455f485f40c6c477441eacd83c56cd4ea8dbe"
+    "sha256": "d333e4aa085a6604ca56f965c7b43b4a2228a0ca76e5664510ef4bf0d39814de"
   },
   "services/telegram_delivery.py": {
-    "sha256": "59250590eefc5b12b4091a36daf9dcc53a04f81b8600e2832c885a57be2e3ca9"
+    "sha256": "ae183490339ff1b74a77906bb4777125c770c436cd79866879a1e8793564a583"
   },
   "services/finance_teacher.py": {
     "sha256": "988f267500c5765c4086626376515fab08dd02231140b4d0746f3f522ae73e9a"
@@ -66,10 +66,10 @@
     "sha256": "3649498940ddd797e3b9834d6467e84f5e401122ba6088c2d75c36a24c2d61d8"
   },
   "services/news_memory.py": {
-    "sha256": "25985b5b0fdab05b56e35850dfd7b498fa38489f487cf43a88418c8a3cb506de"
+    "sha256": "e6c67a485b34250d27dd6bee38fe79f3a1b76f5a19c740f8de94be9847f70a66"
   },
   "services/daily_newsletters.py": {
-    "sha256": "eb677fae78d57702c162dc8c4155c5d95cb8dd28262bb1e669f4d884675564cc"
+    "sha256": "764b3da6bd6c66bd03bca1f491c4aab58a8d07ba63d5c59ac3e2040c8dc0e488"
   },
   "services/finance_curriculum.json": {
     "sha256": "e2ee324573e01738b48298aab7eb9ffe303b702f976746d7bb195a2193a34734"
@@ -87,13 +87,16 @@
     "sha256": "29f282903e556a41f8ba77f7c4a31f425ba65b6dbef9e144db6ae691448de939"
   },
   "services/ai_newsletter.py": {
-    "sha256": "ba8e2a59af9015f4442d267bc6677b54d67a171c54fd3c8ec30a3ceda7ff412a"
+    "sha256": "46ae0be08fd9d077881820ae3dcea22183980a4bdc60d1194dd1e0009c12a9ad"
+  },
+  "services/story_research.py": {
+    "sha256": "61e7acbe2c4e14995a2d5f4a525ff04374569de89fae3586871aad49b5197431"
   },
   "services/newsletter_mail.py": {
     "sha256": "c3fb7ed76e775e79b542f6b45ef33fdb485db003798648a507ecf3595bb7dbc1"
   },
   "scripts/standalone_news.py": {
-    "sha256": "2d32c1eb5a93b27ac40ad6259071d88fd9b5519a7d3d31925c9aa63461fb9b62"
+    "sha256": "546e9f12ca57c770f914f2b72e95eab495701d865e2ff6faf5606fd20125a06e"
   },
   "scripts/setup_telegram.py": {
     "sha256": "c8c0dd3f7437596477f794101e2ea999e1110ef3acb3b80fc55622ff683effae"
@@ -102,10 +105,10 @@
     "sha256": "65c6970beb135c53ecf88c0c2af1eca71bc100c0c679081fb7163ea8b39b2dec"
   },
   "scripts/build_manifest.py": {
-    "sha256": "f2ac91dcc8d0ad6f878de45dc50d34cf7785b74f33832281597087033a05b1f4"
+    "sha256": "f0b804da1b1bdec9678e2c5a11a930cb24238d6d1187b4838ee45bf175109f50"
   },
   "scripts/deploy.py": {
-    "sha256": "9fed369ee23efaed01f38ef7f781b49f43030f76c310b104f86a22016884c4d3"
+    "sha256": "085716d20e7b84f0849fc812ecac45be0cac6451c81b2afde1081ec10f1a96dc"
   },
   "tests/test_news_bot.py": {
     "sha256": "3ee7f0587bdc865e282626b77c1b7be412eb706ae2ada22caf4a22b398dd0700"
@@ -127,6 +130,9 @@
   },
   "tests/test_ai_newsletter.py": {
     "sha256": "0b7c46c58ae148091338dc6bf7f077054bd3edc7e4a225a95c2b4912b52ca872"
+  },
+  "tests/test_story_research.py": {
+    "sha256": "0175f7e66b272d5a23d39346c99e1a7e971ec93242edef7652ab03054460c90e"
   },
   "tests/test_newsletter_mail.py": {
     "sha256": "ff6908606311e282f1a625b7f1ca8fc0ebbac63b91fffc9628cae63f6b617b0b"

@@ -21,7 +21,7 @@ from email.utils import format_datetime
 import httpx
 
 from config import settings
-from services import news_digest, news_reader
+from services import news_digest, news_reader, story_research
 from services.gemini_client import gemini_rotator
 
 
@@ -34,6 +34,7 @@ def select_evidence(items, category, limit=12):
     ranked = sorted(
         (item for item in items if news_reader.priority(item)["headline_form"] != "stock_picks"),
         key=lambda item: (
+            bool(item.get("research_anchor") or item.get("research_for")),
             news_reader.headline_relevant(category, item["title"]),
             news_reader.priority(item)["reading_score"],
             item["read_status"] != "headline_only",
@@ -187,6 +188,12 @@ def generate_section(pack, category, items, purpose=None):
                 not isinstance(bullet, dict) for bullet in section["bullets"]
             ):
                 raise ValueError("Invalid bullet structure")
+            if not 1 <= len(section["bullets"]) <= 2 or any(
+                len(entry.get("quote", "")) > 200
+                for bullet in section["bullets"]
+                for entry in bullet.get("support", [])
+            ):
+                raise ValueError("Output exceeds supplied bullet or quotation budget")
             prose = " ".join(
                 bullet.get("text", "") + " " + bullet.get("why_it_matters", "")
                 for bullet in section.get("bullets", [])
@@ -198,9 +205,28 @@ def generate_section(pack, category, items, purpose=None):
             ):
                 raise ValueError("Unsupported certainty or trading direction")
             news_digest.validate_summary(
-                {**pack, "items": items},
+                {
+                    **pack,
+                    "items": [
+                        {**item, "evidence_text": item["evidence_text"][:1800]} for item in items
+                    ],
+                },
                 {"reviewed_ids": [item["id"] for item in items], "sections": [section]},
             )
+            available = {item["id"] for item in items}
+            for card in pack.get("research_cards", []):
+                if card["anchor_id"] not in available:
+                    continue
+                paired = [
+                    {entry["source_id"] for entry in bullet["support"]}
+                    for bullet in section["bullets"]
+                    if card["anchor_id"] in {entry["source_id"] for entry in bullet["support"]}
+                ]
+                contexts = set(card["source_ids"]) & available
+                if not paired or (contexts and not any(contexts & cited for cited in paired)):
+                    raise ValueError(
+                        "Research story needs its anchor and matching primary context together"
+                    )
             return section
         except (ValueError, KeyError, IndexError, TypeError) as error:
             if attempt == 0:
@@ -223,7 +249,21 @@ def summarise(pack, use_ai=True):
         if not items:
             return None
         try:
-            section = generate_section(pack, category, items) if use_ai else None
+            cards = [
+                c
+                for c in pack.get("research_cards", [])
+                if c["anchor_id"] in {i["id"] for i in items}
+            ]
+            purpose = story_research.PURPOSE + story_research.plan(cards) if cards else None
+            section = (
+                (
+                    generate_section(pack, category, items, purpose=purpose)
+                    if purpose
+                    else generate_section(pack, category, items)
+                )
+                if use_ai
+                else None
+            )
         except (httpx.HTTPError, ValueError):
             section = None
         if section:
@@ -240,6 +280,8 @@ def summarise(pack, use_ai=True):
         "sections": [entry[0] for entry in outcomes],
     }
     digest = news_digest.validate_summary(pack, raw)
+    digest["research_cards"] = pack.get("research_cards", [])
+    digest["research_items"] = [item for item in pack["items"] if item.get("research_for")]
     digest["limitations"] += (
         " Code selects up to twelve candidate stories per topic and supplies at most 1800 characters of each excerpt to the model. Selection uses relevance, headline form, evidence access, publisher diversity and recency; it is a heuristic, not a verified importance ranking. Certainty-pattern, quote, numeric and reference checks do not certify semantic correctness."
     )

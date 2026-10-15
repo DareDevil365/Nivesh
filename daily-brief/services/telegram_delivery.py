@@ -122,6 +122,16 @@ def render_messages(digest):
         blocks.extend(
             f"<b>{esc(term['term'])}:</b> {esc(term['meaning'])}" for term in digest["glossary"]
         )
+    from services import story_research
+
+    try:
+        blocks.extend(
+            story_research.blocks(
+                digest.get("research_cards", []), digest.get("research_items", [])
+            )
+        )
+    except ValueError as error:
+        raise BotError("Invalid research citation; nothing was sent.") from error
     unavailable = [
         feed["id"]
         for feed in digest["feeds"]

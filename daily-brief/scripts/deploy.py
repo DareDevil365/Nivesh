@@ -13,10 +13,10 @@ import httpx
 from dotenv import dotenv_values
 
 ROOT = Path(__file__).resolve().parents[1]
-STATE = ROOT / "output/research/newsletter-intake-deployment.json"
-BRANCH = "codex/newsletter-intake-validation"
-PR_TITLE = "Validate newsletter subscriptions and exclude onboarding mail"
-PR_BODY = "Authenticated live signup mail exposed two intake gaps: welcome emails with unusual subjects were entering news evidence, and some publishers send from domains different from their websites. Exclude bounded onboarding patterns, remove invisible preview padding before the evidence budget, and map three verified exact sender identities to their publishers without approving shared mail domains.\n\nAdd an optional manual read-only mailbox check so hosted credentials can be verified without resetting accepted delivery claims. Preserve Telegram-only delivery, existing state and the six-AM IST schedule. Document editorial selection criteria and confirmed signup outcomes without recipient details.\n\nValidation: 99 offline tests, including observed onboarding shapes, preview padding, publisher identity, exact sender searches and rejection of unrelated Substack senders; live read-only Gmail authentication is successful. Hosted verification and mailbox checks follow before completion."
+STATE = ROOT / "output/research/targeted-research-deployment.json"
+BRANCH = "codex/targeted-news-research"
+PR_TITLE = "Add targeted primary-source research across daily news editions"
+PR_BODY = "Daily briefs previously summarised independently collected sources without following selected stories back to their underlying evidence. Add a shared bounded follow-up desk to the AI newsletter and world/India finance and general-news editions. It selects a few stories, searches for matching official documents, reads available excerpts, and displays source status, unresolved questions and what to watch. Related documents remain context, not certified corroboration.\n\nReuse the existing summary calls with paired story/context citation checks. Preserve accepted delivery IDs, private mailbox handling, Telegram-only delivery and the six-AM IST schedule. Offline input runs stay offline; unsupported or unavailable primary pages leave explicit gaps rather than invented verification.\n\nValidation covers relevance/version collisions, search-only snippets, missing/future dates, restricted pages, source pairing, email query privacy, scope isolation, offline behavior, bounded reads and transport limits. A live Hugging Face sample exercises original-page retrieval; hosted validation follows before deployment."
 
 
 
@@ -215,6 +215,7 @@ def main():
                 "NEWS_FINANCE_START_DATE", values.get("NEWS_FINANCE_START_DATE") or "2026-10-15"
             )
             variable("AI_NEWSLETTER_ENABLED", values.get("AI_NEWSLETTER_ENABLED") or "true")
+            variable("NEWS_RESEARCH_ENABLED", values.get("NEWS_RESEARCH_ENABLED") or "true")
             variable("NEWSLETTER_IMAP_ENABLED", values.get("NEWSLETTER_IMAP_ENABLED") or "false")
             public_key = request("GET", "/actions/secrets/public-key")
             box = public.SealedBox(public.PublicKey(base64.b64decode(public_key["key"])))

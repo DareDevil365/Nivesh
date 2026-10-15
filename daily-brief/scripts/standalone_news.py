@@ -14,6 +14,7 @@ from services import (  # noqa: E402
     news_bot,
     news_digest,
     news_memory,
+    story_research,
     telegram_delivery,  # noqa: E402
 )
 
@@ -112,6 +113,8 @@ def main():
                 else {"version": 1, "entries": {}}
             )
             pack = news_memory.filter_pack(pack, history)
+            if not args.input and story_research.enabled():
+                pack = story_research.enrich_pack(pack)
             # --input smoke runs are offline: weekly retrieval is explicit only for live collection.
             if not args.input:
                 weekly_pack = news_digest.collect(

@@ -24,3 +24,5 @@ python scripts/deploy.py configure
 ```
 
 Configuration deliberately gates scheduled sending until verification. See the guide for the full publish/check/merge/send/enable procedure. This project is locally separate from Nivesh; its reviewed runtime is published under `daily-brief/` in the existing hosting repository, retaining the previous state branch and duplicate protection.
+
+Targeted follow-up now selects up to one story per world/India finance/general-news edition and up to two in the AI edition. It looks for relevant official pages, labels access/date gaps, and adds open questions and next evidence to watch. Existing Gemini summary calls receive the added excerpts; no separate research-model call is added. NEWS_RESEARCH_ENABLED=false disables the extra network research.
