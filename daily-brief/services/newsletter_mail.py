@@ -6,6 +6,7 @@ import json
 import os
 import re
 import ssl
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from email import policy
@@ -20,6 +21,7 @@ CATALOG = json.loads(
 )
 MAX_MESSAGE_BYTES = 262144
 MAX_MESSAGES = 30
+MAX_SECONDS = 45
 
 
 @dataclass(frozen=True)
@@ -144,11 +146,12 @@ def collect(now=None, factory=imaplib.IMAP4_SSL):
         return {"status": "not_enabled", "items": [], "checked": 0}
     connection = None
     stage = "configuration"
+    started = time.monotonic()
     try:
         config = MailboxConfig.load()
         stage = "connection"
         connection = factory(
-            "imap.gmail.com", 993, ssl_context=ssl.create_default_context(), timeout=20
+            "imap.gmail.com", 993, ssl_context=ssl.create_default_context(), timeout=12
         )
         stage = "authentication"
         connection.login(config.user, config.password)
@@ -160,8 +163,12 @@ def collect(now=None, factory=imaplib.IMAP4_SSL):
         since = (now - timedelta(days=7)).strftime("%d-%b-%Y")
         domains = [domain for provider in CATALOG["providers"] for domain in provider["domains"]]
         uids = set()
+        budget_hit = False
         stage = "sender_search"
         for sender in [*domains, *config.exact_senders]:
+            if time.monotonic() - started > MAX_SECONDS:
+                budget_hit = True
+                break
             status, data = connection.uid(
                 "search", None, "SINCE", since, "FROM", '"' + sender + '"'
             )
@@ -169,9 +176,13 @@ def collect(now=None, factory=imaplib.IMAP4_SSL):
                 raise ValueError("Mailbox search unavailable")
             uids.update((data[0] or b"").split())
         selected = sorted(uids, key=int, reverse=True)[:MAX_MESSAGES]
-        items, skipped = [], 0
+        items, skipped, checked = [], 0, 0
         stage = "approved_message_read"
         for uid in selected:
+            if time.monotonic() - started > MAX_SECONDS:
+                budget_hit = True
+                break
+            checked += 1
             status, response = connection.uid("fetch", uid, "(RFC822.SIZE BODY.PEEK[HEADER])")
             if status != "OK":
                 skipped += 1
@@ -191,6 +202,9 @@ def collect(now=None, factory=imaplib.IMAP4_SSL):
             ):
                 skipped += 1
                 continue
+            if time.monotonic() - started > MAX_SECONDS:
+                budget_hit = True
+                break
             status, response = connection.uid("fetch", uid, "(BODY.PEEK[])")
             raw = next((part[1] for part in response if isinstance(part, tuple)), b"")
             parsed = issue(raw, config, now) if status == "OK" else None
@@ -199,11 +213,16 @@ def collect(now=None, factory=imaplib.IMAP4_SSL):
             else:
                 skipped += 1
         return {
-            "status": "available" if items else "no_approved_issues",
+            "status": "available"
+            if items
+            else "bounded_timeout"
+            if budget_hit
+            else "no_approved_issues",
             "items": items,
-            "checked": len(selected),
+            "checked": checked,
             "skipped": skipped,
             "capped": len(uids) > MAX_MESSAGES,
+            "time_budget_reached": budget_hit,
         }
     except (imaplib.IMAP4.error, OSError, ValueError, TypeError, KeyError):
         # Provider replies can contain account details: never log exceptions or raw headers.

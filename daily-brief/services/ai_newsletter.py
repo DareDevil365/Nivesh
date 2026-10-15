@@ -142,6 +142,7 @@ def feed(name, url, kind, now):
 
 def collect(now=None, offline=False):
     now = now or datetime.now(timezone.utc)
+    started = time.monotonic()
     if offline:
         return {
             "date_ist": news_digest.local_day(now),
@@ -161,11 +162,15 @@ def collect(now=None, offline=False):
             unique[key] = item
     items = list(unique.values())[:120]
     attempted = 0
+    read_publishers = set()
     for item in items:
-        if attempted == 4:
+        if attempted == 4 or time.monotonic() - started > 90:
             break
         if item["source_kind"] in {"newsletter_commentary", "preprint_not_peer_reviewed"}:
             continue
+        if item["publisher"] in read_publishers:
+            continue
+        read_publishers.add(item["publisher"])
         attempted += 1
         try:
             raw, final, content_type = fetch_public(

@@ -18,7 +18,7 @@
     "sha256": "9f64bd29ec0b3d23171dbc5b4c8f4dd4099ebfaf912d7679e7535d15a2b44970"
   },
   "PROJECT_GUIDE.md": {
-    "sha256": "537a34fe219811da526629be18eea06117a55acd2014ad1a408cf094e6e7f99d"
+    "sha256": "c69564a9fb2739eb5c65f37854074b5abb6ea88d0ec3e07d1d733672e837f3a8"
   },
   "README.md": {
     "sha256": "f6250809f71bf2574a52d95ad4edb147e2417a89c098732e6057e817572c6dfa"
@@ -87,10 +87,10 @@
     "sha256": "29f282903e556a41f8ba77f7c4a31f425ba65b6dbef9e144db6ae691448de939"
   },
   "services/ai_newsletter.py": {
-    "sha256": "2154e51d3d22c8778ee8835144652c2166734d0dd94953cd8636c397d8c994b0"
+    "sha256": "ba8e2a59af9015f4442d267bc6677b54d67a171c54fd3c8ec30a3ceda7ff412a"
   },
   "services/newsletter_mail.py": {
-    "sha256": "6ad789ce04886de5e3d73a547a495e0241c4b706c347c9ad76bf210ba8907fc0"
+    "sha256": "3a0e040919e18247b5fb3d748c838c4ea2ea70b534f2e4030fc5847fb5931834"
   },
   "scripts/standalone_news.py": {
     "sha256": "2d32c1eb5a93b27ac40ad6259071d88fd9b5519a7d3d31925c9aa63461fb9b62"
