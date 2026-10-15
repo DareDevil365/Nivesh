@@ -102,6 +102,51 @@ class NewsMemoryTests(unittest.TestCase):
         result = memory.weekly_candidates({"items": [self.source, major, tip]}, seen)
         self.assertEqual([item["id"] for item in result], ["major"])
 
+    def test_transient_history_write_and_lost_ack_recover_without_message_sends(self):
+        for acknowledgement_lost in (False, True):
+            with (
+                self.subTest(acknowledgement_lost=acknowledgement_lost),
+                tempfile.TemporaryDirectory() as folder,
+                patch.object(news_digest, "DIGEST_DIR", Path(folder)),
+                patch.object(memory.time, "sleep"),
+                patch.object(tg, "api") as api,
+            ):
+                ledger = news_bot.LocalLedger()
+                ledger.reserve("history", {"version": 1, "entries": {}})
+                delivery = "recoverable-delivery"
+                claim_key = hashlib.sha256(delivery.encode()).hexdigest()[:32]
+                ledger.reserve(
+                    claim_key,
+                    {
+                        "status": "accepted",
+                        "story_entries": memory.entries_for([self.source], "2026-10-15"),
+                    },
+                )
+                original = ledger.accepted
+                attempts = []
+
+                def flaky(
+                    key,
+                    record,
+                    attempts=attempts,
+                    acknowledgement_lost=acknowledgement_lost,
+                    original=original,
+                ):
+                    attempts.append(key)
+                    if len(attempts) == 1:
+                        if acknowledgement_lost:
+                            original(key, record)
+                        raise news_bot.BotError("Temporary state service failure")
+                    return original(key, record)
+
+                with patch.object(ledger, "accepted", side_effect=flaky):
+                    memory.reconcile(ledger, "history", "2026-10-15", delivery)
+                self.assertFalse(
+                    memory.unseen(self.source, memory.load(ledger, "history", "2026-10-15"))
+                )
+                self.assertEqual(len(attempts), 1 if acknowledgement_lost else 2)
+                api.assert_not_called()
+
     def test_weekly_window_uses_seven_day_search_and_excludes_last_day(self):
         now = datetime(2026, 10, 15, 6, tzinfo=timezone.utc)
         older = {**self.source, "published_at": "2026-10-12T00:00:00+00:00"}

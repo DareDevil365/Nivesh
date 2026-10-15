@@ -37,7 +37,7 @@
   },
   "services/news_memory.py": {
     "source": "backend/services/news_memory.py",
-    "sha256": "c3808f82617a158525986b4ad39ad2cdb0d6d5f8fe19def3e0cb864e7c5918d1"
+    "sha256": "25985b5b0fdab05b56e35850dfd7b498fa38489f487cf43a88418c8a3cb506de"
   },
   "services/daily_newsletters.py": {
     "source": "backend/services/daily_newsletters.py",
@@ -93,10 +93,10 @@
   },
   "tests/test_news_memory.py": {
     "source": "backend/tests/test_news_memory.py",
-    "sha256": "988bdf0e582ca8aa3eff90c2d5d997b4211533986429719845fcc54ace95a3db"
+    "sha256": "8cfeeec409a1824808d4cae10b87b7da5c4801ecb7745d3b8c974a5c9406028d"
   },
   "PROJECT_GUIDE.md": {
     "source": "research/STANDALONE_NEWS_BOT.md",
-    "sha256": "b72f53bdef23941187e12780c2f2bd5b6271133a19173dd6321c2927ba3bf999"
+    "sha256": "ae0da360443a6e9d5da2c1e904587d584d3baa6698135de20c56ad2db0afb120"
   }
 }
