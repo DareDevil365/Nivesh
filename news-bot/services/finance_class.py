@@ -2,6 +2,7 @@
 
 import html
 import json
+import math
 import os
 import re
 import time
@@ -15,11 +16,40 @@ from services import telegram_delivery as tg
 from services.news_bot import BotError
 
 DATA = json.loads(Path(__file__).with_name("finance_foundations.json").read_text(encoding="utf-8"))
+DEPTH = json.loads(
+    Path(__file__).with_name("finance_lesson_depth.json").read_text(encoding="utf-8")
+)
+CLASS_VERSION = "finance-class-v2-"
 
 
 def course():
     keys = ("id", "module", "title", "note", "example", "question", "answer", "source", "keywords")
-    return [dict(zip(keys, row, strict=True)) for row in DATA["lessons"]]
+    lessons = [dict(zip(keys, row, strict=True)) for row in DATA["lessons"]]
+    if set(DEPTH) != {lesson["id"] for lesson in lessons}:
+        raise BotError("Finance Class depth notes do not match the syllabus.")
+    for lesson in lessons:
+        depth = DEPTH[lesson["id"]]
+        if (
+            any(
+                not isinstance(depth.get(key), str) or not depth[key].strip()
+                for key in ("goal", "mistake", "transfer")
+            )
+            or any(
+                not isinstance(depth.get(key), list)
+                or len(depth[key]) < 3
+                or any(not isinstance(value, str) or not value.strip() for value in depth[key])
+                for key in ("terms", "steps", "worked")
+            )
+            or not isinstance(depth.get("exercise"), dict)
+            or any(
+                not isinstance(depth["exercise"].get(key), str)
+                or not depth["exercise"][key].strip()
+                for key in ("question", "answer")
+            )
+        ):
+            raise BotError("Finance Class depth notes are incomplete.")
+        lesson["depth"] = depth
+    return lessons
 
 
 def lesson_for_day(day, start=None):
@@ -88,7 +118,7 @@ def prepare(day, pack=None, use_ai=True):
     explanation = generate(
         day,
         [source],
-        "Teach this specific lesson to a complete beginner, not a stock picker. Explain the supplied ideas in two short plain-language paragraphs. Only use the supplied hypothetical numbers; do not invent rules, current rates or real-world incidents. Use text for the explanation and why_it_matters for a learning tip.",
+        "The complete authored lesson is already provided separately to the learner. Add only an optional plain-language explanation of these supplied notes for a complete beginner, not a stock picker. Do not invent new facts, rules, current rates, real-world incidents or numerical examples. Use text for the explanation and why_it_matters for a learning tip. Do not claim to grade the learner or know their performance.",
         use_ai,
     )
     candidates = []
@@ -178,7 +208,18 @@ def prepare(day, pack=None, use_ai=True):
         "current": current,
         "historical": historical,
         "case_concepts": concepts,
+        "recall": recall_questions(lesson),
     }
+
+
+def recall_questions(lesson):
+    """Calendar-based retrieval practice, without pretending to know learning performance."""
+    lessons = course()
+    return [
+        {**lessons[(lesson["day"] - 1 - gap) % len(lessons)], "taught_day": lesson["day"] - gap}
+        for gap in (1, 7)
+        if lesson["day"] > gap
+    ]
 
 
 def source_link(source):
@@ -191,28 +232,70 @@ def source_link(source):
 
 def class_messages(prepared):
     lesson, esc = prepared["lesson"], html.escape
+    depth = lesson["depth"]
     review = " · review" if lesson["cycle"] > 1 else ""
     heading = f"<b>Finance Class · Today's learnings · Day {lesson['day']}{review}</b>"
-    blocks = [
-        f"<b>{esc(lesson['module'])}: {esc(lesson['title'])}</b>",
-        esc(lesson["note"]),
-        "<b>Example</b>\n" + esc(lesson["example"]),
-        "<b>Think it through</b>\n"
-        + esc(lesson["question"])
-        + "\n<tg-spoiler>"
-        + esc(lesson["answer"])
-        + "</tg-spoiler>",
-    ]
+    blocks = [f"<b>{esc(lesson['module'])}: {esc(lesson['title'])}</b>"]
+    for recall in prepared.get("recall", []):
+        blocks.append(
+            f"<b>Recall · Day {recall['taught_day']}: {esc(recall['title'])}</b>\n"
+            + esc(recall["question"])
+            + "\nTry from memory, then tap: <tg-spoiler>"
+            + esc(recall["answer"])
+            + "</tg-spoiler>"
+        )
+    blocks.extend(
+        [
+            "<b>By the end</b>\n" + esc(depth["goal"]),
+            "<b>The central idea</b>\n" + esc(lesson["note"]),
+            "<b>Words you will use</b>\n" + "\n".join("• " + esc(term) for term in depth["terms"]),
+        ]
+    )
+    blocks.extend(
+        f"<b>How it works · Step {index}</b>\n" + esc(paragraph)
+        for index, paragraph in enumerate(depth["steps"], 1)
+    )
+    blocks.extend(
+        f"<b>Worked example · Step {index}</b>\n" + esc(paragraph)
+        for index, paragraph in enumerate(depth["worked"], 1)
+    )
+    blocks.append("<b>Where people get confused</b>\n" + esc(depth["mistake"]))
     if prepared["explanation"]:
         blocks.extend(
-            "<b>Another way to understand it</b>\n" + esc(bullet["text"])
+            "<b>Optional AI explanation</b>\n" + esc(bullet["text"])
             for bullet in prepared["explanation"]["bullets"]
         )
-    blocks.append(
-        source_link(lesson["source_info"])
-        + "\nExamples are hypothetical unless explicitly identified as historical. Try explaining the concept in your own words."
+    blocks.extend(
+        [
+            "<b>Quick check · answer before tapping</b>\n"
+            + esc(lesson["question"])
+            + "\n<tg-spoiler>"
+            + esc(lesson["answer"])
+            + "</tg-spoiler>",
+            "<b>Your turn · apply the idea</b>\n"
+            + esc(depth["exercise"]["question"])
+            + "\nWrite your reasoning before revealing the solution.",
+            "<b>Worked solution · tap after trying</b>\n<tg-spoiler>"
+            + esc(depth["exercise"]["answer"])
+            + "</tg-spoiler>",
+            "<b>Use it outside this lesson</b>\n" + esc(depth["transfer"]),
+            source_link(lesson["source_info"])
+            + "\nOriginal teaching notes; linked source is further reading. Examples are hypothetical unless labelled historical.",
+        ]
     )
-    return [heading, *pack_blocks(blocks)]
+    words = len(html.unescape(re.sub(r"<[^>]+>", " ", " ".join(blocks))).split())
+    blocks.insert(
+        1,
+        f"<i>About {math.ceil(words / 160)} min reading + 3–5 min practice. Pause at the examples; no prior finance study needed.</i>",
+    )
+    chunks = pack_blocks(blocks)
+    return [
+        heading,
+        *[
+            f"<b>Finance Class · Part {index}/{len(chunks)}</b>\n\n" + chunk
+            for index, chunk in enumerate(chunks, 1)
+        ],
+    ]
 
 
 def pack_blocks(blocks):
@@ -297,7 +380,7 @@ def case_messages(prepared):
 
 
 def deliver(day, config, ledger, prepared, context=False):
-    key = ("finance-context-v1-" if context else "finance-class-v1-") + config.delivery_id(day)
+    key = ("finance-context-v1-" if context else CLASS_VERSION) + config.delivery_id(day)
     prior = tg.existing_id(key, ledger)
     if prior:
         return prior

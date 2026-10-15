@@ -1,8 +1,12 @@
 """Beginner curriculum scope, grounded expansion and separated delivery."""
 
+import copy
+import re
 import tempfile
 import unittest
 from datetime import date, timedelta
+from decimal import Decimal
+from html.parser import HTMLParser
 from pathlib import Path
 from unittest.mock import patch
 
@@ -13,6 +17,109 @@ from tests.test_news_bot import fixture, provider
 
 
 class FinanceClassTests(unittest.TestCase):
+    def test_every_lesson_has_substantive_authored_teaching_without_ai(self):
+        class Markup(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.opened = []
+
+            def handle_starttag(self, tag, attrs):
+                self.assert_tag(tag)
+                self.opened.append(tag)
+
+            def handle_endtag(self, tag):
+                if not self.opened or self.opened.pop() != tag:
+                    raise AssertionError("Unbalanced Telegram markup")
+
+            def assert_tag(self, tag):
+                if tag not in {"b", "i", "a", "tg-spoiler"}:
+                    raise AssertionError("Unsupported Telegram markup")
+
+        with patch.dict("os.environ", {"NEWS_FINANCE_START_DATE": "2026-10-15"}):
+            for index in range(42):
+                day = (date(2026, 10, 15) + timedelta(days=index)).isoformat()
+                prepared = classroom.prepare(day, use_ai=False)
+                messages = classroom.class_messages(prepared)
+                body = "\n".join(messages)
+                # Check delivered pedagogy, not merely presence of data fields.
+                self.assertGreater(len(re.sub(r"<[^>]+>", "", body).split()), 400)
+                for label in (
+                    "By the end",
+                    "Words you will use",
+                    "How it works · Step 3",
+                    "Worked example · Step 3",
+                    "Where people get confused",
+                    "Your turn",
+                    "Worked solution",
+                    "Use it outside this lesson",
+                ):
+                    self.assertIn(label, body)
+                self.assertLess(
+                    body.index("How it works · Step 1"), body.index("Worked example · Step 1")
+                )
+                self.assertLess(body.index("Your turn"), body.index("Worked solution"))
+                for number, message in enumerate(messages[1:], 1):
+                    self.assertIn(f"Part {number}/{len(messages) - 1}", message)
+                    self.assertLessEqual(len(message.encode("utf-16-le")) // 2, 4096)
+                    parser = Markup()
+                    parser.feed(message)
+                    parser.close()
+                    self.assertEqual(parser.opened, [])
+
+    def test_missing_or_incomplete_depth_fails_instead_of_sending_shallow_lesson(self):
+        broken = copy.deepcopy(classroom.DEPTH)
+        del broken["money"]
+        with patch.object(classroom, "DEPTH", broken), self.assertRaises(news_bot.BotError):
+            classroom.course()
+        broken = copy.deepcopy(classroom.DEPTH)
+        broken["finance"]["worked"] = ["Only a definition"]
+        with patch.object(classroom, "DEPTH", broken), self.assertRaises(news_bot.BotError):
+            classroom.course()
+
+    def test_spaced_recall_uses_previous_and_week_old_topics_not_assumed_performance(self):
+        first = classroom.lesson_for_day("2026-10-15", "2026-10-15")
+        self.assertEqual(classroom.recall_questions(first), [])
+        second = classroom.lesson_for_day("2026-10-16", "2026-10-15")
+        self.assertEqual([q["id"] for q in classroom.recall_questions(second)], ["finance"])
+        eighth = classroom.lesson_for_day("2026-10-22", "2026-10-15")
+        self.assertEqual([q["taught_day"] for q in classroom.recall_questions(eighth)], [7, 1])
+        review = classroom.lesson_for_day("2026-11-26", "2026-10-15")
+        self.assertEqual([q["taught_day"] for q in classroom.recall_questions(review)], [42, 36])
+
+    def test_authored_exercise_arithmetic_against_independent_calculations(self):
+        d = Decimal
+        calculations = {
+            "finance": [8000 + 2000 - 6000 - 3000],
+            "money": [720 // 40],
+            "flows": [9000 + 3000 - 2000, 4000 + 3000, 9000 - 4000 - 2000],
+            "budgeting": [3000 - 2000 - 2000 + 5000],
+            "interest": [5000 * d(".08") * d(".25")],
+            "compounding": [2000 * d("1.05") ** 2, 2000 * d("1.05") ** 2 - 2200],
+            "timevalue": [1210 / d("1.1") ** 2],
+            "inflation": [(d(220) / 200 - 1) * 100, (d(231) / 220 - 1) * 100],
+            "realnominal": [((d("1.2") / d("1.1") - 1) * 100).quantize(d(".01"))],
+            "primarysecondary": [100],
+            "orders": [3 * 50 + 55, d(3 * 50 + 55) / 4],
+            "quarters": [(d(120) / 100 - 1) * 100, (d(120) / 150 - 1) * 100],
+            "statements": [50 - 30],
+            "accrual": [600 // 6 * 2, 600 - 600 // 6 * 2],
+            "balance": [(500 + 100) - (320 + 100)],
+            "cashprofit": [30 + 5 - 10, 30 + 5 - 10 - 20],
+            "equity": [(98 + 4 - 100) * 100 // 100],
+            "bonds": [40 * 100 // 1000],
+            "yields": [d(120) / d("1.2"), d(120) / d("1.25")],
+            "calls": [52 - 50, 52 - 50 - 4],
+            "leverage": [80 - 60, (40 - (80 - 60)) * 100 // 40],
+            "fx": [(200 - 150) * (84 - 80)],
+            "fiscal": [110 - 90],
+        }
+        for topic, values in calculations.items():
+            answer = classroom.DEPTH[topic]["exercise"]["answer"].replace(",", "")
+            # Negative outcomes are expressed in prose as well as equations.
+            numbers = {abs(d(token)) for token in re.findall(r"-?\d+(?:\.\d+)?", answer)}
+            for value in values:
+                self.assertIn(abs(d(value)), numbers, (topic, value, answer))
+
     def test_full_course_is_broad_and_all_lessons_render(self):
         lessons = classroom.course()
         self.assertEqual(len(lessons), 42)
