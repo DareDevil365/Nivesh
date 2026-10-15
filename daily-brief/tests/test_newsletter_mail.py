@@ -172,3 +172,34 @@ class NewsletterMailTests(unittest.TestCase):
         with patch.dict("os.environ", {"NEWSLETTER_IMAP_ENABLED": "false"}):
             result = mail.collect(NOW, factory=lambda *a, **kw: self.fail("Must not connect"))
         self.assertEqual(result["status"], "not_enabled")
+
+    def test_mailbox_scan_caps_candidates_even_when_search_returns_many(self):
+        class ManyMessages(FakeMailbox):
+            def uid(self, operation, *args):
+                if operation == "search":
+                    return "OK", [b" ".join(str(i).encode() for i in range(1, 81))]
+                return super().uid(operation, *args)
+
+        fake = ManyMessages()
+        with (
+            patch.dict("os.environ", {"NEWSLETTER_IMAP_ENABLED": "true"}),
+            patch.object(mail.MailboxConfig, "load", return_value=CONFIG),
+        ):
+            result = mail.collect(NOW, factory=lambda *a, **kw: fake)
+        self.assertEqual(result["checked"], 30)
+        self.assertTrue(result["capped"])
+        self.assertEqual(
+            sum(call[0] == "fetch" and call[-1] == "(BODY.PEEK[])" for call in fake.calls), 30
+        )
+
+    def test_elapsed_budget_stops_before_sender_or_body_queries(self):
+        fake = FakeMailbox()
+        with (
+            patch.dict("os.environ", {"NEWSLETTER_IMAP_ENABLED": "true"}),
+            patch.object(mail.MailboxConfig, "load", return_value=CONFIG),
+            patch.object(mail.time, "monotonic", side_effect=[0, 46]),
+        ):
+            result = mail.collect(NOW, factory=lambda *a, **kw: fake)
+        self.assertEqual(result["status"], "bounded_timeout")
+        self.assertTrue(result["time_budget_reached"])
+        self.assertFalse(any(call[0] in {"search", "fetch"} for call in fake.calls))

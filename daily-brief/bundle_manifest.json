@@ -18,7 +18,7 @@
     "sha256": "9f64bd29ec0b3d23171dbc5b4c8f4dd4099ebfaf912d7679e7535d15a2b44970"
   },
   "PROJECT_GUIDE.md": {
-    "sha256": "c69564a9fb2739eb5c65f37854074b5abb6ea88d0ec3e07d1d733672e837f3a8"
+    "sha256": "0ce5aa983f26f9c277fc1cee7fda0f9c86a02ac2254e7fd097232fdff1eeb892"
   },
   "README.md": {
     "sha256": "f6250809f71bf2574a52d95ad4edb147e2417a89c098732e6057e817572c6dfa"
@@ -129,6 +129,6 @@
     "sha256": "0b7c46c58ae148091338dc6bf7f077054bd3edc7e4a225a95c2b4912b52ca872"
   },
   "tests/test_newsletter_mail.py": {
-    "sha256": "5f6668843de71aeb5cf0d09245e09adb153788a52e9a74de498dbf5191ee0861"
+    "sha256": "c90072d1a702f0c28ef7f19ff9e6f12dd37925f14c169154538a06f07e018222"
   }
 }

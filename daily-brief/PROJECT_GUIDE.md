@@ -197,3 +197,5 @@ Live checks verified Telegram's Daily Brief display name and collected recent Op
 FastAPI/Pydantic and optional Redis imports remain because the retained collection/cache helpers use them; Daily Brief does not start an HTTP server or require Redis. Retaining these small shared utilities avoided changing validated parsing during the move. Removing unused browser-storage helpers could reduce dependencies later.
 
 Subsequent checks: 93 runtime tests now include distinct same-subject email issues surviving both collection and sent-history filtering. Mail read loops have a bounded elapsed-time check, and primary article attempts favour publisher diversity. The full feature still degrades explicitly when Gmail authentication is unavailable.
+
+Final pre-deployment checks: 95 standalone tests pass, including the 30-message scan cap and the elapsed-time stop before additional sender/body queries. The live combined discovery retained 23 sources, read one primary article excerpt and selected dated company/developer/preprint evidence; source availability varied between calls. Gmail remained authentication-unavailable. Nivesh’s 202 application tests pass after the move.
