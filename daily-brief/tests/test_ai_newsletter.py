@@ -50,6 +50,22 @@ class AINewsletterTests(unittest.TestCase):
         received["items"] = [{**source, "id": "mail-issue-two"}]
         self.assertEqual(len(ai.prepare(received, history, use_ai=False)["items"]), 1)
 
+    def test_collection_preserves_distinct_issues_before_sent_history_filtering(self):
+        source = {**pack()["items"][0], "source_kind": "newsletter_commentary", "id": "mail-first"}
+        mail = {
+            "status": "available",
+            "checked": 2,
+            "items": [source, {**source, "id": "mail-second"}],
+        }
+        with (
+            patch.object(ai, "FEEDS", ()),
+            patch.object(ai.newsletter_mail, "collect", return_value=mail),
+            patch.object(ai, "fetch_public") as fetch,
+        ):
+            result = ai.collect(NOW)
+        self.assertEqual(len(result["items"]), 2)
+        fetch.assert_not_called()
+
     def test_valid_synthesis_passes_shared_schema_with_complete_pack_metadata(self):
         candidate = {
             "category": "policy",

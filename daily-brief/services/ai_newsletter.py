@@ -156,7 +156,7 @@ def collect(now=None, offline=False):
     items = [item for result in results for item in result["items"]] + mail["items"]
     unique = {}
     for item in sorted(items, key=lambda item: item["published_at"], reverse=True):
-        key = news_reader.headline_fingerprint(item["title"])
+        key = news_reader.headline_fingerprint(memory_source(item)["title"])
         if key not in unique:
             unique[key] = item
     items = list(unique.values())[:120]
