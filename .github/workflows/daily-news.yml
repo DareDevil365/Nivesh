@@ -9,6 +9,10 @@ on:
         description: Prepare a brief without contacting delivery services or sending
         type: boolean
         default: true
+      check_mailbox:
+        description: Verify read-only newsletter intake and print safe counts
+        type: boolean
+        default: false
   pull_request:
     paths:
       - 'daily-brief/**'
@@ -53,6 +57,14 @@ jobs:
           cache: pip
           cache-dependency-path: daily-brief/requirements.txt
       - run: pip install -r requirements.txt
+      - name: Verify newsletter mailbox
+        if: github.event_name == 'workflow_dispatch' && inputs.check_mailbox
+        env:
+          NEWSLETTER_IMAP_ENABLED: ${{ vars.NEWSLETTER_IMAP_ENABLED || 'false' }}
+          NEWSLETTER_IMAP_USER: ${{ secrets.NEWSLETTER_IMAP_USER }}
+          NEWSLETTER_IMAP_PASSWORD: ${{ secrets.NEWSLETTER_IMAP_PASSWORD }}
+          NEWSLETTER_ALLOWED_SENDERS: ${{ secrets.NEWSLETTER_ALLOWED_SENDERS }}
+        run: python scripts/setup_newsletters.py --check
       - name: Collect, summarise and deliver
         env:
           GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}

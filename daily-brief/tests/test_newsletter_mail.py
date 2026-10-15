@@ -116,6 +116,55 @@ class NewsletterMailTests(unittest.TestCase):
         self.assertIn("Useful AI model", result)
         self.assertNotIn("PRIVATE", result)
 
+    def test_live_signup_shapes_do_not_become_news_evidence(self):
+        for subject, intro in (
+            ("\U0001f389 Welcome! 3 quick steps to get started", "Welcome to our AI newsletter."),
+            ("We've got AI treats for you", "**Welcome humans. Thanks for joining our newsletter.**"),
+            ("Confirm Signup", "Confirm your email to receive our newsletter."),
+            ("Confirm your Publisher subscription", "Please confirm your subscription."),
+            ("Your first message", "Thank you for subscribing to our newsletter."),
+        ):
+            with self.subTest(subject=subject):
+                message = email()
+                message.replace_header("Subject", subject)
+                message.set_content(intro + "\n" + "A practical introduction to this subscription. " * 8)
+                self.assertIsNone(mail.issue(message.as_bytes(), CONFIG, NOW))
+        message = email()
+        message.set_content("A company published research about welcome messages in AI products. " * 3)
+        self.assertIsNotNone(mail.issue(message.as_bytes(), CONFIG, NOW))
+
+    def test_invisible_preview_padding_does_not_hide_useful_evidence(self):
+        message = email()
+        message.set_content("\u034f\u00ad\u200b" * 3000 + "\n" + "Useful model research and limitations. " * 5)
+        cleaned = mail.clean_body(message)
+        self.assertTrue(cleaned.startswith("Useful model research"))
+        self.assertNotIn("\u034f", cleaned)
+        self.assertLess(len(cleaned), 300)
+
+    def test_verified_publisher_senders_keep_identity_without_platform_wildcard(self):
+        for sender, publisher in (
+            ("dan@tldrnewsletter.com", "TLDR AI"),
+            ("superhuman@mail.joinsuperhuman.ai", "Superhuman AI"),
+            ("bensbites@substack.com", "Ben's Bites"),
+        ):
+            with self.subTest(sender=sender):
+                result = mail.issue(email(sender).as_bytes(), CONFIG, NOW)
+                self.assertEqual(result["publisher"], publisher)
+                self.assertNotIn("mail.google.com", result["url"])
+        self.assertIsNone(mail.issue(email("another@substack.com").as_bytes(), CONFIG, NOW))
+
+    def test_sender_search_includes_verified_exact_catalog_addresses(self):
+        fake = FakeMailbox()
+        with (
+            patch.dict("os.environ", {"NEWSLETTER_IMAP_ENABLED": "true"}),
+            patch.object(mail.MailboxConfig, "load", return_value=CONFIG),
+        ):
+            mail.collect(NOW, factory=lambda *a, **kw: fake)
+        searches = [call[-1] for call in fake.calls if call[0] == "search"]
+        self.assertIn('"dan@tldrnewsletter.com"', searches)
+        self.assertIn('"bensbites@substack.com"', searches)
+        self.assertNotIn('"substack.com"', searches)
+
     def test_shared_platform_requires_exact_private_sender_approval(self):
         message = email("publisher@shared-platform.example")
         self.assertIsNone(mail.issue(message.as_bytes(), CONFIG, NOW))

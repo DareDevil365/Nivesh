@@ -1,12 +1,82 @@
 {
   "checked_on": "2026-10-15",
   "providers": [
-    {"id":"rundown","name":"The Rundown AI","subscribe":"https://www.therundown.ai/subscribe","focus":"Practical AI news, products and workflows","free":"Free newsletter; paid university is separate","proof":"https://www.therundown.ai/subscribe","domains":["therundown.ai"]},
-    {"id":"tldr","name":"TLDR AI","subscribe":"https://tldr.tech/ai","focus":"Models, developer tools and research","free":"Free weekday newsletter","proof":"https://tldr.tech/ai","domains":["tldr.tech"]},
-    {"id":"batch","name":"The Batch","subscribe":"https://www.deeplearning.ai/the-batch/","focus":"AI research and industry context","free":"Weekly AI news included in free membership","proof":"https://info.deeplearning.ai/knowledge-base/types-of-memberships","domains":["deeplearning.ai"]},
-    {"id":"superhuman","name":"Superhuman AI","subscribe":"https://www.superhuman.ai/","focus":"AI news, tools and practical tutorials","free":"Free newsletter; other offerings can differ","proof":"https://www.superhuman.ai/","domains":["superhuman.ai"]},
-    {"id":"neuron","name":"The Neuron","subscribe":"https://www.theneuron.ai/newsletter/","focus":"Accessible AI developments and tools","free":"Free newsletter; academy is separate","proof":"https://www.theneuron.ai/newsletter/merry-christmas-from-the-neuron/","domains":["theneuron.ai","theneurondaily.com"]},
-    {"id":"bens","name":"Ben's Bites","subscribe":"https://www.bensbites.com/","focus":"AI products, builders and useful discoveries","free":"Free and paid subscriptions exist; select the free option","proof":"https://catalog.bensbites.com/terms-of-service","domains":["bensbites.com"]}
+    {
+      "id": "rundown",
+      "name": "The Rundown AI",
+      "subscribe": "https://www.therundown.ai/subscribe",
+      "focus": "Practical AI news, products and workflows",
+      "free": "Free newsletter; paid university is separate",
+      "proof": "https://www.therundown.ai/subscribe",
+      "domains": [
+        "therundown.ai"
+      ]
+    },
+    {
+      "id": "tldr",
+      "name": "TLDR AI",
+      "subscribe": "https://tldr.tech/ai",
+      "focus": "Models, developer tools and research",
+      "free": "Free weekday newsletter",
+      "proof": "https://tldr.tech/ai",
+      "domains": [
+        "tldr.tech"
+      ],
+      "senders": [
+        "dan@tldrnewsletter.com"
+      ]
+    },
+    {
+      "id": "batch",
+      "name": "The Batch",
+      "subscribe": "https://www.deeplearning.ai/the-batch/",
+      "focus": "AI research and industry context",
+      "free": "Weekly AI news included in free membership",
+      "proof": "https://info.deeplearning.ai/knowledge-base/types-of-memberships",
+      "domains": [
+        "deeplearning.ai"
+      ]
+    },
+    {
+      "id": "superhuman",
+      "name": "Superhuman AI",
+      "subscribe": "https://www.superhuman.ai/",
+      "focus": "AI news, tools and practical tutorials",
+      "free": "Free newsletter; other offerings can differ",
+      "proof": "https://www.superhuman.ai/",
+      "domains": [
+        "superhuman.ai"
+      ],
+      "senders": [
+        "superhuman@mail.joinsuperhuman.ai"
+      ]
+    },
+    {
+      "id": "neuron",
+      "name": "The Neuron",
+      "subscribe": "https://www.theneuron.ai/newsletter/",
+      "focus": "Accessible AI developments and tools",
+      "free": "Free newsletter; academy is separate",
+      "proof": "https://www.theneuron.ai/newsletter/merry-christmas-from-the-neuron/",
+      "domains": [
+        "theneuron.ai",
+        "theneurondaily.com"
+      ]
+    },
+    {
+      "id": "bens",
+      "name": "Ben's Bites",
+      "subscribe": "https://www.bensbites.com/",
+      "focus": "AI products, builders and useful discoveries",
+      "free": "Free and paid subscriptions exist; select the free option",
+      "proof": "https://catalog.bensbites.com/terms-of-service",
+      "domains": [
+        "bensbites.com"
+      ],
+      "senders": [
+        "bensbites@substack.com"
+      ]
+    }
   ],
-  "mail_note":"These are publisher-owned domains, not verified current From addresses. Shared sending platforms and other domains require an explicit exact-sender addition in the private configuration. Display names alone never approve a sender."
+  "mail_note": "Publisher-owned domains plus exact publisher From addresses verified from authenticated signup mail on 2026-10-15. Shared platform domains are never approved wholesale. Other sending identities need explicit exact-address approval."
 }
