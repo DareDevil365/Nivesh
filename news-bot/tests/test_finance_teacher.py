@@ -19,6 +19,9 @@ from tests.test_news_bot import fixture
 
 class FinanceTeacherTests(unittest.TestCase):
     def setUp(self):
+        env = patch.dict("os.environ", {"NEWS_FINANCE_START_DATE": "2026-10-14"})
+        env.start()
+        self.addCleanup(env.stop)
         self.config = tg.TelegramConfig("123456:" + "x" * 35, "7654321")
 
     def test_all_47_lessons_render_with_sources_examples_and_self_checks(self):
@@ -98,7 +101,7 @@ class FinanceTeacherTests(unittest.TestCase):
                 self.assertEqual(teacher.deliver(day, self.config, ledger), "telegram_accepted")
                 self.assertEqual(teacher.deliver(day, self.config, ledger), "already_accepted")
             self.assertEqual(api.call_count, 2)
-            self.assertIn("Today's learnings · Day 1", api.call_args_list[0].kwargs["data"]["text"])
+            self.assertIn("Stock Daddy · Day 1", api.call_args_list[0].kwargs["data"]["text"])
             self.assertEqual(ledger.get(news_key)["status"], "accepted")
 
     def test_failed_teacher_send_does_not_replay_or_change_news_claim(self):

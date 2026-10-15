@@ -13,23 +13,35 @@
   },
   "services/news_digest.py": {
     "source": "backend/services/news_digest.py",
-    "sha256": "534c78441bfccf47a8f4c7b2c3b145e4e2bd7904cff47b76e2e05ecaacc4754d"
+    "sha256": "c3b7aa401885bd50863a445241e9c7f4d22a66ec713a11dcb59e74f9bbfe8bfe"
   },
   "services/news_bot.py": {
     "source": "backend/services/news_bot.py",
-    "sha256": "9a5c0b068b686161e29c2ea992a533a821a21c515ae0ef72dc8a16e00a2c2fed"
+    "sha256": "6f45417c4ec0fb0134e3b194e35dbd79efadfe970059d691270de9e733477698"
   },
   "services/telegram_delivery.py": {
     "source": "backend/services/telegram_delivery.py",
-    "sha256": "2cd988d107b23bd78b684abd37b59f9141f9ec45eb317b99d5123c55ccd2225d"
+    "sha256": "59250590eefc5b12b4091a36daf9dcc53a04f81b8600e2832c885a57be2e3ca9"
   },
   "services/finance_teacher.py": {
     "source": "backend/services/finance_teacher.py",
-    "sha256": "124ce9cf70b43f5c9f89039a79f192960ea9ae4a216b67dc2e71c857cdee07a4"
+    "sha256": "988f267500c5765c4086626376515fab08dd02231140b4d0746f3f522ae73e9a"
+  },
+  "services/finance_class.py": {
+    "source": "backend/services/finance_class.py",
+    "sha256": "535d1e4e2fa9e583bb1ff2871e343dbe7ce6822c680b91c26970975ad7e562ad"
+  },
+  "services/finance_foundations.json": {
+    "source": "backend/services/finance_foundations.json",
+    "sha256": "5d027ca8ae97299bd000b7e7810a98d61752b6a54476798f3feae95b2eb047c9"
+  },
+  "services/news_memory.py": {
+    "source": "backend/services/news_memory.py",
+    "sha256": "49612154de156e172d71e2251caed9353301710079b74a5f64e1d1640a2006b7"
   },
   "services/daily_newsletters.py": {
     "source": "backend/services/daily_newsletters.py",
-    "sha256": "da6b6daef3014e080361f8fc3adbda7e1369fe152fa6dff0d2640cd40a243f42"
+    "sha256": "e8ece13bb0b01e29b5cc742a581e83a94f2507915e57d4a528f7647526485ea0"
   },
   "services/finance_curriculum.json": {
     "source": "backend/services/finance_curriculum.json",
@@ -53,7 +65,7 @@
   },
   "scripts/standalone_news.py": {
     "source": "backend/scripts/standalone_news.py",
-    "sha256": "3476a6c3170f682cae926215a6dca569f81f48d7fd603d9ab96a327e0d866fef"
+    "sha256": "cc66a5ef6fa386f081ad3309128f755656ecdbecee05de2c3b145fe5346c3dce"
   },
   "scripts/setup_telegram.py": {
     "source": "backend/scripts/setup_telegram.py",
@@ -69,14 +81,22 @@
   },
   "tests/test_finance_teacher.py": {
     "source": "backend/tests/test_finance_teacher.py",
-    "sha256": "2a0a2a4b97431431ebe30fe1efcd48988ccf7e8d1fd720d252089c2c5f242d79"
+    "sha256": "a9f5ef7ad6c7e2b2af111c2d8b3fb5e6c66bb996108409efa28d29f74d070e65"
   },
   "tests/test_daily_newsletters.py": {
     "source": "backend/tests/test_daily_newsletters.py",
-    "sha256": "3f4da85ee14c5b058bc937e2e325f4ba84696021114f44dc680559beb39a7fe6"
+    "sha256": "a1172cd1e1dddc8a8cff166a82198ab5cf48b066a5a4a3fc4a063346cff8a1e3"
+  },
+  "tests/test_finance_class.py": {
+    "source": "backend/tests/test_finance_class.py",
+    "sha256": "5c52c617accd8f02d476ebc14ee1283ab40a7d1b3c523626b990ea114ab0a669"
+  },
+  "tests/test_news_memory.py": {
+    "source": "backend/tests/test_news_memory.py",
+    "sha256": "2ecbddf5b42cbc55f597e1c0576ac3bac5f65512fce0d450b5a487de9eb2f7d5"
   },
   "PROJECT_GUIDE.md": {
     "source": "research/STANDALONE_NEWS_BOT.md",
-    "sha256": "950c2a8b32b1a345422d94ec76996a3240fb6167cafe4e78a9ec6fef884395f6"
+    "sha256": "fdac9fa1bdcc38fe3e2f001608616d9b8b9d2d9bd754555d657421577798014a"
   }
 }
