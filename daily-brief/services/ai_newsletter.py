@@ -13,6 +13,7 @@ from urllib.parse import urlsplit, urlunsplit
 import httpx
 
 from services import (
+    brief_format,
     finance_class,
     news_bot,
     news_digest,
@@ -294,7 +295,18 @@ def memory_source(item):
     return item
 
 
-def messages(digest):
+def messages(digest, compact=False):
+    if compact:
+        try:
+            content = brief_format.news_blocks(brief_format.ai_bullets(digest))
+        except ValueError as error:
+            raise news_bot.BotError("Unsafe compact AI citation.") from error
+        return [
+            "<b>AI newsletter</b>\n"
+            + html.escape(digest["date_ist"])
+            + "\n\n"
+            + ("\n\n".join(content) or "No additional qualifying unseen AI sources in this scan.")
+        ]
     esc = html.escape
     blocks = [
         "<b>AI developments to read first</b>\nCollected from the past seven days; previously sent matching headlines are suppressed. Publication date is shown for each source."
@@ -370,11 +382,11 @@ def messages(digest):
     ]
 
 
-def deliver(day, config, ledger, use_ai=True, offline=False):
+def deliver(day, config, ledger, use_ai=True, offline=False, capture=None):
     identifier = "daily-brief-ai-v1-" + config.delivery_id(day)
     previous = tg.existing_id(identifier, ledger)
     memory_key = news_memory.history_key(config) + "-ai"
-    if previous:
+    if previous and capture is None:
         news_memory.reconcile(ledger, memory_key, day, identifier)
         return previous
     history = news_memory.load(ledger, memory_key, day)
@@ -383,16 +395,34 @@ def deliver(day, config, ledger, use_ai=True, offline=False):
         raise news_bot.BotError(
             "AI newsletter date changed during collection; retry on the new day."
         )
-    digest = prepare(pack, history, use_ai=use_ai)
+    digest = prepare(pack, {"version": 1, "entries": {}} if previous else history, use_ai=use_ai)
+    if capture:
+        capture(digest)
+    if previous:
+        news_memory.reconcile(ledger, memory_key, day, identifier)
+        return previous
+    compact = brief_format.enabled()
     time.sleep(1.1)
     result = tg.deliver_messages(
         day,
-        messages(digest),
+        messages(digest, compact=compact),
         config,
         ledger,
         identifier,
         story_entries=news_memory.entries_for(
-            [memory_source(item) for item in digest["items"]], day
+            [
+                memory_source(item)
+                for item in (
+                    [
+                        source
+                        for bullet in brief_format.ai_bullets(digest)
+                        for source in bullet["sources"]
+                    ]
+                    if compact
+                    else digest["items"]
+                )
+            ],
+            day,
         ),
     )
     news_memory.reconcile(ledger, memory_key, day, identifier)

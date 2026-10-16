@@ -15,13 +15,13 @@
     "sha256": "3fd19456fc1a9082d43a220e90a24fda460c17be0d3da90f7fd497a9ca6b5c3d"
   },
   ".env.example": {
-    "sha256": "8e67b327d8ec13a39ef785a1358fe13aef4b6da2280038aa707676ae036fac7f"
+    "sha256": "25e60fc719460a4eb83a55d4d66a8e9a0e4982acf03feae3a12af87c87c58027"
   },
   "PROJECT_GUIDE.md": {
-    "sha256": "fd2101279559f360a58f7354ee27434053b1fb3fc96ae3c13c2019ac7e222b7b"
+    "sha256": "5a518f59e7aeccff1540d2a68d0551f41360a065f41925eb9af46ad15dd7e33f"
   },
   "README.md": {
-    "sha256": "e6e921bb7d1a1d3a711a640b9a836739ce4ef23f6d7341e75b3d0db1d977c752"
+    "sha256": "8d24c1bb41fd5595932128f82967bf00d63a69ec03bc40c85b188eb140672ef0"
   },
   "NEWSLETTER_SOURCES.md": {
     "sha256": "2027ec0e3248496e11fc710211f0277ec13f0a2cf00851f54633b9dc2fde4944"
@@ -69,7 +69,7 @@
     "sha256": "e6c67a485b34250d27dd6bee38fe79f3a1b76f5a19c740f8de94be9847f70a66"
   },
   "services/daily_newsletters.py": {
-    "sha256": "764b3da6bd6c66bd03bca1f491c4aab58a8d07ba63d5c59ac3e2040c8dc0e488"
+    "sha256": "f727cf286c7b4bdf0de7deae87b47989d8e462063410e55e7fcbc01f489d0d2b"
   },
   "services/finance_curriculum.json": {
     "sha256": "e2ee324573e01738b48298aab7eb9ffe303b702f976746d7bb195a2193a34734"
@@ -87,16 +87,25 @@
     "sha256": "29f282903e556a41f8ba77f7c4a31f425ba65b6dbef9e144db6ae691448de939"
   },
   "services/ai_newsletter.py": {
-    "sha256": "46ae0be08fd9d077881820ae3dcea22183980a4bdc60d1194dd1e0009c12a9ad"
+    "sha256": "bb11e46fb7d8ae58250c9cba496725c18a44e985646ce9f8ff6e6fe5a965bf10"
   },
   "services/story_research.py": {
     "sha256": "61e7acbe2c4e14995a2d5f4a525ff04374569de89fae3586871aad49b5197431"
+  },
+  "services/brief_format.py": {
+    "sha256": "d0ff36c586e52241620d4d8439eab083bc4989f5003f0277efd083ca22c6426c"
+  },
+  "services/detailed_report.py": {
+    "sha256": "a305c1a831763847062c143941f303a25eeab88b917a1f6a49a4295a00cf8521"
+  },
+  "services/delivery_time.py": {
+    "sha256": "b72e5643dd99f7afdd211661d3879415b4c2cb36078d015fed0b95e0d77ef528"
   },
   "services/newsletter_mail.py": {
     "sha256": "c3fb7ed76e775e79b542f6b45ef33fdb485db003798648a507ecf3595bb7dbc1"
   },
   "scripts/standalone_news.py": {
-    "sha256": "546e9f12ca57c770f914f2b72e95eab495701d865e2ff6faf5606fd20125a06e"
+    "sha256": "6f0780e20791946f0b48d0c5be11d855540ced4b3bda9e787547cf6577e9eb22"
   },
   "scripts/setup_telegram.py": {
     "sha256": "c8c0dd3f7437596477f794101e2ea999e1110ef3acb3b80fc55622ff683effae"
@@ -104,11 +113,14 @@
   "scripts/setup_newsletters.py": {
     "sha256": "65c6970beb135c53ecf88c0c2af1eca71bc100c0c679081fb7163ea8b39b2dec"
   },
+  "scripts/setup_scheduler.py": {
+    "sha256": "d030c2c35d5612450521cf94b729228557ed346d02abb1432e03313d32632876"
+  },
   "scripts/build_manifest.py": {
-    "sha256": "f0b804da1b1bdec9678e2c5a11a930cb24238d6d1187b4838ee45bf175109f50"
+    "sha256": "41d98dcf88e5784f1d1a88ed5a0fdc04f15e54fc667cfb09c0ce7dc599dcd49b"
   },
   "scripts/deploy.py": {
-    "sha256": "085716d20e7b84f0849fc812ecac45be0cac6451c81b2afde1081ec10f1a96dc"
+    "sha256": "ee756e490cdf034e63e216bb7a57795ba6916412a6b4f88b1daf752d11b5e3e6"
   },
   "tests/test_news_bot.py": {
     "sha256": "3ee7f0587bdc865e282626b77c1b7be412eb706ae2ada22caf4a22b398dd0700"
@@ -117,7 +129,7 @@
     "sha256": "86a5c1ef9c273b9f6c96a3be191d206cc67d9562e60cc05f344e0ba997029153"
   },
   "tests/test_finance_teacher.py": {
-    "sha256": "a9f5ef7ad6c7e2b2af111c2d8b3fb5e6c66bb996108409efa28d29f74d070e65"
+    "sha256": "a6a206fd4b75722dc4155595da909c7f37a42cd42ba331a1804d5a63632dd11f"
   },
   "tests/test_daily_newsletters.py": {
     "sha256": "808198ccbd09355d9394c3ccb37326a2b9ccc0bb71c27aebb0eaa61599929942"
@@ -133,6 +145,9 @@
   },
   "tests/test_story_research.py": {
     "sha256": "0175f7e66b272d5a23d39346c99e1a7e971ec93242edef7652ab03054460c90e"
+  },
+  "tests/test_brief_delivery.py": {
+    "sha256": "b583e27aa9eb99c1fd6b6e7a5fc1f1e416ab097637df4ca28b98d94b51290495"
   },
   "tests/test_newsletter_mail.py": {
     "sha256": "ff6908606311e282f1a625b7f1ca8fc0ebbac63b91fffc9628cae63f6b617b0b"

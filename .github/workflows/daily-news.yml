@@ -13,6 +13,10 @@ on:
         description: Verify read-only newsletter intake and print safe counts
         type: boolean
         default: false
+      hold_until_six:
+        description: Prepare early and hold delivery until 06:00 IST
+        type: boolean
+        default: false
   pull_request:
     paths:
       - 'daily-brief/**'
@@ -39,7 +43,7 @@ jobs:
     needs: verify
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && vars.NEWS_BOT_ENABLED == 'true')
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 40
     concurrency:
       group: nivesh-independent-news
       cancel-in-progress: false
@@ -71,6 +75,12 @@ jobs:
           GEMINI_KEY_PROJECTS: ${{ secrets.GEMINI_KEY_PROJECTS }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-2.5-flash' }}
           NEWS_RESEARCH_ENABLED: ${{ vars.NEWS_RESEARCH_ENABLED || 'true' }}
+          NEWS_BRIEF_MODE: ${{ vars.NEWS_BRIEF_MODE || 'short' }}
+          NEWS_DETAIL_EMAIL_ENABLED: ${{ vars.NEWS_DETAIL_EMAIL_ENABLED || 'false' }}
+          NEWS_DETAIL_EMAIL_TO: ${{ secrets.NEWS_DETAIL_EMAIL_TO }}
+          NEWS_REPORT_SMTP_USER: ${{ secrets.NEWS_REPORT_SMTP_USER }}
+          NEWS_REPORT_SMTP_PASSWORD: ${{ secrets.NEWS_REPORT_SMTP_PASSWORD }}
+          NEWS_HOLD_UNTIL_6AM: ${{ github.event_name == 'workflow_dispatch' && inputs.hold_until_six }}
           AI_NEWSLETTER_ENABLED: ${{ vars.AI_NEWSLETTER_ENABLED || 'true' }}
           NEWSLETTER_IMAP_ENABLED: ${{ vars.NEWSLETTER_IMAP_ENABLED || 'false' }}
           NEWSLETTER_IMAP_USER: ${{ secrets.NEWSLETTER_IMAP_USER }}

@@ -26,3 +26,7 @@ python scripts/deploy.py configure
 Configuration deliberately gates scheduled sending until verification. See the guide for the full publish/check/merge/send/enable procedure. This project is locally separate from Nivesh; its reviewed runtime is published under `daily-brief/` in the existing hosting repository, retaining the previous state branch and duplicate protection.
 
 Targeted follow-up now selects up to one story per world/India finance/general-news edition and up to two in the AI edition. It looks for relevant official pages, labels access/date gaps, and adds open questions and next evidence to watch. Existing Gemini summary calls receive the added excerpts; no separate research-model call is added. NEWS_RESEARCH_ENABLED=false disables the extra network research.
+
+Telegram can use NEWS_BRIEF_MODE=short for roughly five minutes of news while retaining full Finance Class chapters. NEWS_DETAIL_EMAIL_ENABLED=true sends the detailed HTML news/research report to NEWS_DETAIL_EMAIL_TO with its own no-repeat claim. Report SMTP defaults to the newsletter Gmail account; optional report-specific overrides are supported.
+
+For an external morning trigger, add private cron-job.org and repository-limited Actions keys, then run python scripts/setup_scheduler.py plan and python scripts/setup_scheduler.py configure. The prepared jobs collect from 05:40 IST, hold delivery until 06:00, and check again at 06:05. Until configured, GitHub cron remains the active scheduler and may be delayed. See the guide for timing evidence, setup and reliability limits.
