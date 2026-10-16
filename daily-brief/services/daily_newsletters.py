@@ -5,7 +5,15 @@ import html
 import time
 from datetime import date
 
-from services import ai_newsletter, finance_class, finance_teacher, news_memory, news_reader
+from services import (
+    ai_newsletter,
+    brief_format,
+    detailed_report,
+    finance_class,
+    finance_teacher,
+    news_memory,
+    news_reader,
+)
 from services import telegram_delivery as tg
 from services.news_bot import BotError
 
@@ -21,20 +29,32 @@ def identifier(day, config, edition):
     return "universal-v2-" + edition + "-" + config.delivery_id(day)
 
 
-def existing_delivery(day, config, ledger):
+def existing_delivery(day, config, ledger, include_report=False):
     # Missing/uncertain editions do not prevent other editions from being attempted.
     complete = []
     for edition in [entry[0] for entry in EDITIONS] + ["weekly"]:
         key = hashlib.sha256(identifier(day, config, edition).encode()).hexdigest()[:32]
         record = ledger.get(key)
         complete.append(bool(record and record.get("status") == "accepted"))
+    if all(complete) and include_report and not detailed_report.existing(day, ledger):
+        return None
     return "already_accepted" if all(complete) else None
 
 
-def edition_messages(digest, title, categories):
+def edition_messages(digest, title, categories, compact=False):
     day = date.fromisoformat(digest["date_ist"]).strftime("%A, %d %B %Y")
     sections = [section for section in digest["sections"] if section["id"] in categories]
     heading = f"<b>{html.escape(title)}</b>\n{day}"
+    if compact:
+        try:
+            content = brief_format.news_blocks(brief_format.select(digest, categories))
+        except ValueError as error:
+            raise BotError("Unsafe compact newsletter citation.") from error
+        return [
+            heading
+            + "\n\n"
+            + ("\n\n".join(content) or "No usable summary was available in this scan.")
+        ]
     if not sections:
         body = "No validated summary was available for this edition in today's collection. This does not establish that nothing happened. Check original sources."
         return [heading, body]
@@ -60,7 +80,21 @@ def closing(day, config, ledger):
     return tg.deliver_messages(day, [text], config, ledger, identifier(day, config, "closing"))
 
 
-def weekly_messages(items, day):
+def weekly_messages(items, day, compact=False):
+    if compact:
+        lines = []
+        for item in items[:2]:
+            url = news_reader.safe_link(item["url"])
+            if not url:
+                raise BotError("Unsafe weekly citation URL.")
+            label = brief_format.sentence(item["title"], 22, "Earlier report — open source")
+            lines.append(
+                '<a href="' + html.escape(url, quote=True) + '">' + html.escape(label) + "</a>"
+            )
+        return [
+            "<b>7-day follow-up</b>\n"
+            + ("\n".join(lines) or "No additional unseen reports in this scan.")
+        ]
     blocks = [
         "<b>7-day follow-up · New to your briefing</b>\n"
         + date.fromisoformat(day).strftime("%A, %d %B %Y")
@@ -95,15 +129,28 @@ def deliver(
     include_ai=False,
     ai_use_ai=True,
     ai_offline=False,
+    include_report=False,
 ):
     day = day or digest["date_ist"]
     results = {}
+    compact = brief_format.enabled()
+    report_prior, report_error = None, False
+    if include_report:
+        try:
+            report_prior = detailed_report.existing(day, ledger)
+        except BotError:
+            report_error = True
+            results["detailed_email"] = "failed_or_pending"
+    need_report = include_report and not report_prior and not report_error
+    captured_ai = []
+    if need_report and not digest:
+        raise BotError("Full news data is required before preparing the detailed email report.")
     memory_key = news_memory.history_key(config)
     history = news_memory.load(ledger, memory_key, day)
     # Render before any send, so invalid links/blocks fail without half a bundle.
     prepared = (
         [
-            (edition, edition_messages(digest, title, categories))
+            (edition, edition_messages(digest, title, categories, compact=compact))
             for edition, title, categories in EDITIONS
         ]
         if digest
@@ -121,7 +168,7 @@ def deliver(
                 ledger,
                 identifier(day, config, edition),
                 story_entries=news_memory.entries_for(
-                    news_memory.sources_in(
+                    (brief_format.sources_in if compact else news_memory.sources_in)(
                         digest, next(entry[2] for entry in EDITIONS if entry[0] == edition)
                     ),
                     day,
@@ -141,11 +188,11 @@ def deliver(
         time.sleep(1.1)
         results["weekly"] = tg.deliver_messages(
             day,
-            weekly_messages(weekly, day),
+            weekly_messages(weekly, day, compact=compact),
             config,
             ledger,
             identifier(day, config, "weekly"),
-            story_entries=news_memory.entries_for(weekly, day),
+            story_entries=news_memory.entries_for(weekly[:2] if compact else weekly, day),
         )
         news_memory.reconcile(ledger, memory_key, day, identifier(day, config, "weekly"))
     except BotError:
@@ -169,11 +216,29 @@ def deliver(
     if include_ai:
         try:
             results["ai_newsletter"] = ai_newsletter.deliver(
-                day, config, ledger, use_ai=ai_use_ai, offline=ai_offline
+                day,
+                config,
+                ledger,
+                use_ai=ai_use_ai,
+                offline=ai_offline,
+                capture=captured_ai.append if need_report else None,
             )
         except BotError:
             results["ai_newsletter"] = "failed_or_pending"
-    successful = {"telegram_accepted", "already_accepted"}
+    if include_report and not report_error:
+        try:
+            if report_prior:
+                results["detailed_email"] = report_prior
+            elif include_ai and not captured_ai:
+                results["detailed_email"] = "withheld_missing_ai_report"
+            else:
+                report = detailed_report.build(
+                    day, digest, weekly, captured_ai[0] if captured_ai else None
+                )
+                results["detailed_email"] = detailed_report.deliver(day, report, ledger)
+        except BotError:
+            results["detailed_email"] = "failed_or_pending"
+    successful = {"telegram_accepted", "already_accepted", "smtp_accepted", "already_in_sent"}
     if all(status in successful for status in results.values()):
         try:
             time.sleep(1.1)

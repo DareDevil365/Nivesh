@@ -13,11 +13,10 @@ import httpx
 from dotenv import dotenv_values
 
 ROOT = Path(__file__).resolve().parents[1]
-STATE = ROOT / "output/research/targeted-research-deployment.json"
-BRANCH = "codex/targeted-news-research"
-PR_TITLE = "Add targeted primary-source research across daily news editions"
-PR_BODY = "Daily briefs previously summarised independently collected sources without following selected stories back to their underlying evidence. Add a shared bounded follow-up desk to the AI newsletter and world/India finance and general-news editions. It selects a few stories, searches for matching official documents, reads available excerpts, and displays source status, unresolved questions and what to watch. Related documents remain context, not certified corroboration.\n\nReuse the existing summary calls with paired story/context citation checks. Preserve accepted delivery IDs, private mailbox handling, Telegram-only delivery and the six-AM IST schedule. Offline input runs stay offline; unsupported or unavailable primary pages leave explicit gaps rather than invented verification.\n\nValidation covers relevance/version collisions, search-only snippets, missing/future dates, restricted pages, source pairing, email query privacy, scope isolation, offline behavior, bounded reads and transport limits. A live Hugging Face sample exercises original-page retrieval; hosted validation follows before deployment."
-
+STATE = ROOT / "output/research/short-brief-email-deployment.json"
+BRANCH = "codex/short-brief-email-scheduler"
+PR_TITLE = "Shorten Telegram news, email detailed research and support external scheduling"
+PR_BODY = "Scheduled GitHub runs were created over four hours late, and verbose news reports made daily reading excessive. Add compact news messages with source links while retaining full Finance Class lessons. Send the detailed five-edition news/research report as a separate HTML email with a plain-text link fallback, an independent daily claim and Gmail Sent reconciliation. Reuse the same prepared summaries; do not replay accepted Telegram editions.\n\nSupport an external early workflow dispatch that prepares before six AM IST and holds actual delivery until six. A cron-job.org setup helper uses a user-supplied repository-limited Actions token, configures primary and backup jobs idempotently, and prints no secrets. Existing GitHub cron remains a late fallback; exact delivery still depends on service availability. External activation requires private account credentials.\n\nValidation covers brief reading/transport budgets, correct source-memory bookkeeping, unchanged class length, HTML email links, independent no-repeat/ambiguous SMTP behavior and early/late timing guards. Hosted verification and live email/scheduler checks follow."
 
 
 def main():
@@ -30,7 +29,11 @@ def main():
     parser.add_argument(
         "--send", action="store_true", help="Manual hosted run sends instead of previewing"
     )
-    parser.add_argument("--check-mailbox", action="store_true", help="Verify read-only mailbox intake on a manual hosted run")
+    parser.add_argument(
+        "--check-mailbox",
+        action="store_true",
+        help="Verify read-only mailbox intake on a manual hosted run",
+    )
     args = parser.parse_args()
     if not re.fullmatch(r"[\w.-]+/[\w.-]+", args.repository):
         parser.error("Invalid repository")
@@ -216,6 +219,10 @@ def main():
             )
             variable("AI_NEWSLETTER_ENABLED", values.get("AI_NEWSLETTER_ENABLED") or "true")
             variable("NEWS_RESEARCH_ENABLED", values.get("NEWS_RESEARCH_ENABLED") or "true")
+            variable("NEWS_BRIEF_MODE", values.get("NEWS_BRIEF_MODE") or "short")
+            variable(
+                "NEWS_DETAIL_EMAIL_ENABLED", values.get("NEWS_DETAIL_EMAIL_ENABLED") or "false"
+            )
             variable("NEWSLETTER_IMAP_ENABLED", values.get("NEWSLETTER_IMAP_ENABLED") or "false")
             public_key = request("GET", "/actions/secrets/public-key")
             box = public.SealedBox(public.PublicKey(base64.b64decode(public_key["key"])))
@@ -223,6 +230,9 @@ def main():
             names = [
                 "GEMINI_API_KEYS",
                 "GEMINI_KEY_PROJECTS",
+                "NEWS_DETAIL_EMAIL_TO",
+                "NEWS_REPORT_SMTP_USER",
+                "NEWS_REPORT_SMTP_PASSWORD",
                 "NEWSLETTER_IMAP_USER",
                 "NEWSLETTER_IMAP_PASSWORD",
                 "NEWSLETTER_ALLOWED_SENDERS",
@@ -236,6 +246,9 @@ def main():
                 if not value and name not in (
                     "GEMINI_KEY_PROJECTS",
                     "NEWSLETTER_ALLOWED_SENDERS",
+                    "NEWS_DETAIL_EMAIL_TO",
+                    "NEWS_REPORT_SMTP_USER",
+                    "NEWS_REPORT_SMTP_PASSWORD",
                     "NEWSLETTER_IMAP_USER",
                     "NEWSLETTER_IMAP_PASSWORD",
                 ):
@@ -284,7 +297,10 @@ def main():
             request(
                 "POST",
                 "/actions/workflows/daily-news.yml/dispatches",
-                {"ref": repo["default_branch"], "inputs": {"dry_run": not args.send, "check_mailbox": args.check_mailbox}},
+                {
+                    "ref": repo["default_branch"],
+                    "inputs": {"dry_run": not args.send, "check_mailbox": args.check_mailbox},
+                },
             )
             print(json.dumps({"hosted_run_dispatched": True, "dry_run": not args.send}))
         elif args.action == "disable":

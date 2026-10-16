@@ -131,7 +131,14 @@ class FinanceTeacherTests(unittest.TestCase):
         output = io.StringIO()
         with (
             patch("sys.argv", ["standalone_news.py"]),
-            patch.dict("os.environ", {"NEWS_DELIVERY": "telegram", "GITHUB_ACTIONS": "false"}),
+            patch.dict(
+                "os.environ",
+                {
+                    "NEWS_DELIVERY": "telegram",
+                    "GITHUB_ACTIONS": "false",
+                    "NEWS_DETAIL_EMAIL_ENABLED": "false",
+                },
+            ),
             patch.object(tg.TelegramConfig, "load", return_value=self.config),
             patch.object(
                 cli.daily_newsletters, "existing_delivery", return_value="already_accepted"

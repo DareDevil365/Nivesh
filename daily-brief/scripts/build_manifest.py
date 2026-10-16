@@ -37,10 +37,14 @@ FILES = (
     "services/local_store.py",
     "services/ai_newsletter.py",
     "services/story_research.py",
+    "services/brief_format.py",
+    "services/detailed_report.py",
+    "services/delivery_time.py",
     "services/newsletter_mail.py",
     "scripts/standalone_news.py",
     "scripts/setup_telegram.py",
     "scripts/setup_newsletters.py",
+    "scripts/setup_scheduler.py",
     "scripts/build_manifest.py",
     "scripts/deploy.py",
     "tests/test_news_bot.py",
@@ -51,6 +55,7 @@ FILES = (
     "tests/test_news_memory.py",
     "tests/test_ai_newsletter.py",
     "tests/test_story_research.py",
+    "tests/test_brief_delivery.py",
     "tests/test_newsletter_mail.py",
 )
 

@@ -10,6 +10,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from services import (  # noqa: E402
     ai_newsletter,
     daily_newsletters,
+    delivery_time,
+    detailed_report,
     finance_class,
     news_bot,
     news_digest,
@@ -59,6 +61,7 @@ def main():
             print(json.dumps({"mail_authentication": "ok", "today_in_sent": exists}))
             return
         ledger = None
+        news_prior = None
         if config:
             ledger = (
                 news_bot.GitHubLedger(
@@ -67,7 +70,16 @@ def main():
                 if os.getenv("GITHUB_ACTIONS") == "true"
                 else news_bot.LocalLedger()
             )
-            prior = transport.existing_delivery(news_digest.local_day(), config, ledger)
+            news_prior = transport.existing_delivery(news_digest.local_day(), config, ledger)
+            prior = news_prior
+            if prior and channel == "telegram" and detailed_report.enabled():
+                try:
+                    prior = (
+                        prior if detailed_report.existing(news_digest.local_day(), ledger) else None
+                    )
+                except news_bot.BotError:
+                    # Keep attempting independent pending Telegram/teaching deliveries.
+                    prior = news_prior
             if prior:
                 bundle = None
                 if channel == "telegram":
@@ -80,6 +92,7 @@ def main():
                         include_ai=ai_newsletter.enabled(),
                         ai_use_ai=not args.no_ai,
                         ai_offline=bool(args.input),
+                        include_report=detailed_report.enabled(),
                     )
                 print(
                     json.dumps(
@@ -112,7 +125,8 @@ def main():
                 if config
                 else {"version": 1, "entries": {}}
             )
-            pack = news_memory.filter_pack(pack, history)
+            if not (detailed_report.enabled() and news_prior):
+                pack = news_memory.filter_pack(pack, history)
             if not args.input and story_research.enabled():
                 pack = story_research.enrich_pack(pack)
             # --input smoke runs are offline: weekly retrieval is explicit only for live collection.
@@ -139,6 +153,7 @@ def main():
         if args.dry_run:
             status = "prepared_without_mail"
         else:
+            delivery_time.wait_until_six()
             result = (
                 daily_newsletters.deliver(
                     digest,
@@ -148,6 +163,7 @@ def main():
                     include_ai=ai_newsletter.enabled(),
                     ai_use_ai=not args.no_ai,
                     ai_offline=bool(args.input),
+                    include_report=detailed_report.enabled(),
                 )
                 if channel == "telegram"
                 else transport.deliver(digest, config, ledger)
