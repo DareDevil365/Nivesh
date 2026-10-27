@@ -1,3 +1,7 @@
+-- Legacy Supabase proposal, not the active application schema.
+-- Current durable schema is created in services/local_store.py (SQLite).
+-- This file contains no deployed RLS policies or account integration.
+
 -- Nivesh Database Schema for Supabase Postgres
 
 CREATE TABLE IF NOT EXISTS companies (

@@ -1,32 +1,38 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Sora:wght@600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Sora:wght@600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --bg-color: #0B1210;
-  --surface-color: #131B18;
-  --primary-accent: #1E7A4C;
-  --secondary-accent: #C9A227;
-  --positive-color: #2ECC71;
-  --negative-color: #E74C3C;
-  --text-color: #E6EDEA;
-  --muted-text: #8FA096;
+  --bg-color: #0b1210;
+  --surface-color: #131b18;
+  --primary-accent: #1e7a4c;
+  --secondary-accent: #c9a227;
+  --positive-color: #2ecc71;
+  --negative-color: #e74c3c;
+  --text-color: #e6edea;
+  --muted-text: #8fa096;
   --border-color: #223028;
 }
 
 body {
   background-color: var(--bg-color);
   color: var(--text-color);
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
   min-height: 100vh;
   margin: 0;
   overflow-x: hidden;
 }
 
-h1, h2, h3, h4, h5, h6, .font-heading {
-  font-family: 'Sora', sans-serif;
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.font-heading {
+  font-family: "Sora", sans-serif;
 }
 
 /* Custom Scrollbar */
@@ -36,7 +42,7 @@ h1, h2, h3, h4, h5, h6, .font-heading {
 }
 
 ::-webkit-scrollbar-track {
-  background: #0B1210;
+  background: #0b1210;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -45,5 +51,28 @@ h1, h2, h3, h4, h5, h6, .font-heading {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #1E7A4C;
+  background: #1e7a4c;
+}
+
+:focus-visible {
+  outline: 2px solid #2ecc71;
+  outline-offset: 3px;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+input[type="date"] {
+  color-scheme: dark;
+}
+dialog::backdrop {
+  background: rgb(0 0 0 / 70%);
+  backdrop-filter: blur(4px);
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -1,16 +1,20 @@
 import logging
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
+
 from config import settings
 
 logger = logging.getLogger(__name__)
 
+
 class DatabaseClient:
     """Supabase Postgres client wrapper with error handling and fallback support."""
+
     def __init__(self):
         self.client = None
         if settings.SUPABASE_URL and settings.SUPABASE_KEY:
             try:
                 from supabase import create_client
+
                 self.client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
                 logger.info("Connected to Supabase Postgres database.")
             except Exception as e:
@@ -39,10 +43,16 @@ class DatabaseClient:
         if not self.client:
             return []
         try:
-            res = self.client.table("watchlists").select("*, watchlist_items(*)").eq("user_id", user_id).execute()
+            res = (
+                self.client.table("watchlists")
+                .select("*, watchlist_items(*)")
+                .eq("user_id", user_id)
+                .execute()
+            )
             return res.data or []
         except Exception as e:
             logger.warning(f"Supabase get watchlists error: {e}")
             return []
+
 
 db_client = DatabaseClient()

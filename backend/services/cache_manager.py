@@ -1,92 +1,118 @@
-import time
+"""Bounded local cache, optionally backed by standard Redis or Upstash REST."""
+
+import copy
 import json
 import logging
-from typing import Any, Optional, Dict
+import threading
+import time
 from collections import OrderedDict
+
+import httpx
 import redis
+
 from config import settings
 
 logger = logging.getLogger(__name__)
 
+
 class LRUCache:
-    """Thread-safe in-memory LRU cache fallback."""
-    def __init__(self, capacity: int = 1000):
+    def __init__(self, capacity=2000):
         self.capacity = capacity
-        self.cache: OrderedDict[str, Dict[str, Any]] = OrderedDict()
+        self.cache = OrderedDict()
+        self._lock = threading.Lock()
 
-    def get(self, key: str) -> Optional[Any]:
-        if key not in self.cache:
-            return None
-        item = self.cache[key]
-        if item["expires_at"] and time.time() > item["expires_at"]:
-            del self.cache[key]
-            return None
-        self.cache.move_to_end(key)
-        return item["value"]
-
-    def set(self, key: str, value: Any, ttl: Optional[int] = None):
-        expires_at = time.time() + ttl if ttl else None
-        if key in self.cache:
+    def get(self, key):
+        with self._lock:
+            item = self.cache.get(key)
+            if item is None:
+                return None
+            expires, value = item
+            if expires is not None and time.monotonic() >= expires:
+                del self.cache[key]
+                return None
             self.cache.move_to_end(key)
-        self.cache[key] = {"value": value, "expires_at": expires_at}
-        if len(self.cache) > self.capacity:
-            self.cache.popitem(last=False)
+            return copy.deepcopy(value)
+
+    def set(self, key, value, ttl=None):
+        with self._lock:
+            self.cache[key] = (
+                time.monotonic() + ttl if ttl is not None else None,
+                copy.deepcopy(value),
+            )
+            self.cache.move_to_end(key)
+            while len(self.cache) > self.capacity:
+                self.cache.popitem(last=False)
+
 
 class CacheManager:
-    """Unified cache manager reading Upstash Redis first with in-memory LRU cache fallback."""
     def __init__(self):
-        self.lru = LRUCache(capacity=2000)
+        self.lru = LRUCache()
         self.redis_client = None
-        self.redis_error_count = 0
-        
-        if settings.UPSTASH_REDIS_URL and settings.UPSTASH_REDIS_TOKEN:
+        self.rest_url = None
+        self.rest_token = None
+        self.retry_after = 0.0
+        if settings.REDIS_URL or settings.UPSTASH_REDIS_URL.startswith(("redis://", "rediss://")):
             try:
-                # Format url for redis-py
-                redis_url = settings.UPSTASH_REDIS_URL
-                if not redis_url.startswith("redis://") and not redis_url.startswith("rediss://"):
-                    redis_url = f"rediss://:{settings.UPSTASH_REDIS_TOKEN}@{redis_url.replace('https://', '')}:6379"
-                
-                self.redis_client = redis.Redis.from_url(redis_url, socket_timeout=0.5, socket_connect_timeout=0.5)
-                logger.info("Connected to Upstash Redis cache shield.")
-            except Exception as e:
-                logger.warning(f"Could not connect to Redis ({e}). Falling back to in-memory LRU cache.")
-                self.redis_client = None
+                self.redis_client = redis.Redis.from_url(
+                    settings.REDIS_URL or settings.UPSTASH_REDIS_URL,
+                    socket_timeout=0.8,
+                    socket_connect_timeout=0.8,
+                )
+            except Exception:
+                logger.warning("Redis configuration invalid; using local cache.")
+        elif settings.UPSTASH_REDIS_URL and settings.UPSTASH_REDIS_TOKEN:
+            self.rest_url = settings.UPSTASH_REDIS_URL.rstrip("/")
+            self.rest_token = settings.UPSTASH_REDIS_TOKEN
 
-    def get(self, key: str) -> Optional[Any]:
-        # Try Redis first
+    def command(self, *args):
+        if self.rest_url:
+            response = httpx.post(
+                self.rest_url,
+                headers={"Authorization": f"Bearer {self.rest_token}"},
+                json=list(args),
+                timeout=1,
+            )
+            response.raise_for_status()
+            payload = response.json()
+            if payload.get("error"):
+                raise ValueError("Cache command failed")
+            return payload.get("result")
         if self.redis_client:
-            try:
-                val = self.redis_client.get(key)
-                if val:
-                    return json.loads(val)
-            except Exception as e:
-                self.redis_error_count += 1
-                if self.redis_error_count >= 2:
-                    logger.warning("Disabling Redis client due to repeated connection errors. Using LRU cache.")
-                    self.redis_client = None
+            return self.redis_client.execute_command(*args)
+        return None
 
-        # Fallback to local LRU
-        return self.lru.get(key)
+    def get(self, key):
+        local = self.lru.get(key)
+        if local is not None:
+            return local
+        if time.monotonic() < self.retry_after:
+            return None
+        try:
+            value = self.command("GET", key)
+            # Do not extend a remote TTL in local memory; only the writer sets local TTL.
+            return json.loads(value) if value is not None else None
+        except Exception:
+            self.retry_after = time.monotonic() + 60
+            logger.warning("Shared cache unavailable; using local cache for 60 seconds.")
+            return None
 
-    def set(self, key: str, value: Any, ttl: Optional[int] = 900):
-        # Write to local LRU
-        self.lru.set(key, value, ttl=ttl)
+    def set(self, key, value, ttl=900):
+        self.lru.set(key, value, ttl)
+        if time.monotonic() < self.retry_after:
+            return
+        try:
+            serialized = json.dumps(value, allow_nan=False)
+            if ttl is not None:
+                if ttl <= 0:
+                    return
+                self.command("SET", key, serialized, "EX", int(ttl))
+            else:
+                self.command("SET", key, serialized)
+        except Exception:
+            self.retry_after = time.monotonic() + 60
 
-        # Write to Redis if available
-        if self.redis_client:
-            try:
-                serialized = json.dumps(value, default=str)
-                if ttl:
-                    self.redis_client.setex(key, ttl, serialized)
-                else:
-                    self.redis_client.set(key, serialized)
-            except Exception as e:
-                self.redis_error_count += 1
-                if self.redis_error_count >= 2:
-                    self.redis_client = None
-
-    def set_permanent(self, key: str, value: Any):
-        """Used for historical data (TTL = infinite)."""
+    def set_permanent(self, key, value):
         self.set(key, value, ttl=None)
+
 
 cache_manager = CacheManager()

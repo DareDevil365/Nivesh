@@ -1,186 +1,223 @@
-import math
-import logging
-from typing import Dict, Any, List, Optional
-import pandas as pd
-import numpy as np
-from services.data_fetcher import get_chart_data
-from services.indicators import compute_indicators_df
+"""Long-only, all-in, daily-bar research backtester with explicit execution assumptions."""
 
-logger = logging.getLogger(__name__)
+import math
+from datetime import date as calendar_date
+from datetime import timedelta
+
+import pandas as pd
+
+from schemas import Rule, Strategy
+from services.data_fetcher import get_chart_data, normalize_ticker
+from services.indicators import compute_custom_indicator
+
+
+def rule_signal(frame, rule):
+    rule = rule if isinstance(rule, Rule) else Rule.model_validate(rule)
+    p = rule.params.model_dump()
+    df = compute_custom_indicator(frame, rule.indicator, p)
+    if rule.indicator == "RSI":
+        difference = df[f"RSI_{p['period']}"] - rule.value
+    elif rule.indicator in {"SMA_CROSS", "EMA_CROSS"}:
+        name = rule.indicator.split("_")[0]
+        difference = df[f"{name}_{p['fast_period']}"] - df[f"{name}_{p['slow_period']}"]
+    elif rule.indicator == "MACD":
+        difference = df["MACD"] - df["MACD_signal"]
+    elif rule.indicator == "BOLLINGER":
+        col = (
+            f"BBL_{p['period']}_{float(p['std_dev'])}"
+            if rule.condition == "touches_lower"
+            else f"BBU_{p['period']}_{float(p['std_dev'])}"
+        )
+        return (
+            df["close"] <= df[col] if rule.condition == "touches_lower" else df["close"] >= df[col]
+        ).fillna(False)
+    previous = difference.shift(1)
+    return (
+        (difference > 0) & (previous <= 0)
+        if rule.condition == "crosses_above"
+        else (difference < 0) & (previous >= 0)
+    ).fillna(False)
+
 
 def run_indicator_backtest(
-    ticker: str,
-    entry_rule: Dict[str, Any],
-    exit_rule: Dict[str, Any],
-    initial_capital: float = 100000.0,
-    stop_loss_pct: float = 5.0,
-    take_profit_pct: Optional[float] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    period: str = "5y"
-) -> Dict[str, Any]:
-    """
-    Deterministic vectorized strategy simulation engine with compounding portfolio math,
-    correct CAGR, Sharpe ratio, and Max Drawdown calculations.
-    """
-    chart_res = get_chart_data(ticker, period=period, interval="1d")
-    bars = chart_res.get("bars", [])
-    
-    if not bars or len(bars) < 10:
-        return {"error": f"Insufficient price data available to backtest {ticker}."}
-
-    df = pd.DataFrame(bars)
+    ticker,
+    entry_rule,
+    exit_rule,
+    initial_capital=100000,
+    stop_loss_pct=5,
+    take_profit_pct=15,
+    start_date=None,
+    end_date=None,
+    period="5y",
+    cost_bps=10,
+    slippage_bps=5,
+):
+    payload = {
+        "ticker": ticker,
+        "entry_rule": entry_rule,
+        "exit_rule": exit_rule,
+        "position_sizing": {"amount": initial_capital},
+        "stop_loss_pct": stop_loss_pct,
+        "take_profit_pct": take_profit_pct,
+        "cost_bps": cost_bps,
+        "slippage_bps": slippage_bps,
+    }
+    if start_date or end_date:
+        payload["date_range"] = {
+            k: v for k, v in {"start": start_date, "end": end_date}.items() if v
+        }
+    strategy = Strategy.model_validate(payload)
+    ticker = normalize_ticker(strategy.ticker)
+    start, end = strategy.date_range.start, strategy.date_range.end
+    if (
+        ticker == "TMPV.NS"
+        and start < calendar_date(2025, 10, 24)
+        and end >= calendar_date(2025, 10, 1)
+    ):
+        raise ValueError(
+            "This range crosses the Tata Motors 2025 demerger. The engine does not model distributed commercial-vehicle shares. Use a range ending before October 2025 or starting on/after 24 October 2025, and verify corporate-action adjustments."
+        )
+    warmup = (
+        max(
+            strategy.entry_rule.params.slow_period,
+            strategy.exit_rule.params.slow_period,
+            strategy.entry_rule.params.period,
+            strategy.exit_rule.params.period,
+        )
+        * 3
+        + 60
+    )
+    history = get_chart_data(
+        ticker,
+        period=period,
+        interval="1d",
+        start_date=(start - timedelta(days=warmup)).isoformat(),
+        end_date=end.isoformat(),
+        auto_adjust=True,
+    )
+    if not history.get("bars"):
+        raise ValueError(
+            history.get("message") or "No price history is available for the requested dates."
+        )
+    df = (
+        pd.DataFrame(history["bars"])
+        .drop_duplicates("time")
+        .sort_values("time")
+        .reset_index(drop=True)
+    )
     df["time"] = pd.to_datetime(df["time"])
-    df.sort_values("time", inplace=True)
-    df.reset_index(drop=True, inplace=True)
+    df["entry"] = rule_signal(df, strategy.entry_rule).shift(1, fill_value=False)
+    df["exit"] = rule_signal(df, strategy.exit_rule).shift(1, fill_value=False)
+    available = df[(df["time"] >= pd.Timestamp(start)) & (df["time"] <= pd.Timestamp(end))]
+    if len(available) < 10:
+        raise ValueError(
+            "Fewer than 10 trading bars are available in this date range. Select a longer period supported by the provider."
+        )
+    cash, shares = float(initial_capital), 0
+    entry_price, entry_cost, entry_date = 0.0, 0.0, ""
+    fee, slip = cost_bps / 10000, slippage_bps / 10000
+    trades, curve = [], []
+    total_costs = 0.0
+    first_close = float(available.iloc[0]["close"])
 
-    # Filter date range if specified
-    if start_date:
-        df = df[df["time"] >= pd.to_datetime(start_date)]
-    if end_date:
-        df = df[df["time"] <= pd.to_datetime(end_date)]
-        
-    df.reset_index(drop=True, inplace=True)
-    if len(df) < 10:
-        return {"error": "Date range contains insufficient trading bars for backtest."}
-
-    # Compute technical indicators
-    df = compute_indicators_df(df)
-
-    # Parse indicators
-    entry_ind = entry_rule.get("indicator", "RSI").upper()
-    entry_cond = entry_rule.get("condition", "crosses_below")
-    entry_val = float(entry_rule.get("value", 30))
-
-    exit_ind = exit_rule.get("indicator", "RSI").upper()
-    exit_cond = exit_rule.get("condition", "crosses_above")
-    exit_val = float(exit_rule.get("value", 70))
-
-    cash = initial_capital
-    shares = 0
-    in_position = False
-    entry_price = 0.0
-    entry_date = ""
-
-    trade_log = []
-    equity_curve = []
-    peak_portfolio_val = initial_capital
-    max_drawdown_pct = 0.0
-
-    for i in range(len(df)):
-        row = df.iloc[i]
-        curr_price = float(row["close"])
-        curr_date = row["time"].strftime("%Y-%m-%d")
-
-        # Evaluate Signals
-        entry_signal = False
-        exit_signal = False
-
-        # Entry logic
-        if not in_position:
-            if entry_ind == "RSI" and "RSI_14" in row:
-                rsi_val = row["RSI_14"]
-                if not pd.isna(rsi_val):
-                    if entry_cond == "crosses_below" and rsi_val < entry_val:
-                        entry_signal = True
-                    elif entry_cond == "crosses_above" and rsi_val > entry_val:
-                        entry_signal = True
-            elif entry_ind == "SMA_CROSS" and "SMA_20" in row and "SMA_50" in row:
-                if row["SMA_20"] > row["SMA_50"]:
-                    entry_signal = True
-
-        # Exit logic
-        else:
-            if exit_ind == "RSI" and "RSI_14" in row:
-                rsi_val = row["RSI_14"]
-                if not pd.isna(rsi_val):
-                    if exit_cond == "crosses_above" and rsi_val > exit_val:
-                        exit_signal = True
-                    elif exit_cond == "crosses_below" and rsi_val < exit_val:
-                        exit_signal = True
-            
-            # Risk exits: Stop loss & Take profit
-            pnl_pct = ((curr_price - entry_price) / entry_price) * 100
-            if stop_loss_pct and pnl_pct <= -abs(stop_loss_pct):
-                exit_signal = True
-            if take_profit_pct and pnl_pct >= abs(take_profit_pct):
-                exit_signal = True
-
-        # Execute Entry
-        if entry_signal and not in_position:
-            in_position = True
-            entry_price = curr_price
-            entry_date = curr_date
-            shares = int(cash // curr_price)
-            cash -= shares * curr_price
-
-        # Execute Exit
-        elif exit_signal and in_position:
-            in_position = False
-            exit_price = curr_price
-            proceeds = shares * exit_price
-            cash += proceeds
-            pnl = proceeds - (shares * entry_price)
-            pnl_pct = ((exit_price - entry_price) / entry_price) * 100
-            
-            trade_log.append({
+    def sell(raw_price, date, reason):
+        nonlocal cash, shares, total_costs
+        price = raw_price * (1 - slip)
+        commission = shares * price * fee
+        proceeds = shares * price - commission
+        pnl = proceeds - entry_cost
+        total_costs += commission + shares * raw_price * slip
+        trades.append(
+            {
                 "entry_date": entry_date,
-                "exit_date": curr_date,
-                "entry_price": round(entry_price, 2),
-                "exit_price": round(exit_price, 2),
+                "exit_date": date,
+                "entry_price": round(entry_price, 4),
+                "exit_price": round(price, 4),
+                "costs": round(entry_cost - shares * entry_price + commission, 4),
                 "shares": shares,
                 "pnl": round(pnl, 2),
-                "pnl_pct": round(pnl_pct, 2),
-                "win": pnl > 0
-            })
-            shares = 0
+                "pnl_pct": round(pnl / entry_cost * 100, 2),
+                "win": pnl > 0,
+                "exit_reason": reason,
+            }
+        )
+        cash += proceeds
+        shares = 0
 
-        # Portfolio Tracking
-        current_portfolio_val = cash + (shares * curr_price)
-        equity_curve.append({
-            "time": curr_date,
-            "portfolio_value": round(current_portfolio_val, 2),
-            "benchmark_value": round(initial_capital * (curr_price / float(df.iloc[0]["close"])), 2)
-        })
-
-        if current_portfolio_val > peak_portfolio_val:
-            peak_portfolio_val = current_portfolio_val
-        dd = (peak_portfolio_val - current_portfolio_val) / peak_portfolio_val * 100.0
-        if dd > max_drawdown_pct:
-            max_drawdown_pct = dd
-
-    # Final stats computation
-    final_val = current_portfolio_val
-    total_return_pct = round(((final_val - initial_capital) / initial_capital) * 100.0, 2)
-    
-    trading_days = max(1, len(df))
-    cagr = round((((final_val / initial_capital) ** (252.0 / trading_days)) - 1.0) * 100.0, 2) if final_val > 0 else 0.0
-
-    # Daily returns & Sharpe Ratio
-    eq_series = pd.Series([e["portfolio_value"] for e in equity_curve])
-    daily_returns = eq_series.pct_change().dropna()
-    
-    mean_ret = daily_returns.mean()
-    std_ret = daily_returns.std()
-    sharpe_ratio = round(float((mean_ret / std_ret) * math.sqrt(252)), 2) if std_ret > 0 else 0.0
-
-    wins = [t for t in trade_log if t["win"]]
-    win_rate = round((len(wins) / len(trade_log)) * 100.0, 2) if trade_log else 0.0
-
+    for index, row in available.iterrows():
+        date = row["time"].date().isoformat()
+        if shares and row["exit"]:
+            sell(float(row["open"]), date, "signal_next_open")
+        elif not shares and row["entry"]:
+            raw = float(row["open"])
+            entry_price = raw * (1 + slip)
+            shares = int(cash // (entry_price * (1 + fee)))
+            if shares > 0:
+                entry_cost = shares * entry_price * (1 + fee)
+                cash -= entry_cost
+                total_costs += shares * entry_price * fee + shares * raw * slip
+                entry_date = date
+        if shares:
+            stop = entry_price * (1 - stop_loss_pct / 100) if stop_loss_pct else None
+            target = entry_price * (1 + take_profit_pct / 100) if take_profit_pct else None
+            # Gaps fill at open; if both barriers are touched, assume the stop occurs first.
+            if stop is not None and row["low"] <= stop:
+                sell(min(float(row["open"]), stop), date, "stop_loss")
+            elif target is not None and row["high"] >= target:
+                sell(max(float(row["open"]), target), date, "take_profit")
+        if index == available.index[-1] and shares:
+            sell(float(row["close"]), date, "end_of_period")
+        curve.append(
+            {
+                "time": date,
+                "portfolio_value": round(cash + shares * float(row["close"]), 2),
+                "benchmark_value": round(initial_capital * float(row["close"]) / first_close, 2),
+            }
+        )
+    equity = pd.Series([initial_capital] + [p["portfolio_value"] for p in curve], dtype=float)
+    daily = equity.pct_change().dropna()
+    std = daily.std(ddof=1)
+    days = max(1, (available.iloc[-1]["time"] - available.iloc[0]["time"]).days)
+    warnings = []
+    if (available.iloc[0]["time"].date() - start).days > 7:
+        warnings.append(
+            "Price history starts after your requested start date. Results use only the available range."
+        )
+    if len(df[df["time"] < pd.Timestamp(start)]) < warmup / 3 - 20:
+        warnings.append(
+            "Limited pre-period history; indicators remain inactive until their warm-up is complete."
+        )
     return {
         "ticker": ticker,
         "initial_capital": initial_capital,
-        "final_capital": round(final_val, 2),
-        "total_return_pct": total_return_pct,
-        "cagr": cagr,
-        "max_drawdown_pct": round(max_drawdown_pct, 2),
-        "sharpe_ratio": sharpe_ratio,
-        "total_trades": len(trade_log),
-        "win_rate_pct": win_rate,
-        "trade_log": trade_log,
-        "equity_curve": equity_curve
+        "final_capital": round(cash, 2),
+        "total_return_pct": round((cash / initial_capital - 1) * 100, 2),
+        "cagr": round(((cash / initial_capital) ** (365.25 / days) - 1) * 100, 2)
+        if cash > 0
+        else -100,
+        "max_drawdown_pct": round(float((1 - equity / equity.cummax()).max() * 100), 2),
+        "sharpe_ratio": round(float(daily.mean() / std * math.sqrt(252)), 2)
+        if pd.notna(std) and std > 0
+        else 0,
+        "total_trades": len(trades),
+        "win_rate_pct": round(sum(t["win"] for t in trades) / len(trades) * 100, 2)
+        if trades
+        else 0,
+        "trade_log": trades,
+        "equity_curve": curve,
+        "total_costs": round(total_costs, 2),
+        "actual_start": curve[0]["time"],
+        "actual_end": curve[-1]["time"],
+        "warnings": warnings,
+        "assumptions": {
+            "execution": "Signals at close execute at the next open. End positions are liquidated at final close.",
+            "risk": "Daily high/low barriers; stop assumed first when both are touched. Gaps fill at open.",
+            "cost_bps_per_side": cost_bps,
+            "slippage_bps_per_side": slippage_bps,
+            "price_adjustment": "Split and dividend adjusted OHLC; benchmark is the same stock, frictionless buy-and-hold.",
+            "limitations": "Long only, one position, whole units, reinvested capital. No taxes, liquidity limits or market impact. Sharpe uses zero risk-free rate. Current symbols introduce survivorship bias.",
+        },
     }
 
-# Alias for backward compatibility
-run_backtest = run_indicator_backtest
 
+run_backtest = run_indicator_backtest

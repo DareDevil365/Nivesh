@@ -1,273 +1,98 @@
-# Nivesh — NSE Equity Research, NL Backtester & Trading Psychology Platform
+# Nivesh â€” Indian equity research
 
-[![Next.js 14](https://img.shields.io/badge/Frontend-Next.js%2014-000000?style=flat&logo=nextdotjs)](https://nextjs.org/)
-[![FastAPI](https://img.shields.io/badge/Backend-FastAPI%200.109-009688?style=flat&logo=fastapi)](https://fastapi.tiangolo.com/)
-[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?style=flat&logo=python)](https://python.org)
-[![Gemini 3.6 Flash](https://img.shields.io/badge/LLM-Gemini%203.6%20Flash-4285F4?style=flat&logo=google)](https://ai.google.dev/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+A personal research workspace for company analysis, financial comparisons, transparent strategy backtesting and trade-journal statistics.
 
-**Nivesh** is a ₹0-budget, institutional-grade equity research and algorithmic analytics web platform engineered for Indian (NSE/BSE) equity markets. It combines **SimplyWall.st-style 5-axis Snowflake company analysis**, **Tijori Finance-style supply chain graphs & forensic risk scoring**, **Screener.in multi-metric filtering**, **natural-language strategy backtesting**, **trading behavior/psychology diagnostics**, and an **AI-powered Research Digest ("pseudo-brain")**.
+- Search NSE/BSE companies and inspect dated quotes, annual/quarterly statements, ratios and industry peers.
+- Use a disclosed fundamental checklist, cash flow scenarios and input-backed financial screens.
+- Save browser-owned watchlists and price/RSI/volume conditions in SQLite.
+- Keep research notes and export tables, research snapshots and strategies.
+- Backtest RSI, SMA/EMA crossover, MACD and Bollinger rules with next-open execution, costs and explicit assumptions.
+- Import closed trades or match execution exports using validated FIFO; inspect excluded rows before analysis.
 
----
+**Data availability is explicit.** Unknown promoter/pledge histories, filing feeds and supplier relationships are not fabricated. The screener covers a bundled universe, not every NSE listing. Yahoo Finance data may be delayed or incomplete. Public accounts, cross-device sync, background notifications and community publishing are not enabled.
 
-## 🌟 Key Features & Platform Modules
+The **Research workflow** tab discovers issuer documents from live NSE feeds and public company investor pages, reads bounded PDF/ZIP reports, and exposes page-linked business, supply-chain, competition, demand, accounting and risk evidence. **Supply chain** is generated from those documents, without a predefined company map. Collection works for resolved issuers outside the bundled screener; completeness depends on public source availability. The workspace adds editable operating scenarios, a hypothesis notebook and evidence-pack export.
 
-### 1. SimplyWall.st Parity & Visual Analysis
-- **5-Axis Snowflake Radar Score:** Visual radar evaluating company fundamentals across **Value**, **Future Growth**, **Past Performance**, **Financial Health**, and **Dividend Yield** (0–30 score bounded scale, mapped to 0–6 per pillar).
-- **Interactive Technical Stock Charting:** Powered by **TradingView Lightweight-Charts** with interactive candle toggles, Volume bars, SMA (20, 50, 200), EMA (20, 50, 200), RSI (14), and MACD (12, 26, 9) indicators.
-- **"Why Does This Matter" Hover Glossary:** Site-wide plain-English metric tooltips (P/E, P/B, ROE, ROCE, Debt/Equity, Dividend Yield, RSI, MACD, Snowflake, Promoter Holding).
-- **Interactive DCF & Reverse DCF Valuation Models:** 
-  - **DCF Model:** Discounted Cash Flow calculator with growth rate, discount rate, and terminal growth sliders estimating intrinsic fair value per share.
-  - **Reverse DCF Model:** Calculates the market-implied growth rate currently priced into the stock.
-- **Historical Valuation Bands:** Multi-year historical P/E and P/B valuation band charts with mean, ±1σ, and ±2σ standard deviation channels.
-- **Shareable Report Card Export:** Client-side HTML5 canvas snapshot generator for social media sharing.
+**AI deep dive** interprets collected filings, structured provider financials and optional pasted evidence in twelve research sections, with source quotation checks and open questions. Generation requires a server-side `GEMINI_API_KEY` (or `GEMINI_API_KEYS`) in `backend/.env`; restart after setting it. `GEMINI_MODEL` defaults to `gemini-2.5-flash`. For multiple keys use `GEMINI_API_KEYS=key_one,key_two`; optionally set `GEMINI_KEY_PROJECTS=project_a,project_b` in matching order. Keys from the same actual project must share a label and share quota cooldowns. Without labels all keys share one cooldown group. Requests try at most three keys, with fallback for credential rejection or an available different project after quota exhaustion; network/server/request errors are not automatically replayed. Collection, deterministic extraction and calculations work without a key. AI interpretations require review. Price charts include moving averages, Bollinger bands and synchronized RSI.
 
-### 2. Forensic Accounting & Supply Chain Intelligence (Tijori Parity)
-- **Beneish M-Score Earnings Manipulation Detector:** Evaluates 8 financial ratios (DSRI, GMI, AQI, SGI, DEPI, SGAI, LVGI, TATA) to flag potential revenue/earnings manipulation risks.
-- **Altman Z-Score Bankruptcy Model:** Calculates credit risk and distress likelihood customized for manufacturing and non-manufacturing companies.
-- **Red Flag Breakdown Cards:** Automated qualitative risk badges highlighting governance, auditor qualification, debt strain, or revenue manipulation indicators.
-- **Supply Chain & Segment Dependency Graph:** Interactive SVG node network showing key suppliers, enterprise customers, sector competitors, and business segment revenue breakdown.
-- **NSE Sector Performance Heatmap:** Treemap/grid visualization displaying all NSE sectors sized by market cap and color-coded by real-time daily percentage change.
+The reusable analyst skill is [.agents/skills/equity-research/SKILL.md](.agents/skills/equity-research/SKILL.md). Its collector script uses the same services as the app:
 
-### 3. Screener.in Parity & Financial Intelligence
-- **Multi-Metric Dynamic Stock Screener & 8 Presets:** Query engine filtering stocks by P/E, P/B, ROE, ROCE, Debt/Equity, Market Cap, Sales Growth, Profit Growth, and Dividend Yield across 8 built-in screens (*Quality Compounders*, *Deep Value*, *High Dividend Yield*, *Low Debt + High Growth*, *Zero Promoter Pledge*, *Sector Leaders*, *GARP*, *Cash Flow Kings*).
-- **Automated Rule-Based Pros & Cons Flags:** Derived strictly from numerical fundamental thresholds with zero LLM involvement.
-- **Complete Financial Statements:** Standalone and Consolidated Profit & Loss Statement, Balance Sheet, and Cash Flow Statement tables spanning multi-year historical periods.
-- **Quarterly Results Engine:** YoY and QoQ sales, net profit, and operating profit margin (OPM) breakdown tables.
-- **Financial Ratio Trends:** Multi-year ratio history and trend visualizer for profitability, liquidity, leverage, and efficiency metrics.
-- **Shareholding Trend Analyzer:** Category breakdown over time (Promoter, FII, DII, Public) with automated promoter pledging alerts.
-- **Sector Peer Benchmarking Matrix & CSV Export:** Sector peer comparison matrix with 1-click CSV download.
-
-### 4. Natural-Language Strategy Backtester (Headline Feature)
-- **Pure Vectorized Python Math Engine:** Deterministic backtest simulation engine (`pandas`/`numpy`) computing equity curves, trade logs, and risk statistics (Total Return %, CAGR, Max Drawdown %, Sharpe Ratio, Win Rate %, Total Trades). Zero licensing risk.
-- **Guided Builder UI + Gemini 3.6 Flash NL Sandbox:** Natural language prompt parser parsing strategy rules into structured JSON schemas to pre-fill visible form parameters before deterministic execution.
-- **Historical Crisis Scenario Library:**
-  - 1992 Harshad Mehta Scam (*Index-Level SENSEX Approximation*)
-  - 2000 Tech/Ketan Parekh Bust
-  - 2008 Global Financial Crisis (GFC)
-  - 2016 Demonetization Shock
-  - 2020 COVID-19 Crash
-  - 2023 Adani-Hindenburg Episode
-
-### 5. Trading Behavior Analyzer (Differentiator Feature)
-- **Pure Statistics Psychology Engine:** Computes Disposition Effect Score (PGR/PLR holding ratio), Loss Aversion Ratio (`avg_loss / avg_gain`), Revenge Trading Indicator, and Position Sizing Coefficient of Variation (CV).
-- **Multi-Broker CSV Parser:** Seamlessly ingests trade logs from Zerodha, Groww, and Generic CSV formats.
-- **Behavior Report Card UI:** Interactive report card with metric score gauges, automated behavioral diagnostic flags, and AI-narrated psychological advice.
-
-### 6. Pseudo-Brain: AI Research Digest
-- **Filing Triage & Concall Synthesis:** Rule-based corporate filing triage, management tone flags, red flag badges, and direct source document links (`source_url`).
-- **Strict Data Honesty Rule:** *Numbers NEVER come from an LLM* — numbers always come strictly from code (`fundamentals_cache`).
-
----
-
-## 🛠️ Architecture & Technology Stack
-
-```
-                        [ User / Browser ]
-                               │
-            ┌──────────────────┴──────────────────┐
-            ▼                                     ▼
-[ Next.js 14 Frontend App Router ]      [ FastAPI Python Backend ]
-  - Tailwind CSS + Lucide Icons           - Vectorized Backtest Engine
-  - TradingView Lightweight-Charts        - Screener & Peer Query Engine
-  - Recharts (Snowflake & Ratios)         - Behavior Psychology Engine
-  - Interactive Supply Chain & DCF        - Gemini 3.6 Flash Parser
-  - Behavior & Research Digest            - Cache Shield & NSE Master
-            │                                     │
-            └──────────────────┬──────────────────┘
-                               ▼
-                [ Redis Cache & Supabase Postgres ]
+```powershell
+python .agents/skills/equity-research/scripts/research_company.py RENTOMOJO.NS --output output/research/RENTOMOJO.json
 ```
 
-| Layer | Choice | Purpose |
-|---|---|---|
-| **Frontend Framework** | **Next.js 14 (App Router) + TypeScript** | React Server Components, fast client hydration, dark-mode styling |
-| **Styling & UI** | **Tailwind CSS + Lucide React Icons** | Sleek institutional dark-theme aesthetics & micro-animations |
-| **Technical Charting** | **TradingView Lightweight-Charts** | Smooth canvas-rendered candlestick charts with SMA/EMA/RSI/MACD |
-| **Data Visualization** | **Recharts & Custom SVG** | Recharts for Snowflake radar & ratio trends; Custom SVG for Supply Chain |
-| **Backend API** | **Python 3.11+ FastAPI** | Asynchronous API server handling calculations, analytics & feeds |
-| **Data Engine** | **yfinance + NSE Stock Master** | Real-time NSE/BSE symbol resolution, live quote polling & financial feeds |
-| **Math Engine** | **Pure pandas & numpy** | Vectorized financial models, backtesting simulation, and forensic scoring |
-| **Cache Shield** | **Upstash Redis (Free Tier)** | 60s intraday TTL & EOD price caching shield |
-| **Database** | **Supabase Postgres (Free Tier)** | Free Postgres with Row-Level Security for watchlists & saved strategies |
-| **AI Parsing** | **Gemini 3.6 Flash (Google AI Studio)** | JSON-schema structured output for strategy parsing & qualitative summaries |
+This example is not a company-specific adapter; pass another resolved symbol or an official report with `--source-url`. See [PROJECT_GUIDE.md](PROJECT_GUIDE.md) for collection limits, architecture, source handling and implemented versus proposed analysis.
 
----
+Collection also gathers official PIB/RBI policy and macro leads. Add an official HTML source with `--context-url`; government/industry context remains separate from company disclosures and its impact requires review. The workflow shows missing evidence, failed sources and a **Run data & evidence checks** button. AI factual text must match its cited quotes; qualitative hypotheses are displayed separately and remain unverified.
 
-## 📁 Repository Directory Structure
+Run a repeatable data audit, including re-downloaded original PDF quotations:
 
-```
-Nivesh/
-├── backend/
-│   ├── main.py                       # FastAPI application entrypoint & middleware
-│   ├── config.py                     # Environment variables & application settings
-│   ├── test_backend.py               # Comprehensive 100% core API surface automated test runner
-│   ├── routers/
-│   │   ├── backtest.py               # Strategy parsing & vectorized backtest endpoints
-│   │   ├── behavior.py               # Trade log parser & psychological diagnostic endpoints
-│   │   ├── companies.py              # Financials, charts, ratios, forensic & supply chain endpoints
-│   │   ├── research.py               # Pseudo-Brain AI research notes & concall digests
-│   │   ├── screener.py               # Multi-metric screener query & sector heatmap endpoints
-│   │   └── watchlist.py              # User watchlist & alert management endpoints
-│   └── services/
-│       ├── backtest_engine.py        # Vectorized strategy simulation & crisis scenario math engine
-│       ├── behavior_engine.py        # Trading psychology metrics (Disposition, Loss Aversion)
-│       ├── cache_manager.py          # Redis & in-memory cache shield for intraday feeds
-│       ├── data_fetcher.py           # yfinance market data fetcher & financial statement extractor
-│       ├── db_client.py              # Supabase Postgres database client
-│       ├── forensic_engine.py        # Beneish M-Score & Altman Z-Score forensic calculations
-│       ├── gemini_client.py          # Gemini 3.6 Flash structured schema parser
-│       ├── indicators.py             # SMA, EMA, RSI, MACD technical indicator math
-│       ├── nse_stock_master.py       # Live symbol resolution & NSE ticker alias mapping
-│       ├── pseudo_brain.py           # Regulatory filing triage & research digest synthesizer
-│       ├── screener_engine.py        # Dynamic stock filter & pros/cons rule evaluator
-│       ├── snowflake_calculator.py   # 5-pillar fundamental Snowflake score calculator
-│       ├── supply_chain.py           # Supplier, customer & segment network graph builder
-│       └── valuation_bands.py        # Historical PE/PB valuation bands & standard deviations
-└── frontend/
-    ├── src/
-    │   ├── app/
-    │   │   ├── layout.tsx            # Global layout with header, footer & navigation
-    │   │   ├── page.tsx              # Home dashboard with trending stocks & quick tools
-    │   │   ├── backtester/           # Natural language & guided backtester UI
-    │   │   ├── behavior/             # Broker CSV upload & trading psychology report card
-    │   │   ├── leaderboard/          # Community backtest strategy leaderboard
-    │   │   ├── screener/             # Multi-metric stock screener & sector heatmap
-    │   │   ├── stock/[ticker]/       # Institutional stock research workspace
-    │   │   └── watchlist/            # Saved stock watchlists & price alerts
-    │   ├── components/
-    │   │   ├── DCFCalculator.tsx     # Interactive DCF valuation sliders
-    │   │   ├── EquityCurveChart.tsx  # Backtest equity curve & drawdown chart
-    │   │   ├── FinancialStatements.tsx # P&L, Balance Sheet, Cash Flow tables
-    │   │   ├── ForensicRiskCard.tsx  # Beneish M-Score & Altman Z-Score cards
-    │   │   ├── GrowthForecastChart.tsx # Financial statement growth projection charts
-    │   │   ├── PeerComparison.tsx    # Sector peer matrix & CSV export
-    │   │   ├── QuarterlyResults.tsx  # YoY & QoQ sales/profit breakdown
-    │   │   ├── RatioTrends.tsx       # Multi-year ratio trend charts
-    │   │   ├── ResearchDigestCard.tsx# Pseudo-Brain AI research notes & filing triage
-    │   │   ├── ReverseDCFCard.tsx    # Reverse DCF implied growth calculator
-    │   │   ├── SectorHeatmap.tsx     # Sector performance treemap/grid
-    │   │   ├── ShareholdingChart.tsx # Shareholding pattern & promoter pledge visualizer
-    │   │   ├── SnowflakeChart.tsx    # 5-axis fundamental radar chart
-    │   │   ├── StockChart.tsx        # TradingView Lightweight-Charts with technical indicators
-    │   │   ├── SupplyChainGraph.tsx  # Interactive SVG supply chain & segment graph
-    │   │   └── ValuationBandsChart.tsx # Historical PE/PB valuation bands chart
-    │   └── lib/
-    │       └── api.ts                # Frontend API client library
-    └── vercel.json                   # Vercel deployment configuration
+```powershell
+python .agents/skills/equity-research/scripts/audit_research.py RENTOMOJO.NS --verify-originals --output output/research/RENTOMOJO-audit.json
 ```
 
----
+Use `--pack output/research/RENTOMOJO.json` for an offline pack audit. Audits check units, periods and citations; they do not certify an investment thesis. The collector exits unsuccessfully when it collects no readable issuer documents, and supports `--timeout` for bounded waiting.
 
-## ⚡ Quickstart Local Setup
+See [PROJECT_GUIDE.md](PROJECT_GUIDE.md) for the architecture, choices, request/data flows, calculation contracts, source references and deployment tradeoffs. See [VALIDATION.md](VALIDATION.md) for checks performed.
 
-### Prerequisites
-- **Node.js**: v18.0.0 or higher & `npm`
-- **Python**: v3.10 or higher & `pip`
+## Run locally
 
-### 1. Clone Repository
-```bash
-git clone https://github.com/DareDevil365/Nivesh.git
-cd Nivesh
-```
+The independent [three-company comparison](research/RESEARCH_COMPARISON.md) documents the Gem Aromatics, Sambhv and Hy-Tech findings. The workflow now cross-checks explicit issuer income tables against provider inputs, preserves standalone/consolidated bases and original units, and offers a same-table annual baseline selector. Named counterparty lists/tables, company business HTML, transcripts and industry-specific diligence questions are supported. Ambiguous data remains a review gap.
 
-### 2. Environment Configuration
-Create a `.env` file in `backend/`:
-```env
-GEMINI_API_KEY=your_gemini_api_key_here
-SUPABASE_URL=your_supabase_url_here
-SUPABASE_KEY=your_supabase_anon_key_here
-UPSTASH_REDIS_REST_URL=your_upstash_redis_url_here
-UPSTASH_REDIS_REST_TOKEN=your_upstash_redis_token_here
-```
+Requires Python 3.11+ and Node.js 20.9+; CI uses Node 22. No cloud account or AI key is required.
 
-### 3. Backend Setup (FastAPI)
-```bash
-cd backend
-python -m venv .venv
+From the repository root in PowerShell:
 
-# Windows (PowerShell)
-.venv\Scripts\activate
+    python -m venv .venv
+    .\.venv\Scripts\Activate.ps1
+    python -m pip install -r backend/requirements.txt
+    npm ci --prefix frontend
 
-# macOS / Linux
-source .venv/bin/activate
+Start the API in the first terminal with the virtual environment active:
 
-pip install -r requirements.txt
+    cd backend
+    python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
 
-# Launch FastAPI development server on http://localhost:8000
-python -m uvicorn main:app --reload --port 8000
-```
+Start the interface from the root in another terminal:
 
-### 4. Frontend Setup (Next.js 14)
-```bash
-cd ../frontend
-npm install
+    npm run dev:frontend
 
-# Launch Next.js development server on http://localhost:3000
-npm run dev
-```
+Open [Nivesh locally](http://localhost:3000). API documentation is at [FastAPI docs](http://127.0.0.1:8000/docs).
 
-Open **http://localhost:3000** in your browser to launch Nivesh!
+The interface proxies /api to the backend by default. Leave NEXT_PUBLIC_API_URL unset for same-origin workspace cookies. Optional settings are documented in [backend/.env.example](backend/.env.example), [frontend/.env.example](frontend/.env.example) and the project guide.
 
----
+SQLite and the generated signing secret are created automatically in ignored backend/data/. Keep that directory on durable storage to preserve watchlists across restarts. Notes and saved strategy parameters remain in the browser. Clearing cookies loses workspace access; there is no account recovery.
 
-## 🌐 Core API Surface Reference
+## Checks
 
-| Endpoint | Method | Description |
-|---|---|---|
-| `/api/companies/{ticker}` | `GET` | Full company profile, fundamental metrics & 5-axis Snowflake scores |
-| `/api/companies/{ticker}/chart` | `GET` | OHLCV price bars + SMA, EMA, RSI, MACD technical indicators |
-| `/api/companies/{ticker}/peers` | `GET` | Sector peer benchmarking matrix & comparison metrics |
-| `/api/companies/{ticker}/pros-cons` | `GET` | Rule-based financial pros and cons flags |
-| `/api/companies/{ticker}/financials` | `GET` | Complete Standalone/Consolidated P&L, Balance Sheet & Cash Flow |
-| `/api/companies/{ticker}/quarterly-results` | `GET` | Quarterly sales, operating margin (OPM) & profit breakdown |
-| `/api/companies/{ticker}/ratios` | `GET` | Financial ratio history & multi-year trend visualizer data |
-| `/api/companies/{ticker}/shareholding` | `GET` | Shareholding category breakdown over time & promoter pledge status |
-| `/api/companies/{ticker}/forensic` | `GET` | Beneish M-Score & Altman Z-Score risk scoring breakdown |
-| `/api/companies/{ticker}/supply-chain` | `GET` | Supplier, customer, competitor & segment dependency network |
-| `/api/companies/{ticker}/valuation-bands` | `GET` | Historical P/E and P/B valuation band channels & standard deviations |
-| `/api/companies/{ticker}/insider-activity` | `GET` | Promoter & insider trading disclosures feed |
-| `/api/companies/{ticker}/documents` | `GET` | Corporate filings, announcements & annual report links |
-| `/api/companies/{ticker}/research-notes` | `GET` | Pseudo-Brain AI Research Digest & filing triage notes |
-| `/api/screener` | `GET` | Multi-metric stock filter query engine |
-| `/api/screener/presets` | `GET` | 8 pre-built stock screener preset strategies |
-| `/api/screener/sector-heatmap` | `GET` | Sector performance treemap/grid by market capitalization |
-| `/api/strategies/parse` | `POST` | Converts natural language backtest prompts into structured JSON rules |
-| `/api/backtest` | `POST` | Vectorized strategy backtest simulation & equity curve calculation |
-| `/api/behavior/upload` | `POST` | Ingests and parses Zerodha, Groww & generic broker trade log CSVs |
-| `/api/behavior/analyze` | `POST` | Computes Disposition Effect, Loss Aversion, Revenge Trading & advice |
-| `/api/watchlist` | `GET/POST` | Manages user watchlists |
-| `/api/alerts` | `GET/POST` | Active technical indicator & price alert triggers |
-| `/api/leaderboard` | `GET` | Community backtest strategy leaderboard |
-| `/api/keepalive` | `GET` | Health check & cron keep-alive endpoint |
+    python backend/test_backend.py
+    npm run typecheck --prefix frontend
+    npm run build --prefix frontend
 
----
+Optional Python tooling:
 
-## 🧪 Testing & Quality Assurance
+    python -m pip install -r backend/requirements-dev.txt
+    ruff check backend
+    ruff format --check backend
 
-### Automated Backend Test Suite
-Run the 100% core API surface verification test suite:
-```bash
-cd backend
-python test_backend.py
-```
+The regression suite uses controlled data and temporary storage. Live coverage is checked separately. A successful HTTP response alone does not certify financial correctness.
 
-### Production Build Validation
-Verify Next.js frontend compilation:
-```bash
-cd frontend
-npm run build
-```
+For a production build, use npm run build --prefix frontend followed by npm run start --prefix frontend, and run the API without --reload. Hosted use needs durable storage, HTTPS, a stable signing secret and appropriate access controls. This is a personal browser workspace, not a hosted account service.
 
----
 
-## 📜 Data Honesty & Compliance
+**Developments & pending projects:** open a company's Research workflow tab to browse supported disclosures, distinguish unread headlines from collected excerpts and review potential future milestones. Track a sourced bid, approval or expansion in a private browser-workspace ledger; add observations without replacing history and export your research. Expected dates have explicit source/estimate labels. Entries remain researcher-supplied and unverified. Broad news/rumour feeds, automatic tender-outcome matching and scheduled alerts are not connected. No additional API key is required. See [the monitoring specification](research/COMPANY_MONITORING_PLAN.md).
 
-- **NSE Price Data:** Intraday quotes are cached with a 60s Redis TTL and marked with a `"Delayed ~15 min"` badge.
-- **Historical Scenarios:** Stock-level backtesting is supported from Nov 1994 onward (NSE inception). Pre-1994 (Harshad Mehta 1992 scam) is rendered via an index-level SENSEX static approximation table.
-- **Strict Data Integrity:** All numerical values, fundamental ratios, and backtest results are computed deterministically in code (`pandas`/`numpy`). LLMs are strictly limited to parsing strategy rules and generating qualitative summaries.
 
----
+### Read and learn
 
-## 📄 License
-Distributed under the MIT License. See `LICENSE` for details.
+Open `/news` for a free public-RSS reading desk (world/US/India, policy, commodities and world events), topic search and a saved reading list. Company pages include news and separate community discussion; X is search-link-only. Open `/learn` for the beginner stock-research path, terms, historical cases, strategy comparisons, deterministic practice lab and an exportable pitch worksheet. No additional API keys are required. See [PROJECT_GUIDE.md](PROJECT_GUIDE.md) and [the preparation plan](research/FINANCE_LEARNING_IMPLEMENTATION_PLAN.md) for architecture, sources and limits.
+
+
+The personal daily news bot prepares a source-linked morning summary using the independent hosted runtime below. The earlier Codex/Gmail heartbeat is paused; its historical [bot protocol](research/DAILY_NEWS_BOT.md) is retained for reference. Local generated copies can appear in the news page; cloud reports do not automatically synchronise to that installation.
+
+
+The independent hosted runtime is documented in [Daily Brief project guide](../daily-brief/PROJECT_GUIDE.md). GitHub Actions sends four daily Telegram news editions, plus a seven-day follow-up using fourteen-day sent-story memory. Separate headings/content teach a broad 42-lesson **Finance Class**, a source-grounded **Finance in context** case, and the 47-lesson **Stock Daddy** company-research track. A closing message suggests a learning task. Source links are clickable and technical notes stay out of the newsletter body. Code owns the curriculum, evidence limits, validation and delivery; Gemini can elaborate within supplied teaching notes and news evidence. Complete authored lessons work without AI. No Codex, local backend or awake laptop is required. Gmail remains an optional legacy adapter.
+
+Finance Class now includes authored mechanism walkthroughs, three-step examples, misconceptions, application exercises with explained solutions, and one-day/seven-day recall across all 42 lessons. Gemini is optional; the full teaching remains available without it. See [the project guide](PROJECT_GUIDE.md) for architecture and validation.
+
+Finance Class now uses textbook-length authored chapters targeting 15–20 minutes of reading, with separate practice. Chapters combine the main lesson, extended hypothetical cases and labelled reusable supporting readings; no extra Gemini calls are required.

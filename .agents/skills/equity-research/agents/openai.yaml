@@ -1,0 +1,4 @@
+interface:
+  display_name: "Evidence-backed Equity Research"
+  short_description: "Research companies, evidence and investment scenarios"
+  default_prompt: "Use $equity-research to investigate a company, collect current filings, test an investment thesis, and build a source-backed stock pitch."

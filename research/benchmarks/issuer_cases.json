@@ -1,0 +1,41 @@
+{
+  "as_of": "2026-10-13",
+  "purpose": "Independent primary-source benchmarks for evaluation only. Never used to populate runtime company data or conclusions.",
+  "cases": [
+    {
+      "ticker": "GEMAROMA.NS",
+      "name": "Gem Aromatics Limited",
+      "counterparties": ["Colgate Palmolive (India) Limited", "dōTERRA Global Limited", "Ventos Do Brasil LTDA"],
+      "keywords": ["Madagascar", "Dahej", "depreciation"],
+      "metrics": [
+        {"basis":"standalone", "period":"2026-03-31", "metric":"revenue_cr", "value_cr":370.941, "source_page":88},
+        {"basis":"standalone", "period":"2026-03-31", "metric":"net_income_cr", "value_cr":26.709, "source_page":88},
+        {"basis":"consolidated", "period":"2026-03-31", "metric":"revenue_cr", "value_cr":366.473, "source_page":138},
+        {"basis":"consolidated", "period":"2026-03-31", "metric":"net_income_cr", "value_cr":1.425, "source_page":138}
+      ],
+      "primary_sources": ["https://nsearchives.nseindia.com/annual_reports/AR_32070_GEMAROMA_2025_2026_U_7002437_22092026175129.pdf", "https://nsearchives.nseindia.com/content/ipo/RHP_GEMAROMA.zip", "https://nsearchives.nseindia.com/corporate/GEMAROMATICS2024_13082026191948_Intimation.pdf"]
+    },
+    {
+      "ticker":"SAMBHV.NS",
+      "name":"Sambhv Steel Tubes Limited",
+      "counterparties":["NMDC", "SECL"],
+      "keywords":["captive consumption", "Consent to Operate", "realizations"],
+      "metrics":[
+        {"basis":"consolidated", "period":"2026-03-31", "metric":"revenue_cr", "value_cr":2413.243, "source_page":179},
+        {"basis":"consolidated", "period":"2026-03-31", "metric":"net_income_cr", "value_cr":142.151, "source_page":179}
+      ],
+      "primary_sources":["https://nsearchives.nseindia.com/annual_reports/AR_30420_SAMBHV_2025_2026_A_15730184_18082026215120.pdf", "https://www.sambhv.com/our-organization.php", "https://nsearchives.nseindia.com/corporate/SAMBHAV2024_03082026212932_Investor_Presentation.pdf"]
+    },
+    {
+      "ticker":"HTEL.NS",
+      "name":"Hy-Tech Engineers Limited",
+      "counterparties":["Tompkins Industries Inc", "Sisa Hydropneumatics", "Hy-Tech USA Inc", "Fittings Unlimited Inc", "DAN Hydraulics"],
+      "keywords":["price revisions", "top ten customers", "proposed"],
+      "metrics":[
+        {"basis":"consolidated", "period":"2026-03-31", "metric":"revenue_cr", "value_cr":189.4, "source_page":22},
+        {"basis":"consolidated", "period":"2026-03-31", "metric":"net_income_cr", "value_cr":22.6, "source_page":22}
+      ],
+      "primary_sources":["https://nsearchives.nseindia.com/content/ipo/RHP_HTEL.zip", "https://nsearchives.nseindia.com/corporate/HYTECH_21092026092158_Q1_Press_Release_Investor_Presentation.pdf", "https://www.sebi.gov.in/filings/public-issues/aug-2026/hy-tech-engineers-limited-prospectus_104093.html"]
+    }
+  ]
+}

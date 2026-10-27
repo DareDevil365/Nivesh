@@ -30,7 +30,8 @@ export const EquityCurveChart: React.FC<EquityCurveChartProps> = ({
   if (!data || data.length === 0) {
     return (
       <div className="w-full h-64 flex items-center justify-center bg-surface/50 border border-border rounded-lg text-mutedText text-sm">
-        No equity curve data available. Run a strategy simulation to view performance chart.
+        No equity curve data available. Run a strategy simulation to view
+        performance chart.
       </div>
     );
   }
@@ -53,13 +54,22 @@ export const EquityCurveChart: React.FC<EquityCurveChartProps> = ({
           <span className="w-2.5 h-2.5 rounded-full bg-positive inline-block" />
           Strategy Portfolio Performance vs Buy & Hold Benchmark
         </h4>
-        <span className="text-xs text-mutedText">Initial: ₹{initialCapital.toLocaleString("en-IN")}</span>
+        <span className="text-xs text-mutedText">
+          Initial: ₹{initialCapital.toLocaleString("en-IN")}
+        </span>
       </div>
 
       <div className="w-full h-[250px]">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#223028" vertical={false} />
+          <LineChart
+            data={data}
+            margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
+          >
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="#223028"
+              vertical={false}
+            />
             <XAxis
               dataKey="time"
               stroke="#8FA096"

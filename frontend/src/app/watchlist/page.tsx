@@ -1,301 +1,333 @@
 "use client";
-
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { api } from "@/lib/api";
-import { Star, Bell, Trash2, ArrowUpRight, ArrowDownRight, AlertCircle } from "lucide-react";
 import StockSearchInput from "@/components/StockSearchInput";
-
-
-interface WatchlistItem {
-  ticker: string;
-  name: string;
-  sector: string;
-  current_price: number;
-  day_change: number;
-  day_change_pct: number;
-  pe: number;
-  roe: number;
-}
-
-interface AlertItem {
-  id: string;
-  ticker: string;
-  condition: string;
-  threshold: number;
-  active: boolean;
-}
-
+import { api } from "@/lib/api";
+import {
+  useResource,
+  ResourceState,
+  EmptyState,
+  number,
+  money,
+  dateTime,
+  download,
+  csvCell,
+} from "@/lib/research";
 export default function WatchlistPage() {
-  const [items, setItems] = useState<WatchlistItem[]>([]);
-  const [alerts, setAlerts] = useState<AlertItem[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const [newTicker, setNewTicker] = useState("");
-  const [alertTicker, setAlertTicker] = useState("RELIANCE.NS");
-  const [alertCondition, setAlertCondition] = useState("PRICE_ABOVE");
-  const [alertThreshold, setAlertThreshold] = useState("3100");
-
-  const [loadError, setLoadError] = useState<string | null>(null);
-
-  const fetchWatchlist = async () => {
+  const resource = useResource("/api/watchlist");
+  const alerts = useResource("/api/watchlist/alerts");
+  const [notice, setNotice] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [ticker, setTicker] = useState("RELIANCE.NS");
+  const [condition, setCondition] = useState("PRICE_ABOVE");
+  const [threshold, setThreshold] = useState("1000");
+  const refresh = () => {
+    resource.reload();
+    alerts.reload();
+  };
+  const add = async (symbol: string) => {
+    setNotice("");
     try {
-      const data = await api.get<{ items: WatchlistItem[] }>("/api/watchlist");
-      setItems(data.items || []);
-    } catch (err) {
-      setLoadError("Unable to load watchlist. Make sure the backend server is running.");
-      setItems([]);
-    } finally {
-      setLoading(false);
+      await api.post("/api/watchlist/item", { ticker: symbol });
+      setNotice(`${symbol} saved.`);
+      resource.reload();
+    } catch (e) {
+      setNotice((e as Error).message);
     }
   };
-
-  const fetchAlerts = async () => {
+  const remove = async (symbol: string) => {
     try {
-      const data = await api.get<{ alerts: AlertItem[] }>("/api/watchlist/alerts");
-      setAlerts(data.alerts || []);
-    } catch (err) {
-      setAlerts([]);
+      await api.delete(
+        `/api/watchlist/item?ticker=${encodeURIComponent(symbol)}`,
+      );
+      setNotice(`${symbol} removed.`);
+      resource.reload();
+    } catch (e) {
+      setNotice((e as Error).message);
     }
   };
-
-  useEffect(() => {
-    fetchWatchlist();
-    fetchAlerts();
-  }, []);
-
-  const handleAddStock = async (tickerToAdd?: string) => {
-    const symbol = tickerToAdd || newTicker;
-    if (!symbol.trim()) return;
-    try {
-      await api.post("/api/watchlist/item", { ticker: symbol.trim() });
-      setNewTicker("");
-      fetchWatchlist();
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleRemoveStock = async (tickerToRemove: string) => {
-    try {
-      await api.delete(`/api/watchlist/item?ticker=${encodeURIComponent(tickerToRemove)}`);
-      setItems((prev) => prev.filter((i) => i.ticker !== tickerToRemove));
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleCreateAlert = async (e: React.FormEvent) => {
+  const create = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!alertTicker.trim() || !alertThreshold) return;
+    setSaving(true);
+    setNotice("");
     try {
-      const data = await api.post<{ alert: AlertItem }>("/api/watchlist/alerts", {
-        ticker: alertTicker.trim().toUpperCase(),
-        condition: alertCondition,
-        threshold: parseFloat(alertThreshold),
+      await api.post("/api/watchlist/alerts", {
+        ticker,
+        condition,
+        threshold: Number(threshold),
       });
-      if (data.alert) {
-        setAlerts((prev) => [data.alert, ...prev]);
-      } else {
-        fetchAlerts();
-      }
-      setAlertTicker("");
-    } catch (err) {
-      // Optimistic update on API failure
-      setAlerts((prev) => [
-        { id: `alert-${Date.now()}`, ticker: alertTicker.trim().toUpperCase(), condition: alertCondition, threshold: parseFloat(alertThreshold), active: true },
-        ...prev,
-      ]);
-      setAlertTicker("");
+      setNotice("Condition saved. Evaluated when you reload this page.");
+      alerts.reload();
+    } catch (e) {
+      setNotice((e as Error).message);
+    } finally {
+      setSaving(false);
     }
   };
-
+  const removeAlert = async (id: string) => {
+    try {
+      await api.delete(`/api/watchlist/alerts/${encodeURIComponent(id)}`);
+      alerts.reload();
+    } catch (e) {
+      setNotice((e as Error).message);
+    }
+  };
+  const exportList = () =>
+    download(
+      "nivesh-watchlist.csv",
+      [
+        [
+          "Ticker",
+          "Company",
+          "Price INR",
+          "PE",
+          "ROE %",
+          "Quote date",
+          "Fetched at",
+        ],
+        ...(resource.data?.items || []).map((s: any) => [
+          s.ticker,
+          s.name,
+          s.current_price,
+          s.pe,
+          s.roe,
+          s.quote_as_of,
+          s.fetched_at,
+        ]),
+      ]
+        .map((r) => r.map(csvCell).join(","))
+        .join("\n"),
+      "text/csv",
+    );
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="bg-surface border border-border rounded-card p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-2 max-w-xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 text-positive text-xs font-semibold">
-            <Star className="w-3.5 h-3.5" />
-            Watchlist & Custom Trigger Alerts
+    <div className="space-y-6">
+      <section className="rounded-card border border-border bg-surface p-6 space-y-4">
+        <p className="text-xs text-primary uppercase tracking-wider">
+          Your research workspace
+        </p>
+        <h1 className="text-3xl font-heading font-bold">
+          Watchlist & conditions
+        </h1>
+        <p className="text-sm text-mutedText">
+          Saved on this server and isolated to this browser's signed workspace
+          cookie. Records survive server restarts. Clearing cookies loses
+          access; account sync and background notifications are not enabled.
+        </p>
+        <div className="flex flex-wrap gap-3 items-center">
+          <div className="w-full max-w-lg">
+            <StockSearchInput
+              placeholder="Search a company to track"
+              buttonText="Add stock"
+              onSelectTicker={add}
+            />
           </div>
-          <h1 className="font-heading font-bold text-2xl md:text-3xl text-neutralText">
-            NSE Stock Watchlist & Alerts
-          </h1>
-          <p className="text-mutedText text-xs md:text-sm">
-            Track your favorite NSE tickers with live quotes, P/E multiples, and RSI/Price alerts.
+          <button
+            onClick={refresh}
+            className="border border-border rounded-lg px-4 py-2 text-xs"
+          >
+            Reload quotes & conditions
+          </button>
+          <button
+            onClick={exportList}
+            className="border border-border rounded-lg px-4 py-2 text-xs"
+          >
+            Export watchlist
+          </button>
+        </div>
+        {notice && (
+          <p role="status" className="text-sm text-primary">
+            {notice}
           </p>
-        </div>
-
-        {/* Add Ticker Form */}
-        <div className="w-full md:w-80">
-          <label className="text-xs text-mutedText font-semibold mb-1 block">Add Stock to Watchlist</label>
-          <StockSearchInput
-            placeholder="Type symbol to add (e.g. INFY)..."
-            buttonText="Add"
-            onSelectTicker={(ticker) => handleAddStock(ticker)}
-          />
-        </div>
-      </div>
-
-      {/* Grid: Watchlist Table + Create Alert Panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Watchlist Table */}
-        <div className="lg:col-span-2 bg-surface border border-border rounded-card p-6 space-y-4">
-          <h2 className="font-heading font-bold text-lg text-neutralText">
-            Your Tracked Stocks ({items.length})
-          </h2>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs min-w-[650px]">
-              <thead>
-                <tr className="border-b border-border text-mutedText uppercase text-[11px] font-semibold">
-                  <th className="py-3 px-3">Stock</th>
-                  <th className="py-3 px-3">Price</th>
-                  <th className="py-3 px-3">Day Change</th>
-                  <th className="py-3 px-3">P/E</th>
-                  <th className="py-3 px-3">ROE</th>
-                  <th className="py-3 px-3 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {items.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-12 text-center text-sm text-mutedText">
-                      <div className="space-y-1">
-                        <p className="font-semibold text-neutralText">No stocks tracked yet</p>
-                        <p className="text-xs">Search above to add your first stock to the watchlist.</p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : items.map((stk) => {
-                  const isUp = stk.day_change >= 0;
-                  return (
-                    <tr key={stk.ticker} className="hover:bg-bg/50 transition-colors">
-                      <td className="py-3.5 px-3 font-semibold text-neutralText">
-                        <Link href={`/stock/${stk.ticker}`} className="hover:text-primary transition-colors">
-                          <div>{stk.name}</div>
-                          <div className="text-[10px] text-mutedText">{stk.ticker}</div>
-                        </Link>
-                      </td>
-                      <td className="py-3.5 px-3 font-semibold text-neutralText">
-                        ₹{stk.current_price.toLocaleString("en-IN")}
-                      </td>
-                      <td className="py-3.5 px-3">
-                        <span className={`font-semibold flex items-center gap-0.5 ${isUp ? "text-positive" : "text-negative"}`}>
-                          {isUp ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
-                          {isUp ? "+" : ""}{stk.day_change_pct}%
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-3 text-neutralText">{stk.pe}x</td>
-                      <td className="py-3.5 px-3 font-semibold text-positive">{stk.roe}%</td>
-                      <td className="py-3.5 px-3 text-right space-x-3">
-                        <Link href={`/stock/${stk.ticker}`} className="text-xs text-primary font-medium hover:underline">
-                          View →
-                        </Link>
-                        <button
-                          onClick={() => handleRemoveStock(stk.ticker)}
-                          className="text-xs text-negative hover:underline"
-                          title="Remove from Watchlist"
-                        >
-                          <Trash2 className="w-3.5 h-3.5 inline" />
-                        </button>
-                      </td>
+        )}
+      </section>
+      <ResourceState resource={resource}>
+        {resource.data && (
+          <section className="rounded-card border border-border bg-surface p-5 space-y-4">
+            <h2 className="font-semibold">
+              Tracked companies ({resource.data.count})
+            </h2>
+            {!resource.data.items.length ? (
+              <EmptyState title="Start your watchlist">
+                Search above or save a company from its research page.
+              </EmptyState>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[700px] text-xs text-left">
+                  <thead>
+                    <tr className="text-mutedText">
+                      <th className="p-3">Company</th>
+                      <th className="p-3">Price</th>
+                      <th className="p-3">Change</th>
+                      <th className="p-3">P/E</th>
+                      <th className="p-3">ROE</th>
+                      <th className="p-3">Quote as of (IST)</th>
+                      <th className="p-3">Action</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Alerts Configuration Card */}
-        <div className="bg-surface border border-border rounded-card p-6 space-y-4 flex flex-col justify-between">
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Bell className="w-5 h-5 text-secondary" />
-              <h2 className="font-heading font-bold text-lg text-neutralText">
-                Set Price & Indicator Alerts
-              </h2>
-            </div>
-
-            <form onSubmit={handleCreateAlert} className="space-y-3 text-xs">
-              <div>
-                <label className="text-mutedText block mb-1 font-semibold">Stock Ticker</label>
-                <input
-                  type="text"
-                  placeholder="e.g. INFY.NS or RELIANCE.NS"
-                  value={alertTicker}
-                  onFocus={(e) => e.target.select()}
-                  onChange={(e) => setAlertTicker(e.target.value)}
-                  className="w-full bg-bg border border-border rounded-lg p-2 text-neutralText focus:outline-none focus:border-primary font-mono"
-                />
+                  </thead>
+                  <tbody>
+                    {resource.data.items.map((s: any) => (
+                      <tr key={s.ticker} className="border-t border-border">
+                        <td className="p-3">
+                          <Link
+                            href={`/stock/${encodeURIComponent(s.ticker)}`}
+                            className="font-semibold hover:text-primary"
+                          >
+                            {s.name}
+                          </Link>
+                          <p className="text-[10px] text-mutedText">
+                            {s.ticker} {!s.available && "· Quote unavailable"}
+                          </p>
+                        </td>
+                        <td className="p-3">{money(s.current_price)}</td>
+                        <td className="p-3">{number(s.day_change_pct, "%")}</td>
+                        <td className="p-3">{number(s.pe, "x")}</td>
+                        <td className="p-3">{number(s.roe, "%")}</td>
+                        <td className="p-3 text-mutedText">
+                          {dateTime(s.quote_as_of)}
+                        </td>
+                        <td className="p-3">
+                          <button
+                            aria-label={`Remove ${s.ticker}`}
+                            onClick={() => remove(s.ticker)}
+                            className="text-negative"
+                          >
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-
-              <div>
-                <label className="text-mutedText block mb-1 font-semibold">Alert Condition</label>
-                <select
-                  value={alertCondition}
-                  onChange={(e) => setAlertCondition(e.target.value)}
-                  className="w-full bg-bg border border-border rounded-lg p-2 text-neutralText focus:outline-none focus:border-primary"
+            )}
+          </section>
+        )}
+      </ResourceState>
+      <div className="grid lg:grid-cols-[300px_minmax(0,1fr)] gap-5">
+        <form
+          onSubmit={create}
+          className="rounded-card border border-border bg-surface p-5 space-y-4 self-start"
+        >
+          <h2 className="font-semibold">Track a condition</h2>
+          <label className="block text-xs">
+            Ticker
+            <input
+              aria-label="Condition ticker"
+              required
+              value={ticker}
+              onChange={(e) => setTicker(e.target.value)}
+              className="mt-2 w-full bg-bg border border-border rounded-lg p-2"
+            />
+          </label>
+          <label className="block text-xs">
+            Condition
+            <select
+              aria-label="Condition type"
+              value={condition}
+              onChange={(e) => {
+                setCondition(e.target.value);
+                setThreshold(
+                  e.target.value === "VOLUME_SPIKE"
+                    ? "2"
+                    : e.target.value.startsWith("RSI")
+                      ? "70"
+                      : "1000",
+                );
+              }}
+              className="mt-2 w-full bg-bg border border-border rounded-lg p-2"
+            >
+              {[
+                "PRICE_ABOVE",
+                "PRICE_BELOW",
+                "RSI_ABOVE",
+                "RSI_BELOW",
+                "VOLUME_SPIKE",
+              ].map((c) => (
+                <option key={c}>{c}</option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-xs">
+            Threshold{" "}
+            {condition.startsWith("PRICE")
+              ? "(₹)"
+              : condition === "VOLUME_SPIKE"
+                ? "(times 20-day average volume)"
+                : "(0–100)"}
+            <input
+              aria-label="Condition threshold"
+              required
+              type="number"
+              min="0"
+              max={condition.startsWith("RSI") ? "100" : undefined}
+              step="any"
+              value={threshold}
+              onChange={(e) => setThreshold(e.target.value)}
+              className="mt-2 w-full bg-bg border border-border rounded-lg p-2"
+            />
+          </label>
+          <button
+            disabled={saving}
+            className="w-full bg-primary text-white rounded-lg py-2 text-xs font-semibold disabled:opacity-50"
+          >
+            {saving ? "Saving…" : "Save condition"}
+          </button>
+          <p className="text-[11px] text-mutedText">
+            Price uses the latest cached quote. RSI and volume use the most
+            recent daily bar. Conditions are checked on reload; no email or push
+            alerts are sent.
+          </p>
+        </form>
+        <ResourceState resource={alerts}>
+          <section className="rounded-card border border-border bg-surface p-5 space-y-4 min-w-0">
+            <h2 className="font-semibold">Saved conditions</h2>
+            {!alerts.data?.alerts?.length ? (
+              <EmptyState title="No conditions saved">
+                Set a price, RSI or volume condition to review here.
+              </EmptyState>
+            ) : (
+              alerts.data.alerts.map((a: any) => (
+                <div
+                  key={a.id}
+                  className="rounded-lg border border-border bg-bg p-4 space-y-2"
                 >
-                  <option value="PRICE_ABOVE">Price Crosses Above</option>
-                  <option value="PRICE_BELOW">Price Crosses Below</option>
-                  <option value="RSI_BELOW">RSI (14) Drops Below (Oversold)</option>
-                  <option value="RSI_ABOVE">RSI (14) Rises Above (Overbought)</option>
-                  <option value="VOLUME_SPIKE">Volume Spike &gt; 2x Avg</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-mutedText block mb-1 font-semibold font-mono">Threshold Value</label>
-                <input
-                  type="number"
-                  placeholder="Threshold numeric value..."
-                  value={alertThreshold}
-                  onChange={(e) => setAlertThreshold(e.target.value)}
-                  className="w-full bg-bg border border-border rounded-lg p-2 text-neutralText focus:outline-none focus:border-primary font-mono"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 shadow"
-              >
-                <Bell className="w-4 h-4" /> Create Alert Trigger
-              </button>
-            </form>
-          </div>
-
-          {/* Active Alerts List */}
-          <div className="pt-4 border-t border-border space-y-2">
-            <div className="text-xs font-semibold text-mutedText">Active Trigger List</div>
-            <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                {alerts.map((al) => {
-                  const conditionLabel: Record<string, string> = {
-                    PRICE_ABOVE: "Price ↑",
-                    PRICE_BELOW: "Price ↓",
-                    RSI_BELOW: "RSI(14) ↓",
-                    RSI_ABOVE: "RSI(14) ↑",
-                    VOLUME_SPIKE: "Vol Spike",
-                  };
-                  return (
-                    <div key={al.id} className="flex items-center justify-between p-2 rounded bg-bg text-xs border border-border">
-                      <div>
-                        <strong className="text-neutralText font-mono">{al.ticker}</strong>
-                        <div className="text-[10px] text-mutedText">
-                          {conditionLabel[al.condition] || al.condition} · {al.threshold}
-                        </div>
-                      </div>
-                      <span className="w-2 h-2 rounded-full bg-positive animate-pulse" />
-                    </div>
-                  );
-                })}
-            </div>
-          </div>
-        </div>
+                  <div className="flex justify-between gap-3">
+                    <Link
+                      className="font-semibold text-sm hover:text-primary"
+                      href={`/stock/${a.ticker}`}
+                    >
+                      {a.ticker}
+                    </Link>
+                    <button
+                      aria-label={`Delete condition ${a.ticker}`}
+                      onClick={() => removeAlert(a.id)}
+                      className="text-xs text-negative"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                  <p className="text-xs">
+                    {a.condition.replaceAll("_", " ")} · {number(a.threshold)}
+                  </p>
+                  <p
+                    className={`text-sm ${a.triggered === true ? "text-amber-300" : "text-mutedText"}`}
+                  >
+                    {a.triggered == null
+                      ? "Data unavailable"
+                      : a.triggered
+                        ? "Condition met"
+                        : "Condition not met"}{" "}
+                    · Observed {number(a.observed_value)}
+                  </p>
+                  <p className="text-[11px] text-mutedText">
+                    Checked against data as of {dateTime(a.checked_at)}
+                  </p>
+                </div>
+              ))
+            )}
+          </section>
+        </ResourceState>
       </div>
-
     </div>
   );
 }

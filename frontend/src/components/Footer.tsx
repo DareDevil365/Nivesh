@@ -1,67 +1,46 @@
-"use client";
-
-import React from "react";
 import Link from "next/link";
-import { TrendingUp, ShieldAlert, Heart, Github } from "lucide-react";
-
-export const Footer: React.FC = () => {
+export function Footer() {
   return (
-    <footer className="w-full bg-surface border-t border-border mt-16 py-8 text-xs text-mutedText">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          {/* Brand & Tagline */}
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded bg-primary/20 border border-primary/30 flex items-center justify-center text-primary">
-              <TrendingUp className="w-4 h-4" />
-            </div>
-            <span className="font-heading font-bold text-sm text-neutralText tracking-tight">
-              NIVESH <span className="text-[10px] font-normal text-primary">NSE</span>
+    <footer className="border-t border-border bg-surface mt-12 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+        <div className="flex flex-wrap justify-between gap-4">
+          <p className="font-heading font-bold text-sm">
+            NIVESH{" "}
+            <span className="text-mutedText font-normal">
+              · Indian equity research
             </span>
-            <span className="text-mutedText/60">|</span>
-            <span>Indian Equity Research & Backtesting Sandbox</span>
-          </div>
-
-          {/* Quick Nav Links */}
-          <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-neutralText/80">
-            <Link href="/stock/RELIANCE.NS" className="hover:text-primary transition-colors">
-              Research
-            </Link>
-            <Link href="/screener" className="hover:text-primary transition-colors">
-              Screener
-            </Link>
-            <Link href="/backtester" className="hover:text-primary transition-colors">
-              Backtester
-            </Link>
-            <Link href="/behavior" className="hover:text-primary transition-colors">
-              Behavior Analyzer
-            </Link>
-            <Link href="/watchlist" className="hover:text-primary transition-colors">
-              Watchlist
-            </Link>
-            <Link href="/leaderboard" className="hover:text-primary transition-colors">
-              Leaderboard
-            </Link>
-          </div>
+          </p>
+          <nav
+            aria-label="Footer"
+            className="flex flex-wrap gap-4 text-xs text-mutedText"
+          >
+            {[
+              ["/news", "Reading desk"],
+              ["/learn", "Learn finance"],
+              ["/screener", "Screener"],
+              ["/watchlist", "Watchlist"],
+              ["/backtester", "Backtester"],
+              ["/behavior", "Trade journal"],
+            ].map(([href, label]) => (
+              <Link href={href} key={href} className="hover:text-primary">
+                {label}
+              </Link>
+            ))}
+          </nav>
         </div>
-
-        {/* Disclaimer & Data Honesty Notice */}
-        <div className="p-3 rounded-lg bg-bg/50 border border-border/50 text-[11px] leading-relaxed text-mutedText flex items-start gap-2">
-          <ShieldAlert className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
-          <div>
-            <span className="font-semibold text-neutralText">Financial Disclosure & Data Note:</span> Intraday NSE quotes are polled with a 60s Redis TTL and marked with a delayed badge (~15 min). Backtest results and behavioral metrics are for educational research purposes only and do not constitute financial advice. Always verify filings with official exchange disclosures.
-          </div>
-        </div>
-
-        {/* Footer Bottom Line */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 border-t border-border/40 text-[11px]">
-          <p>© 2026 Nivesh. ₹0-budget Institutional-Grade Analytics Platform.</p>
-          <div className="flex items-center gap-1 text-mutedText">
-            <span>Built with</span>
-            <Heart className="w-3 h-3 text-red-500 fill-red-500" />
-            <span>for Indian Retail Investors</span>
-          </div>
-        </div>
+        <p className="text-xs text-mutedText leading-relaxed max-w-4xl">
+          Market quotes and financial statements are supplied by Yahoo Finance
+          and may be delayed, incomplete or restated. Check the source date and
+          verify material figures in company filings. Valuation scenarios and
+          backtests depend on their stated assumptions. Research tools do not
+          constitute investment advice.
+        </p>
+        <p className="text-[11px] text-mutedText">
+          Watchlists and feedback use a browser workspace on this server.
+          Research notes and saved strategy parameters remain in your browser.
+          Export copies before clearing browser data.
+        </p>
       </div>
     </footer>
   );
-};
+}

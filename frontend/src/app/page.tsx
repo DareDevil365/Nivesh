@@ -1,132 +1,134 @@
 "use client";
-
-import React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Activity, TrendingUp, ShieldCheck, Brain, Sparkles } from "lucide-react";
 import StockSearchInput from "@/components/StockSearchInput";
 import SectorHeatmap from "@/components/SectorHeatmap";
-
-const FEATURED_STOCKS = [
-  { ticker: "RELIANCE.NS", name: "Reliance Industries", sector: "Energy & Oil" },
-  { ticker: "TCS.NS", name: "Tata Consultancy Services", sector: "IT Services" },
-  { ticker: "INFY.NS", name: "Infosys Ltd", sector: "IT Services" },
-  { ticker: "HDFCBANK.NS", name: "HDFC Bank Ltd", sector: "Banking" },
-  { ticker: "ICICIBANK.NS", name: "ICICI Bank Ltd", sector: "Banking" },
-  { ticker: "TATAMOTORS.NS", name: "Tata Motors Ltd", sector: "Automobile" },
+const EXAMPLES = [
+  ["RELIANCE.NS", "Reliance Industries"],
+  ["TCS.NS", "Tata Consultancy Services"],
+  ["INFY.NS", "Infosys"],
+  ["ICICIBANK.NS", "ICICI Bank"],
+  ["SBIN.NS", "State Bank of India"],
+  ["ITC.NS", "ITC"],
 ];
-
 export default function HomePage() {
   return (
-    <div className="space-y-12">
-      {/* Hero Banner */}
-      <div className="bg-surface border border-border rounded-card p-8 md:p-12 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl -z-0 pointer-events-none" />
-
-        <div className="relative z-10 max-w-3xl space-y-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 text-positive text-xs font-semibold">
-            <Sparkles className="w-3.5 h-3.5" />
-            ₹0-Budget Institutional-Grade NSE Intelligence
-          </div>
-
-          <h1 className="font-heading text-3xl md:text-5xl font-bold text-neutralText leading-tight">
-            NSE Stock Research, NL Backtesting & Trading Psychology
-          </h1>
-
-          <p className="text-mutedText text-base md:text-lg leading-relaxed">
-            Analyze Indian stocks with 5-axis Snowflake visual radar charts, backtest trading strategies in plain English, and diagnose your trading psychology habits — 100% deterministic, backed by code, not LLM hallucinations.
+    <div className="space-y-10">
+      <section className="relative overflow-hidden rounded-card bg-surface border border-border p-7 md:p-12">
+        <div className="absolute right-0 top-0 w-80 h-80 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative space-y-6 max-w-3xl">
+          <p className="text-xs font-semibold text-primary uppercase tracking-[.2em]">
+            Indian equity research · Built around evidence
           </p>
-
-          {/* Quick Search with Autocomplete Typeahead */}
+          <h1 className="font-heading text-3xl md:text-5xl font-bold leading-tight">
+            Understand the business.
+            <br />
+            <span className="text-positive">Question the numbers.</span>
+          </h1>
+          <p className="text-sm md:text-base text-mutedText leading-relaxed max-w-2xl">
+            Explore company financials, compare industry peers, test a trading
+            idea, and keep your research in one workspace. See where every
+            number comes from and where the data stops.
+          </p>
           <div className="max-w-xl">
             <StockSearchInput
-              placeholder="Search symbol or company (e.g. RELIANCE, TCS, INFY, BAJAJ-AUTO, WIPRO)..."
-              buttonText="Analyze Stock"
+              placeholder="Search company or symbol, e.g. RELIANCE or TCS"
+              buttonText="Open research"
             />
           </div>
-        </div>
-      </div>
-
-      {/* Featured Stock Cards */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-heading font-semibold text-xl text-neutralText">
-            Quick Research — Blue-Chip NSE Stocks
-          </h2>
-          <span className="text-xs text-mutedText italic">Click any card for live analysis</span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {FEATURED_STOCKS.map((stock) => (
+          <div className="flex flex-wrap gap-3 text-xs">
             <Link
-              key={stock.ticker}
-              href={`/stock/${stock.ticker}`}
-              className="bg-surface border border-border hover:border-primary/60 rounded-card p-5 transition-all group hover:-translate-y-0.5"
+              href="/learn"
+              className="rounded-lg border border-primary px-5 py-2.5 text-primary font-semibold"
             >
-              <div className="flex items-start justify-between">
-                <div className="space-y-0.5">
-                  <h3 className="font-heading font-bold text-neutralText group-hover:text-primary transition-colors">
-                    {stock.name}
-                  </h3>
-                  <span className="text-xs text-mutedText">{stock.ticker.replace(".NS","")} • {stock.sector}</span>
-                </div>
-                <span className="text-xs font-semibold text-primary/70 group-hover:text-primary transition-colors mt-0.5">
-                  Analyze →
-                </span>
+              Learn to research a stock
+            </Link>
+            <Link
+              href="/news"
+              className="rounded-lg border border-primary px-5 py-2.5 text-primary font-semibold"
+            >
+              Start your daily reading
+            </Link>
+            <Link
+              href="/screener"
+              className="rounded-lg bg-primary px-5 py-2.5 text-white font-semibold"
+            >
+              Explore the screener
+            </Link>
+            <Link
+              href="/watchlist"
+              className="rounded-lg border border-border px-5 py-2.5"
+            >
+              Open your watchlist
+            </Link>
+          </div>
+          <p className="text-[11px] text-mutedText">
+            Yahoo Finance quotes may be delayed. No live exchange feed or
+            verified filing feed is connected.
+          </p>
+        </div>
+      </section>
+      <section className="space-y-4">
+        <h2 className="text-xl font-heading font-semibold">
+          Start with a company
+        </h2>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {EXAMPLES.map(([ticker, name]) => (
+            <Link
+              href={`/stock/${ticker}`}
+              key={ticker}
+              className="rounded-card border border-border bg-surface p-5 hover:border-primary/60 transition-colors"
+            >
+              <p className="font-semibold text-sm">{name}</p>
+              <div className="flex justify-between text-xs mt-2">
+                <span className="text-mutedText">{ticker}</span>
+                <span className="text-primary">Research →</span>
               </div>
             </Link>
           ))}
         </div>
-      </div>
-
-      {/* Live Sector Heatmap */}
-      <div className="space-y-3">
-        <h2 className="font-heading font-semibold text-xl text-neutralText">NSE Sector Performance</h2>
+      </section>
+      <section className="space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-xl font-heading font-semibold">
+            Covered sector snapshot
+          </h2>
+          <Link href="/screener" className="text-xs text-primary">
+            View coverage & filters →
+          </Link>
+        </div>
         <SectorHeatmap />
-      </div>
-
-      {/* 4bundled Core Features Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-surface border border-border rounded-card p-6 space-y-3">
-          <div className="w-10 h-10 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center text-positive">
-            <Activity className="w-5 h-5" />
-          </div>
-          <h3 className="font-heading font-bold text-neutralText text-lg">Snowflake Dashboard</h3>
-          <p className="text-xs text-mutedText leading-relaxed">
-            5-axis visual radar representation evaluating Value, Future, Past, Health, and Dividend.
-          </p>
-        </div>
-
-        <div className="bg-surface border border-border rounded-card p-6 space-y-3">
-          <div className="w-10 h-10 rounded-lg bg-secondary/20 border border-secondary/30 flex items-center justify-center text-secondary">
-            <TrendingUp className="w-5 h-5" />
-          </div>
-          <h3 className="font-heading font-bold text-neutralText text-lg">NL Backtester</h3>
-          <p className="text-xs text-mutedText leading-relaxed">
-            Plain-English trading strategy engine mapping user text to a strict JSON schema and deterministic backtest.
-          </p>
-        </div>
-
-        <div className="bg-surface border border-border rounded-card p-6 space-y-3">
-          <div className="w-10 h-10 rounded-lg bg-positive/20 border border-positive/30 flex items-center justify-center text-positive">
-            <ShieldCheck className="w-5 h-5" />
-          </div>
-          <h3 className="font-heading font-bold text-neutralText text-lg">Behavior Analyzer</h3>
-          <p className="text-xs text-mutedText leading-relaxed">
-            Upload trading CSV to diagnose habits: disposition effect, loss aversion, revenge trading, and position sizing.
-          </p>
-        </div>
-
-        <div className="bg-surface border border-border rounded-card p-6 space-y-3">
-          <div className="w-10 h-10 rounded-lg bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400">
-            <Brain className="w-5 h-5" />
-          </div>
-          <h3 className="font-heading font-bold text-neutralText text-lg">Pseudo-Brain Digest</h3>
-          <p className="text-xs text-mutedText leading-relaxed">
-            Summarizes corporate filings, insider trades, and concalls with linked sources — numbers always come from code.
-          </p>
-        </div>
-      </div>
+      </section>
+      <section className="grid md:grid-cols-3 gap-4">
+        {[
+          [
+            "/screener",
+            "Find & compare",
+            "Filter actual fundamentals, inspect missing inputs and compare companies within their industry.",
+          ],
+          [
+            "/backtester",
+            "Test a strategy",
+            "Use a visible rule builder, next-open execution, cost assumptions and a downloadable trade log.",
+          ],
+          [
+            "/behavior",
+            "Review your trades",
+            "Match broker executions with FIFO and inspect recorded returns, holding periods and size patterns.",
+          ],
+        ].map(([href, title, description]) => (
+          <Link
+            key={href}
+            href={href}
+            className="rounded-card border border-border bg-surface p-6 space-y-3 hover:border-primary/60"
+          >
+            <h3 className="font-semibold">{title}</h3>
+            <p className="text-sm text-mutedText leading-relaxed">
+              {description}
+            </p>
+            <p className="text-xs text-primary">Open tool →</p>
+          </Link>
+        ))}
+      </section>
     </div>
   );
 }

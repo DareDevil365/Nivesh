@@ -1,97 +1,157 @@
-import time
+"""Process-local credential rotation; quotas are shared within each configured project."""
+
 import logging
-from typing import List, Dict, Any, Optional, Type
-from pydantic import BaseModel
+import math
+import time
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
+from threading import RLock
+
+import httpx
+
 from config import settings
 
 logger = logging.getLogger(__name__)
 
-class KeyState(BaseModel):
-    key: str
-    tier: str = "flash"  # "flash" or "flash_lite"
+
+@dataclass
+class KeyState:
+    key: str = field(repr=False)
+    project: str = "unassigned"
     calls_today: int = 0
     errors_today: int = 0
     cooldown_until: float = 0.0
     status: str = "active"
 
+
 class GeminiKeyRotator:
-    """
-    7-Key Gemini API Rotator with credit tracking, rate-limit cooldown,
-    model-tier fallback, and structured output validation.
-    """
     def __init__(self):
         raw_keys = [k.strip() for k in settings.GEMINI_API_KEYS.split(",") if k.strip()]
-        self.keys: List[KeyState] = [KeyState(key=k) for k in raw_keys]
+        projects = [p.strip() for p in settings.GEMINI_KEY_PROJECTS.split(",")]
+        if not settings.GEMINI_KEY_PROJECTS.strip():
+            projects = ["unassigned"] * len(raw_keys)
+        if len(projects) != len(raw_keys) or any(not p for p in projects):
+            raise ValueError("GEMINI_KEY_PROJECTS must contain one non-empty label per API key.")
+        unique = {}
+        for key, project in zip(raw_keys, projects, strict=True):
+            if key in unique and unique[key] != project:
+                raise ValueError("Duplicate Gemini credentials must have the same project label.")
+            unique[key] = project
+        self.keys = [KeyState(key=k, project=p) for k, p in unique.items()]
         self._current_index = 0
-        self._last_reset_day = time.strftime("%Y-%m-%d")
+        self._last_reset_day = datetime.now(timezone.utc).date()
+        self._lock = RLock()
 
-    def _check_daily_reset(self):
-        today = time.strftime("%Y-%m-%d")
+    def _refresh(self):
+        today = datetime.now(timezone.utc).date()
         if today != self._last_reset_day:
             self._last_reset_day = today
-            for k in self.keys:
-                k.calls_today = 0
-                k.errors_today = 0
-                k.status = "active"
-                k.tier = "flash"
-            logger.info("Reset daily Gemini API call counters across all keys.")
+            for state in self.keys:
+                state.calls_today = state.errors_today = 0
+        for state in self.keys:
+            if state.status == "cooldown" and state.cooldown_until <= time.monotonic():
+                state.status = "active"
 
-    def get_active_key(self, task_type: str = "heavy") -> Optional[str]:
-        self._check_daily_reset()
-        now = time.time()
-        
-        # Filter ready keys
-        ready_keys = [k for k in self.keys if k.status != "disabled" and k.cooldown_until <= now]
-        if not ready_keys:
-            logger.warning("No active Gemini API keys available right now (all in cooldown or disabled).")
+    def get_active_key(self, task_type="heavy", exclude=()):
+        with self._lock:
+            self._refresh()
+            for offset in range(len(self.keys)):
+                index = (self._current_index + offset) % len(self.keys)
+                state = self.keys[index]
+                if state.status == "active" and state.key not in exclude:
+                    self._current_index = (index + 1) % len(self.keys)
+                    return state.key
+        return None
+
+    def report_success(self, key):
+        with self._lock:
+            self._refresh()
+            for state in self.keys:
+                if state.key == key:
+                    state.calls_today += 1
+                    # Do not undo a concurrent request's cooldown/credential rejection.
+                    break
+
+    def report_error(self, key, status_code=429, retry_after=None):
+        with self._lock:
+            self._refresh()
+            project = None
+            for state in self.keys:
+                if state.key == key:
+                    project = state.project
+                    state.errors_today += 1
+                    if status_code in (401, 403):
+                        state.status = "disabled"
+                    break
+            if status_code == 429 and project is not None:
+                delay = max(60.0, retry_after or 0.0)
+                # Unlabelled credentials conservatively share a single quota group.
+                for state in self.keys:
+                    if state.project == project and state.status != "disabled":
+                        state.cooldown_until = max(state.cooldown_until, time.monotonic() + delay)
+                        state.status = "cooldown"
+                logger.warning("Gemini quota reached; project credential group paused.")
+
+    def post(self, url, payload):
+        """At most three attempts, fallback only for credential rejection or a different project quota."""
+        tried = set()
+        deadline = time.monotonic() + 50.0
+        response = None
+        key = None
+        for _ in range(3):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            key = self.get_active_key(exclude=tried)
+            if not key:
+                break
+            tried.add(key)
+            response = httpx.post(
+                url, headers={"x-goog-api-key": key}, json=payload, timeout=remaining
+            )
+            if response.status_code == 200:
+                return response, key
+            self.report_error(
+                key, response.status_code, _retry_after(response.headers.get("Retry-After"))
+            )
+            if response.status_code not in (401, 403, 429):
+                break
+        return response, key
+
+    def get_status(self):
+        with self._lock:
+            self._refresh()
+            return {
+                "total_keys": len(self.keys),
+                "total_calls_today": sum(k.calls_today for k in self.keys),
+                "active_keys": sum(k.status == "active" for k in self.keys),
+                "keys": [
+                    {
+                        "key_id": f"credential-{i + 1}",
+                        "calls_today": k.calls_today,
+                        "errors_today": k.errors_today,
+                        "status": k.status,
+                        "cooldown_remaining_sec": max(
+                            0, math.ceil(k.cooldown_until - time.monotonic())
+                        ),
+                    }
+                    for i, k in enumerate(self.keys)
+                ],
+            }
+
+
+def _retry_after(value):
+    if not value:
+        return None
+    try:
+        seconds = float(value)
+    except (ValueError, TypeError):
+        try:
+            seconds = parsedate_to_datetime(value).timestamp() - time.time()
+        except (ValueError, TypeError, OverflowError):
             return None
+    return seconds if math.isfinite(seconds) and seconds >= 0 else None
 
-        # Round-robin selection
-        selected_state = ready_keys[self._current_index % len(ready_keys)]
-        self._current_index += 1
-        return selected_state.key
-
-    def report_success(self, key: str):
-        for k in self.keys:
-            if k.key == key:
-                k.calls_today += 1
-                k.status = "active"
-                break
-
-    def report_error(self, key: str, status_code: int = 429):
-        now = time.time()
-        for k in self.keys:
-            if k.key == key:
-                k.errors_today += 1
-                if status_code == 429:
-                    # Rate limit -> 60s cooldown
-                    k.cooldown_until = now + 60.0
-                    k.status = "cooldown"
-                    logger.warning(f"Gemini key ending in ..{key[-6:]} hit rate limit (429). Placed on 60s cooldown.")
-                elif status_code == 400 or status_code == 403:
-                    # Model limit / quota exhausted -> mark degraded / fallback
-                    k.tier = "flash_lite"
-                    k.cooldown_until = now + 300.0
-                    logger.warning(f"Gemini key ending in ..{key[-6:]} quota limit hit ({status_code}). Degraded to flash_lite.")
-                break
-
-    def get_status(self) -> Dict[str, Any]:
-        self._check_daily_reset()
-        return {
-            "total_keys": len(self.keys),
-            "total_calls_today": sum(k.calls_today for k in self.keys),
-            "active_keys": len([k for k in self.keys if k.status == "active"]),
-            "keys": [
-                {
-                    "key_id": f"...{k.key[-6:]}" if len(k.key) > 6 else k.key,
-                    "tier": k.tier,
-                    "calls_today": k.calls_today,
-                    "errors_today": k.errors_today,
-                    "status": k.status,
-                    "cooldown_remaining_sec": max(0, int(k.cooldown_until - time.time()))
-                }
-                for k in self.keys
-            ]
-        }
 
 gemini_rotator = GeminiKeyRotator()

@@ -4,15 +4,16 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SearchAutocomplete } from "./SearchAutocomplete";
-import { 
-  TrendingUp, 
-  Search, 
-  BrainCircuit, 
-  BookOpen, 
-  ShieldAlert, 
-  Trophy, 
-  Menu, 
-  X 
+import {
+  TrendingUp,
+  Search,
+  BrainCircuit,
+  BookOpen,
+  ShieldAlert,
+  Trophy,
+  Menu,
+  Newspaper,
+  X,
 } from "lucide-react";
 
 export const Header: React.FC = () => {
@@ -20,11 +21,42 @@ export const Header: React.FC = () => {
   const pathname = usePathname();
 
   const navLinks = [
-    { href: "/screener", label: "Screener", icon: Search, color: "text-positive" },
-    { href: "/watchlist", label: "Watchlist", icon: ShieldAlert, color: "text-amber-400" },
-    { href: "/backtester", label: "Backtester", icon: BrainCircuit, color: "text-secondary" },
-    { href: "/behavior", label: "Behavior", icon: BookOpen, color: "text-purple-400" },
-    { href: "/leaderboard", label: "Leaderboard", icon: Trophy, color: "text-secondary" },
+    {
+      href: "/learn",
+      label: "Learn finance",
+      icon: BookOpen,
+      color: "text-primary",
+    },
+    {
+      href: "/news",
+      label: "Reading desk",
+      icon: Newspaper,
+      color: "text-primary",
+    },
+    {
+      href: "/screener",
+      label: "Screener",
+      icon: Search,
+      color: "text-positive",
+    },
+    {
+      href: "/watchlist",
+      label: "Watchlist",
+      icon: ShieldAlert,
+      color: "text-amber-400",
+    },
+    {
+      href: "/backtester",
+      label: "Backtester",
+      icon: BrainCircuit,
+      color: "text-secondary",
+    },
+    {
+      href: "/behavior",
+      label: "Trade journal",
+      icon: BookOpen,
+      color: "text-purple-400",
+    },
   ];
 
   return (
@@ -41,15 +73,15 @@ export const Header: React.FC = () => {
         </Link>
 
         {/* Search Autocomplete */}
-        <div className="hidden sm:block flex-1 max-w-md mx-2">
+        <div className="hidden sm:block flex-1 min-w-0 max-w-md mx-2">
           <SearchAutocomplete />
         </div>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-1">
+        <nav className="hidden lg:flex items-center gap-1">
           {navLinks.map((link) => {
             const Icon = link.icon;
-          const isActive = pathname.startsWith(link.href.split("?")[0]);
+            const isActive = pathname.startsWith(link.href.split("?")[0]);
             return (
               <Link
                 key={link.href}
@@ -69,23 +101,28 @@ export const Header: React.FC = () => {
 
         {/* Data Honesty Badge & Mobile Hamburger */}
         <div className="flex items-center gap-2">
-          <span className="hidden lg:inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
-            Delayed ~15 min
+          <span className="hidden xl:inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+            Provider data · may be delayed
           </span>
 
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-lg text-mutedText hover:text-neutralText hover:bg-surface border border-border"
+            className="lg:hidden p-2 rounded-lg text-mutedText hover:text-neutralText hover:bg-surface border border-border"
             aria-label="Toggle Navigation Menu"
+            aria-expanded={mobileMenuOpen}
           >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {mobileMenuOpen ? (
+              <X className="w-5 h-5" />
+            ) : (
+              <Menu className="w-5 h-5" />
+            )}
           </button>
         </div>
       </div>
 
       {/* Mobile Menu Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-b border-border bg-surface px-4 pt-2 pb-4 space-y-3">
+        <div className="lg:hidden border-b border-border bg-surface px-4 pt-2 pb-4 space-y-3">
           <div className="mb-2">
             <SearchAutocomplete onSelect={() => setMobileMenuOpen(false)} />
           </div>

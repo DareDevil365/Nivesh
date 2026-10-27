@@ -1,100 +1,46 @@
 "use client";
-
-import React, { useEffect, useRef, useState } from "react";
-import { createChart, ColorType, IChartApi } from "lightweight-charts";
-import { Loader2 } from "lucide-react";
-
-interface Bar {
-  time: string;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
-  SMA_20?: number;
-  SMA_50?: number;
-  SMA_200?: number;
-  RSI_14?: number;
-  "BBL_20_2.0"?: number;
-  "BBU_20_2.0"?: number;
-}
-
-interface StockChartProps {
+import { useEffect, useRef, useState } from "react";
+import {
+  createChart,
+  ColorType,
+  type IChartApi,
+  type Time,
+} from "lightweight-charts";
+import { useResource, EmptyState, ResourceState } from "@/lib/research";
+export default function StockChart({
+  ticker,
+}: {
   ticker: string;
-  /** Optional initial bars — if not provided, component fetches by period */
-  bars?: Bar[];
-}
-
-const PERIODS = [
-  { label: "1M", value: "1m" },
-  { label: "6M", value: "6m" },
-  { label: "1Y", value: "1y" },
-  { label: "3Y", value: "3y" },
-  { label: "5Y", value: "5y" },
-  { label: "Max", value: "max" },
-];
-
-import { api } from "@/lib/api";
-
-export default function StockChart({ ticker, bars: initialBars }: StockChartProps) {
-  const chartContainerRef = useRef<HTMLDivElement>(null);
-  const chartApiRef = useRef<IChartApi | null>(null);
-
+  bars?: unknown[];
+}) {
   const [period, setPeriod] = useState("1y");
-  const [bars, setBars] = useState<Bar[]>(initialBars || []);
-  const [loading, setLoading] = useState(!initialBars);
-  const [chartError, setChartError] = useState(false);
-
-  const [showSMA20, setShowSMA20] = useState(true);
-  const [showSMA50, setShowSMA50] = useState(true);
-  const [showBB, setShowBB] = useState(false);
-  const [showRSI, setShowRSI] = useState(false);
-
-  // ── Fetch bars whenever ticker or period changes ──
+  const [overlay, setOverlay] = useState("SMA_50");
+  const [bollinger, setBollinger] = useState(false);
+  const [showRsi, setShowRsi] = useState(false);
+  const rsiContainer = useRef<HTMLDivElement>(null);
+  const container = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<IChartApi | null>(null);
+  const resource = useResource(
+    `/api/companies/${encodeURIComponent(ticker)}/chart?period=${period}`,
+  );
+  const [error, setError] = useState("");
+  const data = resource.data;
   useEffect(() => {
-    async function fetchBars() {
-      setLoading(true);
-      try {
-        const data = await api.get<{ bars: Bar[] }>(
-          `/api/companies/${encodeURIComponent(ticker)}/chart?period=${period}&interval=1d`
-        );
-        setBars(data.bars || []);
-      } catch {
-        setBars([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchBars();
-  }, [ticker, period]);
-
-  // ── Render / update chart when bars or overlays change ──
-  useEffect(() => {
-    if (!chartContainerRef.current || bars.length === 0) return;
-
-    // Filter out invalid bars with null/NaN/invalid values
-    const validBars = bars.filter((b) =>
-      b &&
-      b.time &&
-      typeof b.open === "number" && !isNaN(b.open) && b.open > 0 &&
-      typeof b.high === "number" && !isNaN(b.high) && b.high > 0 &&
-      typeof b.low === "number" && !isNaN(b.low) && b.low > 0 &&
-      typeof b.close === "number" && !isNaN(b.close) && b.close > 0
-    );
-
-    if (validBars.length === 0) {
-      setChartError(true);
+    if (
+      !container.current ||
+      !data?.bars?.length ||
+      resource.error ||
+      resource.loading
+    )
       return;
-    }
-    setChartError(false);
-
+    setError("");
+    let observer: ResizeObserver | null = null;
+    let chart: IChartApi | null = null;
+    let rsiChart: IChartApi | null = null;
     try {
-      if (chartApiRef.current) {
-        chartApiRef.current.remove();
-        chartApiRef.current = null;
-      }
-
-      const chart = createChart(chartContainerRef.current, {
+      chart = createChart(container.current, {
+        width: container.current.clientWidth,
+        height: 310,
         layout: {
           background: { type: ColorType.Solid, color: "#131B18" },
           textColor: "#8FA096",
@@ -103,155 +49,231 @@ export default function StockChart({ ticker, bars: initialBars }: StockChartProp
           vertLines: { color: "#1F2B26" },
           horzLines: { color: "#1F2B26" },
         },
-        width: chartContainerRef.current.clientWidth,
-        height: 340,
-        timeScale: { borderColor: "#223028", timeVisible: true },
+        timeScale: { borderColor: "#223028" },
         rightPriceScale: { borderColor: "#223028" },
       });
-
-      chartApiRef.current = chart;
-
-      // Candlesticks
-      const candlestickSeries = chart.addCandlestickSeries({
+      chartRef.current = chart;
+      const candles = chart.addCandlestickSeries({
         upColor: "#2ECC71",
         downColor: "#E74C3C",
         borderVisible: false,
         wickUpColor: "#2ECC71",
         wickDownColor: "#E74C3C",
       });
-
-      candlestickSeries.setData(
-        validBars.map((b) => ({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close }))
+      const bars = data.bars.filter((b: any) =>
+        [b.open, b.high, b.low, b.close].every(
+          (v: number) => Number.isFinite(v) && v > 0,
+        ),
       );
-
-      // SMA 20
-      if (showSMA20) {
-        const s = chart.addLineSeries({ color: "#C9A227", lineWidth: 1, title: "SMA 20" });
-        s.setData(validBars.filter((b) => typeof b.SMA_20 === "number" && !isNaN(b.SMA_20)).map((b) => ({ time: b.time, value: b.SMA_20! })));
-      }
-
-      // SMA 50
-      if (showSMA50) {
-        const s = chart.addLineSeries({ color: "#3B82F6", lineWidth: 1, title: "SMA 50" });
-        s.setData(validBars.filter((b) => typeof b.SMA_50 === "number" && !isNaN(b.SMA_50)).map((b) => ({ time: b.time, value: b.SMA_50! })));
-      }
-
-      // SMA 200 (auto-added for 3Y/5Y/Max periods)
-      if (period === "3y" || period === "5y" || period === "max") {
-        const s = chart.addLineSeries({ color: "#F97316", lineWidth: 1, title: "SMA 200" });
-        s.setData(validBars.filter((b) => typeof b.SMA_200 === "number" && !isNaN(b.SMA_200)).map((b) => ({ time: b.time, value: b.SMA_200! })));
-      }
-
-      // Bollinger Bands
-      if (showBB) {
-        const bbU = chart.addLineSeries({ color: "#9333EA", lineWidth: 1, title: "BB Upper" });
-        const bbL = chart.addLineSeries({ color: "#9333EA", lineWidth: 1, title: "BB Lower" });
-        bbU.setData(validBars.filter((b) => typeof b["BBU_20_2.0"] === "number" && !isNaN(b["BBU_20_2.0"])).map((b) => ({ time: b.time, value: b["BBU_20_2.0"]! })));
-        bbL.setData(validBars.filter((b) => typeof b["BBL_20_2.0"] === "number" && !isNaN(b["BBL_20_2.0"])).map((b) => ({ time: b.time, value: b["BBL_20_2.0"]! })));
-      }
-
-      // RSI pane
-      if (showRSI) {
-        const rsiSeries = chart.addLineSeries({
-          color: "#E74C3C", lineWidth: 1, title: "RSI 14", priceScaleId: "rsi",
+      candles.setData(
+        bars.map((b: any) => ({
+          time: b.time as Time,
+          open: b.open,
+          high: b.high,
+          low: b.low,
+          close: b.close,
+        })),
+      );
+      if (overlay) {
+        const line = chart.addLineSeries({
+          color: "#C9A227",
+          lineWidth: 1,
+          title: overlay.replace("_", " "),
         });
-        rsiSeries.priceScale().applyOptions({ scaleMargins: { top: 0.8, bottom: 0.05 } });
-        rsiSeries.setData(validBars.filter((b) => typeof b.RSI_14 === "number" && !isNaN(b.RSI_14)).map((b) => ({ time: b.time, value: b.RSI_14! })));
+        line.setData(
+          bars
+            .filter((b: any) => Number.isFinite(b[overlay]))
+            .map((b: any) => ({ time: b.time as Time, value: b[overlay] })),
+        );
       }
-
-      // Volume histogram
-      const volumeSeries = chart.addHistogramSeries({
-        color: "#1E7A4C",
-        priceFormat: { type: "volume" },
-        priceScaleId: "",
-      });
-      volumeSeries.priceScale().applyOptions({
-        scaleMargins: { top: 0.75, bottom: showRSI ? 0.2 : 0 },
-      });
-      volumeSeries.setData(
-        validBars.map((b) => ({ time: b.time, value: b.volume || 0, color: b.close >= b.open ? "#1E7A4C" : "#7C2D25" }))
-      );
-
-      chart.timeScale().fitContent();
-
-      const handleResize = () => {
-        if (chartContainerRef.current && chartApiRef.current) {
-          chartApiRef.current.applyOptions({ width: chartContainerRef.current.clientWidth });
+      if (bollinger) {
+        for (const [key, title] of [
+          ["BBU_20_2.0", "Bollinger upper"],
+          ["BBL_20_2.0", "Bollinger lower"],
+        ]) {
+          const band = chart.addLineSeries({
+            color: "#7398D4",
+            lineWidth: 1,
+            title,
+          });
+          band.setData(
+            bars
+              .filter((bar: any) => Number.isFinite(bar[key]))
+              .map((bar: any) => ({ time: bar.time as Time, value: bar[key] })),
+          );
         }
-      };
-      window.addEventListener("resize", handleResize);
-
-      return () => {
-        window.removeEventListener("resize", handleResize);
-        chartApiRef.current?.remove();
-        chartApiRef.current = null;
-      };
-    } catch (err) {
-      console.warn("StockChart render exception caught:", err);
-      setChartError(true);
+      }
+      const volume = chart.addHistogramSeries({
+        priceFormat: { type: "volume" },
+        priceScaleId: "volume",
+      });
+      volume
+        .priceScale()
+        .applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } });
+      volume.setData(
+        bars.map((b: any) => ({
+          time: b.time as Time,
+          value: b.volume,
+          color: b.close >= b.open ? "#2ECC7144" : "#E74C3C44",
+        })),
+      );
+      chart.timeScale().fitContent();
+      if (showRsi && rsiContainer.current) {
+        rsiChart = createChart(rsiContainer.current, {
+          width: rsiContainer.current.clientWidth,
+          height: 145,
+          layout: {
+            background: { type: ColorType.Solid, color: "#131B18" },
+            textColor: "#8FA096",
+          },
+          grid: {
+            vertLines: { color: "#1F2B26" },
+            horzLines: { color: "#1F2B26" },
+          },
+          rightPriceScale: { borderColor: "#223028", scaleMargins: { top: 0, bottom: 0 } },
+          timeScale: { borderColor: "#223028" },
+        });
+        const rsi = rsiChart.addLineSeries({
+          color: "#B99EE8",
+          lineWidth: 1,
+          title: "RSI 14",
+          autoscaleInfoProvider: () => ({
+            priceRange: { minValue: 0, maxValue: 100 },
+          }),
+        });
+        for (const price of [30, 70])
+          rsi.createPriceLine({
+            price,
+            color: "#8FA096",
+            lineWidth: 1,
+            lineStyle: 2,
+            axisLabelVisible: true,
+          });
+        // Preserve matching time indexes even where RSI is still warming up.
+        rsi.setData(
+          bars.map((bar: any) =>
+            Number.isFinite(bar.RSI_14)
+              ? { time: bar.time as Time, value: bar.RSI_14 }
+              : { time: bar.time as Time },
+          ),
+        );
+        rsiChart.timeScale().fitContent();
+        let synchronizing = false;
+        const synchronize = (source: IChartApi, target: IChartApi) =>
+          source.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+            if (synchronizing || !range) return;
+            synchronizing = true;
+            target.timeScale().setVisibleLogicalRange(range);
+            synchronizing = false;
+          });
+        synchronize(chart, rsiChart);
+        synchronize(rsiChart, chart);
+      }
+      observer = new ResizeObserver((entries) => {
+        if (entries[0]?.contentRect.width) {
+          chart?.applyOptions({ width: entries[0].contentRect.width });
+          rsiChart?.applyOptions({ width: entries[0].contentRect.width });
+        }
+      });
+      observer.observe(container.current);
+    } catch {
+      setError(
+        "The chart could not be rendered. Try another range or reload the data.",
+      );
     }
-  }, [bars, showSMA20, showSMA50, showBB, showRSI, period]);
-
+    return () => {
+      observer?.disconnect();
+      chart?.remove();
+      rsiChart?.remove();
+      chartRef.current = null;
+    };
+  }, [data, overlay, bollinger, showRsi, resource.error, resource.loading]);
   return (
-    <div className="w-full space-y-3">
-      {/* ── Period selector + overlay toggles ── */}
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-        {/* Period buttons */}
-        <div className="flex items-center gap-1 bg-bg border border-border rounded-lg p-1">
-          {PERIODS.map((p) => (
-            <button
-              key={p.value}
-              onClick={() => setPeriod(p.value)}
-              className={`px-2.5 py-1 rounded font-semibold transition-colors ${
-                period === p.value
-                  ? "bg-primary text-white"
-                  : "text-mutedText hover:text-neutralText"
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Overlay toggles */}
-        <div className="flex items-center gap-1.5">
-          <span className="text-mutedText font-medium text-[10px] mr-0.5">Overlays:</span>
-          {[
-            { label: "SMA 20", active: showSMA20, toggle: () => setShowSMA20(!showSMA20), activeClass: "bg-amber-500/20 text-amber-400 border-amber-500/40" },
-            { label: "SMA 50", active: showSMA50, toggle: () => setShowSMA50(!showSMA50), activeClass: "bg-blue-500/20 text-blue-400 border-blue-500/40" },
-            { label: "BB", active: showBB, toggle: () => setShowBB(!showBB), activeClass: "bg-purple-500/20 text-purple-400 border-purple-500/40" },
-            { label: "RSI", active: showRSI, toggle: () => setShowRSI(!showRSI), activeClass: "bg-rose-500/20 text-rose-400 border-rose-500/40" },
-          ].map(({ label, active, toggle, activeClass }) => (
-            <button
-              key={label}
-              onClick={toggle}
-              className={`px-2 py-0.5 rounded border text-[10px] font-semibold transition-colors ${
-                active
-                  ? activeClass
-                  : "bg-bg text-mutedText border-border hover:text-neutralText"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        {[
+          ["1mo", "1M"],
+          ["6mo", "6M"],
+          ["1y", "1Y"],
+          ["3y", "3Y"],
+          ["5y", "5Y"],
+          ["max", "Max"],
+        ].map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => setPeriod(key)}
+            className={`rounded border px-2.5 py-1.5 text-xs ${period === key ? "border-primary text-primary" : "border-border text-mutedText"}`}
+          >
+            {label}
+          </button>
+        ))}
+        <select
+          aria-label="Chart overlay"
+          value={overlay}
+          onChange={(e) => setOverlay(e.target.value)}
+          className="bg-bg border border-border rounded p-1.5 text-xs"
+        >
+          <option value="">No moving average</option>
+          {["SMA_20", "SMA_50", "SMA_200", "EMA_20", "EMA_50", "EMA_200"].map(
+            (k) => (
+              <option key={k} value={k}>
+                {k.replace("_", " ")}
+              </option>
+            ),
+          )}
+        </select>
+        <label className="text-xs text-mutedText flex gap-2 items-center">
+          <input
+            type="checkbox"
+            checked={bollinger}
+            onChange={(e) => setBollinger(e.target.checked)}
+          />
+          Bollinger bands
+        </label>
+        <label className="text-xs text-mutedText flex gap-2 items-center">
+          <input
+            type="checkbox"
+            checked={showRsi}
+            onChange={(e) => setShowRsi(e.target.checked)}
+          />
+          RSI 14
+        </label>
       </div>
-
-      {/* ── Chart or loading ── */}
-      <div className="relative w-full rounded-lg overflow-hidden">
-        {loading && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-bg/70 rounded-lg">
-            <Loader2 className="w-5 h-5 animate-spin text-primary" />
-          </div>
-        )}
-        {!loading && (bars.length === 0 || chartError) ? (
-          <div className="w-full h-[340px] flex items-center justify-center bg-bg rounded-lg text-mutedText text-xs p-4 text-center">
-            Price history chart is currently unavailable for {ticker}.
+      <ResourceState resource={resource}>
+        {data?.bars?.length ? (
+          <div className="space-y-3">
+            <div
+              ref={container}
+              className="w-full min-w-0"
+              style={{ height: 310 }}
+            />
+            {showRsi && (
+              <div>
+                <p className="text-[11px] text-mutedText mb-1">
+                  RSI 14 · reference levels 30 / 70
+                </p>
+                <div ref={rsiContainer} style={{ height: 145 }} />
+              </div>
+            )}
           </div>
         ) : (
-          <div ref={chartContainerRef} className="w-full h-[340px]" />
+          <EmptyState title="Price history unavailable">
+            {data?.message ||
+              "Choose another range or retry when the provider is available."}
+          </EmptyState>
         )}
-      </div>
+      </ResourceState>
+      {error && (
+        <p role="alert" className="text-xs text-negative">
+          {error}
+        </p>
+      )}
+      <p className="text-[11px] text-mutedText">
+        Daily OHLCV adjusted for splits and dividends by the provider. Moving
+        averages, RSI 14 and Bollinger bands (20 sessions, ±2 population
+        standard deviations) require their full window; shorter histories may
+        have no overlay.
+      </p>
     </div>
   );
 }

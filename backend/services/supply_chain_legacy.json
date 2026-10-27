@@ -1,0 +1,735 @@
+{
+  "KRISHNADEF.NS": {
+    "ticker": "KRISHNADEF.NS",
+    "name": "Krishna Defence and Allied Industries Limited",
+    "sector": "Defense & Ballistics",
+    "upstream_suppliers": [
+      {
+        "ticker": "MIDHANI.NS",
+        "name": "Mishra Dhatu Nigam Ltd (MIDHANI)",
+        "category": "Armored Steel & Superalloys",
+        "relationship": "Specialized Defence Alloy Supplier"
+      },
+      {
+        "ticker": "SAIL.NS",
+        "name": "Steel Authority of India Ltd (SAIL)",
+        "category": "Naval Grade DMR-249 Structural Steel",
+        "relationship": "Primary Hull & Structural Steel"
+      },
+      {
+        "ticker": "ADORWELD.NS",
+        "name": "Ador Welding Limited",
+        "category": "Defence Grade Welding Consumables",
+        "relationship": "Armor Welding Electrodes Vendor"
+      },
+      {
+        "ticker": "JINDALSTEL.NS",
+        "name": "Jindal Steel & Power Ltd",
+        "category": "High-Tensile Stainless Steel Plates",
+        "relationship": "Marine Grade Steel Supplier"
+      }
+    ],
+    "downstream_customers": [
+      {
+        "name": "Indian Navy & Ministry of Defence",
+        "category": "Warship & Submarine Ballistic Outfitting",
+        "relationship": "Institutional Defense Client"
+      },
+      {
+        "ticker": "MAZDOCK.NS",
+        "name": "Mazagon Dock Shipbuilders Ltd",
+        "category": "Submarine & Destroyer Assemblies",
+        "relationship": "Defense Shipyard Client"
+      },
+      {
+        "ticker": "GRSE.NS",
+        "name": "Garden Reach Shipbuilders & Engineers",
+        "category": "Naval Frigate Modular Outfitting",
+        "relationship": "Naval Shipbuilding OEM"
+      },
+      {
+        "name": "Ordnance Factory Board & DRDO",
+        "category": "Tactical Hardware & Ballistic Containers",
+        "relationship": "Government Procurement"
+      }
+    ]
+  },
+  "DIXON.NS": {
+    "ticker": "DIXON.NS",
+    "name": "Dixon Technologies (India) Limited",
+    "sector": "Electronics Manufacturing (EMS)",
+    "upstream_suppliers": [
+      {
+        "name": "MediaTek & Qualcomm",
+        "category": "Mobile Microcontrollers & 5G System-on-Chips",
+        "relationship": "Semiconductor Chipsets Vendor"
+      },
+      {
+        "name": "Kingboard & Shengyi Tech",
+        "category": "FR-4 Copper Clad Laminates & Multi-layer PCBs",
+        "relationship": "Circuit Board Base Supplier"
+      },
+      {
+        "name": "Murata & Samsung Electro-Mechanics",
+        "category": "MLCC Capacitors, Resistors & Passives",
+        "relationship": "SMT Passive Components Provider"
+      },
+      {
+        "ticker": "TATASTEEL.NS",
+        "name": "Tata Steel Ltd",
+        "category": "Galvanized Steel Sheet Metal Chassis",
+        "relationship": "Home Appliance Casing Steel"
+      }
+    ],
+    "downstream_customers": [
+      {
+        "name": "Xiaomi, Motorola & Samsung India",
+        "category": "Smartphone OEM Contract Manufacturing",
+        "relationship": "Anchor Mobile Brand Clients"
+      },
+      {
+        "name": "Havells, Voltas & LG Electronics",
+        "category": "Inverter Air Conditioner & Washing Machine PCBs",
+        "relationship": "Consumer Durables OEMs"
+      },
+      {
+        "ticker": "BHARTIARTL.NS",
+        "name": "Bharti Airtel & Reliance Jio",
+        "category": "5G Fixed Wireless Access (FWA) Routers & Set-Top Boxes",
+        "relationship": "Telecom Hardware Client"
+      },
+      {
+        "name": "Acer & HP India",
+        "category": "IT Laptops & Computer Hardware Assembly",
+        "relationship": "IT Hardware OEM Partner"
+      }
+    ]
+  },
+  "POLYCAB.NS": {
+    "ticker": "POLYCAB.NS",
+    "name": "Polycab India Limited",
+    "sector": "Wires, Cables & Electricals",
+    "upstream_suppliers": [
+      {
+        "ticker": "HINDALCO.NS",
+        "name": "Hindalco Industries (Birla Copper)",
+        "category": "Continuous Cast 8mm Electrolytic Copper Rods",
+        "relationship": "Primary Conductor Copper"
+      },
+      {
+        "ticker": "NATIONALUM.NS",
+        "name": "National Aluminium Co (NALCO)",
+        "category": "EC Grade Aluminum Wire Rods",
+        "relationship": "Power Cable Aluminum Feedstock"
+      },
+      {
+        "ticker": "RELIANCE.NS",
+        "name": "Reliance Industries Ltd",
+        "category": "Suspension Grade PVC Resin & XLPE Insulation Compounds",
+        "relationship": "Cable Polymer & Sheathing Material"
+      }
+    ],
+    "downstream_customers": [
+      {
+        "ticker": "LT.NS",
+        "name": "Larsen & Toubro / KPTL",
+        "category": "High-Voltage Power Transmission & Sub-station Cables",
+        "relationship": "Infrastructure & Power EPC"
+      },
+      {
+        "name": "Pan-India Electrical Dealer & Wholesale Network",
+        "category": "Building Wires, Switches & FMEG Appliances",
+        "relationship": "15,000+ Authorized Distributors"
+      },
+      {
+        "name": "Indian Railways & Metro Rail Corporations",
+        "category": "Railway Signaling, Trailing & Traction Cables",
+        "relationship": "Government Transit Client"
+      },
+      {
+        "ticker": "TATAPOWER.NS",
+        "name": "Tata Power & State Electricity Boards (SEBs)",
+        "category": "Underground Power Distribution Cables",
+        "relationship": "Utility Grid Procurement"
+      }
+    ]
+  },
+  "KALYANKJIL.NS": {
+    "ticker": "KALYANKJIL.NS",
+    "name": "Kalyan Jewellers India Limited",
+    "sector": "Gems & Jewellery Retail",
+    "upstream_suppliers": [
+      {
+        "name": "Reserve Bank of India (RBI) Nominated Banks (ICICI/HDFC)",
+        "category": "Standard Gold Bullion Bars (99.99% Purity)",
+        "relationship": "Primary Gold Sourcing"
+      },
+      {
+        "name": "De Beers Group & Alrosa",
+        "category": "Certified Loose Rough & Polished Diamonds",
+        "relationship": "Solitaire & Studded Gemstone Supplier"
+      },
+      {
+        "name": "MMTC-PAMP India",
+        "category": "Refined Silver Bars & Coins",
+        "relationship": "Precious Metal Refiner"
+      }
+    ],
+    "downstream_customers": [
+      {
+        "name": "Pan-India Household Retail Consumers",
+        "category": "Bridal Gold & Diamond Jewellery (My Kalyan Network)",
+        "relationship": "250+ Showroom Retail Outlets"
+      },
+      {
+        "name": "Middle East & GCC Diaspora Customers",
+        "category": "22K Traditional & Contemporary Gold Wear",
+        "relationship": "International Retail Chain"
+      },
+      {
+        "name": "High Net Worth Individual (HNI) Collectors",
+        "category": "Custom Antique & Heritage Solitaire Collections",
+        "relationship": "Bespoke Wealth Clients"
+      }
+    ]
+  },
+  "MAZDOCK.NS": {
+    "ticker": "MAZDOCK.NS",
+    "name": "Mazagon Dock Shipbuilders Limited",
+    "sector": "Defense Shipyard & Marine",
+    "upstream_suppliers": [
+      {
+        "ticker": "SAIL.NS",
+        "name": "Steel Authority of India Ltd (SAIL)",
+        "category": "DMR-249A Special Naval Armor Steel",
+        "relationship": "Submarine & Frigate Hull Steel"
+      },
+      {
+        "ticker": "BEL.NS",
+        "name": "Bharat Electronics Ltd",
+        "category": "Sonar Suites, Combat Management Systems & Radars",
+        "relationship": "Naval Electronics Integrator"
+      },
+      {
+        "ticker": "KRISHNADEF.NS",
+        "name": "Krishna Defence and Allied Industries",
+        "category": "Ballistic Doors, Hangar Covers & Naval Outfitting",
+        "relationship": "Specialized Hull Component Vendor"
+      },
+      {
+        "ticker": "MIDHANI.NS",
+        "name": "Mishra Dhatu Nigam Ltd",
+        "category": "Titanium Forgings & Non-Magnetic Submarine Alloys",
+        "relationship": "Deep-Sea Pressure Hull Metal"
+      }
+    ],
+    "downstream_customers": [
+      {
+        "name": "Indian Navy (Ministry of Defence)",
+        "category": "Kalvari-Class Submarines & Visakhapatnam Destroyers",
+        "relationship": "Primary Defense Client"
+      },
+      {
+        "name": "Indian Coast Guard",
+        "category": "Fast Patrol Vessels & Offshore Patrol Ships",
+        "relationship": "Maritime Security Procurement"
+      },
+      {
+        "name": "Offshore Oil & Gas Operators (ONGC)",
+        "category": "Offshore Platforms & Support Vessels",
+        "relationship": "Commercial Marine Client"
+      }
+    ]
+  },
+  "CDSL.NS": {
+    "ticker": "CDSL.NS",
+    "name": "Central Depository Services (India) Limited",
+    "sector": "Capital Markets Infrastructure",
+    "upstream_suppliers": [
+      {
+        "ticker": "TCS.NS",
+        "name": "Tata Consultancy Services Ltd",
+        "category": "Core Depository Software & Cyber Vault Infrastructure",
+        "relationship": "Technology Platform Engine"
+      },
+      {
+        "name": "Cisco & IBM Security",
+        "category": "High-Security HSM Encrypted Servers & Disaster Recovery",
+        "relationship": "Infrastructure Hardware Partner"
+      }
+    ],
+    "downstream_customers": [
+      {
+        "name": "Retail Stock Investors & Demat Account Holders (110M+)",
+        "category": "Electronic Holding of Equities, Bonds & Mutual Funds",
+        "relationship": "Retail Beneficiary Owners"
+      },
+      {
+        "name": "Zerodha, Groww, AngelOne & Stock Brokers",
+        "category": "Depository Participant (DP) Integration & API Execution",
+        "relationship": "Brokerage Ecosystem Partners"
+      },
+      {
+        "name": "NSE, BSE & Corporate Listed Issuers",
+        "category": "Corporate Actions, e-Voting & Shareholding Statements",
+        "relationship": "Capital Market Issuers"
+      }
+    ]
+  },
+  "ZOMATO.NS": {
+    "ticker": "ZOMATO.NS",
+    "name": "Eternal Limited (Zomato & Blinkit)",
+    "sector": "Hyperlocal E-Commerce & Food Delivery",
+    "upstream_suppliers": [
+      {
+        "name": "AWS / Google Cloud Platform",
+        "category": "Cloud Computing, Real-time Logistics Routing & AI Engines",
+        "relationship": "Core Digital Infrastructure"
+      },
+      {
+        "name": "Hyperpure Partner Farmers & FMCG Manufacturers",
+        "category": "Fresh Produce, Staples & Packaged Goods for Restaurants & Dark Stores",
+        "relationship": "Hyperpure & Blinkit B2B Supply"
+      },
+      {
+        "name": "MapmyIndia / Google Maps API",
+        "category": "Geospatial Navigation & Distance Engine",
+        "relationship": "Mapping & Location Services"
+      }
+    ],
+    "downstream_customers": [
+      {
+        "name": "Pan-India Urban Consumers (80M+)",
+        "category": "On-Demand Food Delivery & 10-Minute Quick Commerce (Blinkit)",
+        "relationship": "B2C Consumer Base"
+      },
+      {
+        "name": "350,000+ Partner Restaurants & Cloud Kitchens",
+        "category": "Order Generation, Table Reservations & Supply Procurement",
+        "relationship": "Merchant Partners"
+      }
+    ]
+  },
+  "SUZLON.NS": {
+    "ticker": "SUZLON.NS",
+    "name": "Suzlon Energy Limited",
+    "sector": "Renewable Energy Equipment",
+    "upstream_suppliers": [
+      {
+        "ticker": "TATASTEEL.NS",
+        "name": "Tata Steel / Jindal Steel",
+        "category": "High-Grade Tubular Steel Wind Towers",
+        "relationship": "Structural Tower Steel"
+      },
+      {
+        "ticker": "ABB.NS",
+        "name": "ABB India & Siemens Limited",
+        "category": "Wind Turbine Generators, Transformers & Switchgear",
+        "relationship": "Electrical Generation Components"
+      },
+      {
+        "name": "Gurit & Owens Corning",
+        "category": "Glass Fiber & Epoxy Resin for Rotor Blades",
+        "relationship": "Composite Aerodynamic Blade Material"
+      }
+    ],
+    "downstream_customers": [
+      {
+        "ticker": "NTPC.NS",
+        "name": "NTPC Green Energy & SECI",
+        "category": "Utility-Scale Wind Farm EPC Projects",
+        "relationship": "Government Green Energy Projects"
+      },
+      {
+        "ticker": "TATAPOWER.NS",
+        "name": "Tata Power Renewable Energy",
+        "category": "Commercial Wind Turbine Generators (WTGs)",
+        "relationship": "Private IPP Power Producers"
+      },
+      {
+        "ticker": "ADANIENT.NS",
+        "name": "Adani Green Energy Ltd",
+        "category": "Hybrid Wind-Solar Project Equipment",
+        "relationship": "Renewable IPP Client"
+      }
+    ]
+  },
+  "TATAMOTORS.NS": {
+    "ticker": "TATAMOTORS.NS",
+    "name": "Tata Motors Limited",
+    "sector": "Automobile & EV",
+    "upstream_suppliers": [
+      {
+        "ticker": "TATASTEEL.NS",
+        "name": "Tata Steel Ltd",
+        "category": "Automotive Sheet Steel",
+        "relationship": "Key Raw Material Supplier"
+      },
+      {
+        "ticker": "UNOMINDA.NS",
+        "name": "Uno Minda Limited",
+        "category": "Auto Electricals & Lighting",
+        "relationship": "Component Vendor"
+      },
+      {
+        "ticker": "EXIDEIND.NS",
+        "name": "Exide Industries Ltd",
+        "category": "Lead-Acid & EV Batteries",
+        "relationship": "Battery Supplier"
+      },
+      {
+        "ticker": "MRF.NS",
+        "name": "MRF Limited",
+        "category": "Tyres & Rubber",
+        "relationship": "OEM Tyre Supplier"
+      },
+      {
+        "ticker": "BOSCHLTD.NS",
+        "name": "Bosch Limited",
+        "category": "Fuel Injection & Electronics",
+        "relationship": "ECU & Powertrain Supplier"
+      }
+    ],
+    "downstream_customers": [
+      {
+        "name": "State Road Transport Undertakings (STUs)",
+        "category": "Commercial Bus Fleets",
+        "relationship": "Government Procurement"
+      },
+      {
+        "name": "Indian Armed Forces & Ministry of Defence",
+        "category": "Logistics Vehicles",
+        "relationship": "Institutional Defense Client"
+      },
+      {
+        "ticker": "TATATECH.NS",
+        "name": "Tata Technologies Ltd",
+        "category": "Automotive Engineering",
+        "relationship": "R&D & Software Partner"
+      },
+      {
+        "name": "National Dealership Network (Passenger Vehicles)",
+        "category": "Retail Distribution",
+        "relationship": "1,400+ Dealership Outlets"
+      }
+    ]
+  },
+  "RELIANCE.NS": {
+    "ticker": "RELIANCE.NS",
+    "name": "Reliance Industries Limited",
+    "sector": "Energy & Petrochemicals",
+    "upstream_suppliers": [
+      {
+        "ticker": "ONGC.NS",
+        "name": "Oil & Natural Gas Corp (ONGC)",
+        "category": "Crude Oil Input",
+        "relationship": "Refinery Feedstock Supplier"
+      },
+      {
+        "ticker": "LARSEN.NS",
+        "name": "Larsen & Toubro (L&T)",
+        "category": "EPC & Capital Equipment",
+        "relationship": "Refinery & Solar EPC Partner"
+      },
+      {
+        "name": "Saudi Aramco & ADNOC",
+        "category": "Imported Heavy & Light Crude Oil",
+        "relationship": "Jamnagar Refinery Feedstock"
+      }
+    ],
+    "downstream_customers": [
+      {
+        "name": "Global Chemical & Polymer Manufacturers",
+        "category": "Polypropylene & PTA",
+        "relationship": "Export Bulk Buyers"
+      },
+      {
+        "name": "Reliance Jio Subscriber Base (450M+)",
+        "category": "Telecom & Digital Services",
+        "relationship": "B2C Digital Network"
+      },
+      {
+        "name": "JioMart & Reliance Retail Outlets (18,000+)",
+        "category": "FMCG & Consumer Electronics",
+        "relationship": "B2C Retail Distribution"
+      }
+    ]
+  },
+  "TCS.NS": {
+    "ticker": "TCS.NS",
+    "name": "Tata Consultancy Services Limited",
+    "sector": "IT & Cloud Services",
+    "upstream_suppliers": [
+      {
+        "ticker": "BHARTIARTL.NS",
+        "name": "Bharti Airtel Ltd",
+        "category": "Enterprise Telecom & Connectivity",
+        "relationship": "Network Service Provider"
+      },
+      {
+        "name": "Microsoft Azure / AWS / Google Cloud",
+        "category": "Cloud Infrastructure & AI Hyperscalers",
+        "relationship": "Cloud Hyperscaler Partners"
+      }
+    ],
+    "downstream_customers": [
+      {
+        "name": "Global Fortune 500 Banks & BFSI Institutions",
+        "category": "Banking Platform (TCS BaNCS)",
+        "relationship": "Core Banking Clients"
+      },
+      {
+        "name": "North American & European Enterprise Clients",
+        "category": "IT Managed Services & Digital Transformation",
+        "relationship": "500+ Active Accounts"
+      }
+    ]
+  },
+  "HAL.NS": {
+    "ticker": "HAL.NS",
+    "name": "Hindustan Aeronautics Limited",
+    "sector": "Defense & Aerospace",
+    "upstream_suppliers": [
+      {
+        "ticker": "MIDHANI.NS",
+        "name": "Mishra Dhatu Nigam Ltd",
+        "category": "Aero-Engine Titanium Alloys",
+        "relationship": "Special Alloys Supplier"
+      },
+      {
+        "ticker": "BEL.NS",
+        "name": "Bharat Electronics Ltd",
+        "category": "Radars, Avionics & EW Suites",
+        "relationship": "Avionics Integration Partner"
+      },
+      {
+        "ticker": "BHARATFORG.NS",
+        "name": "Bharat Forge Ltd",
+        "category": "Aero-Engine Forgings & Structural Parts",
+        "relationship": "Heavy Forgings Vendor"
+      },
+      {
+        "name": "General Electric (GE Aerospace)",
+        "category": "F404/F414 Fighter Turbofan Engines",
+        "relationship": "Propulsion OEM Partner"
+      }
+    ],
+    "downstream_customers": [
+      {
+        "name": "Indian Air Force (IAF)",
+        "category": "Tejas LCA, Su-30MKI & LCH Combat Jets",
+        "relationship": "Primary Defense Client"
+      },
+      {
+        "name": "Indian Army & Army Aviation Corps",
+        "category": "Dhruv & Prachand Attack Helicopters",
+        "relationship": "Military Transport & Attack"
+      },
+      {
+        "name": "Indian Navy",
+        "category": "Marine Dhruv & Utility Helicopters",
+        "relationship": "Naval Aviation Fleet"
+      }
+    ]
+  },
+  "BEL.NS": {
+    "ticker": "BEL.NS",
+    "name": "Bharat Electronics Limited",
+    "sector": "Defense Electronics",
+    "upstream_suppliers": [
+      {
+        "ticker": "KAYNES.NS",
+        "name": "Kaynes Technology India",
+        "category": "High-Density PCB Assemblies",
+        "relationship": "ESDM Subcontractor"
+      },
+      {
+        "ticker": "DATAPATT.NS",
+        "name": "Data Patterns India",
+        "category": "Radar Processing Boards & Signal Processing",
+        "relationship": "Defense Sub-system Vendor"
+      },
+      {
+        "name": "Texas Instruments & Analog Devices",
+        "category": "Military Grade Semiconductors & RF ICs",
+        "relationship": "Component Provider"
+      }
+    ],
+    "downstream_customers": [
+      {
+        "ticker": "HAL.NS",
+        "name": "Hindustan Aeronautics Ltd",
+        "category": "Avionics, Radars & Cockpit Displays",
+        "relationship": "Aircraft OEM Integration"
+      },
+      {
+        "ticker": "MAZDOCK.NS",
+        "name": "Mazagon Dock Shipbuilders Ltd",
+        "category": "Naval Sonar & Combat Management",
+        "relationship": "Warship Electronics OEM"
+      },
+      {
+        "name": "Indian Army & Air Force",
+        "category": "Akash Missile Defence System & Tactical Radios",
+        "relationship": "Armed Forces Procurement"
+      }
+    ]
+  },
+  "SUNPHARMA.NS": {
+    "ticker": "SUNPHARMA.NS",
+    "name": "Sun Pharmaceutical Industries Limited",
+    "sector": "Pharmaceuticals & Healthcare",
+    "upstream_suppliers": [
+      {
+        "ticker": "DIVISLAB.NS",
+        "name": "Divi's Laboratories Ltd",
+        "category": "Active Pharmaceutical Ingredients (APIs)",
+        "relationship": "Bulk Drug API Supplier"
+      },
+      {
+        "ticker": "DEEPAKNTR.NS",
+        "name": "Deepak Nitrite Ltd",
+        "category": "Specialty Chemical Solvents & Intermediates",
+        "relationship": "Reagent Supplier"
+      },
+      {
+        "name": "Schott Kaisha / Essel Propack",
+        "category": "Pharma Grade Glass Vials & Blister Packaging",
+        "relationship": "Packaging Materials"
+      }
+    ],
+    "downstream_customers": [
+      {
+        "name": "US Retail & Specialty Pharmacy Chains",
+        "category": "Generics & Dermatological Formulations",
+        "relationship": "Global Distribution Network"
+      },
+      {
+        "name": "Indian Hospital Chains & Medical Retail",
+        "category": "Chronic & Acute Therapy Formulations",
+        "relationship": "Pan-India Healthcare"
+      },
+      {
+        "name": "Global Regulated Hospital Networks",
+        "category": "Injectable & Specialty Medicines",
+        "relationship": "Institutional Procurement"
+      }
+    ]
+  },
+  "HDFCBANK.NS": {
+    "ticker": "HDFCBANK.NS",
+    "name": "HDFC Bank Limited",
+    "sector": "Banking & Financial Services",
+    "upstream_suppliers": [
+      {
+        "ticker": "TCS.NS",
+        "name": "Tata Consultancy Services",
+        "category": "Core Banking Technology & Cloud Hosting",
+        "relationship": "IT Infrastructure Provider"
+      },
+      {
+        "name": "Reserve Bank of India (RBI)",
+        "category": "CRR / SLR Reserve Liquidity & Capital",
+        "relationship": "Central Bank Regulator"
+      },
+      {
+        "name": "CRISIL & ICRA Ratings",
+        "category": "Credit Risk & Bond Rating Services",
+        "relationship": "Risk Assessment Partner"
+      }
+    ],
+    "downstream_customers": [
+      {
+        "name": "Pan-India Retail Consumers (70M+)",
+        "category": "Housing Mortgages, Auto Loans & Credit Cards",
+        "relationship": "Consumer Retail Base"
+      },
+      {
+        "name": "Indian Corporate & SME Enterprises",
+        "category": "Working Capital, Trade Credit & Capex Loans",
+        "relationship": "Commercial Borrowers"
+      },
+      {
+        "name": "HNI & NRI Wealth Clients",
+        "category": "Private Banking & Asset Management",
+        "relationship": "Wealth Services"
+      }
+    ]
+  },
+  "ITC.NS": {
+    "ticker": "ITC.NS",
+    "name": "ITC Limited",
+    "sector": "FMCG & Agri-Business",
+    "upstream_suppliers": [
+      {
+        "name": "Pan-India Farmers Network (e-Choupal)",
+        "category": "Virginia Tobacco, Wheat & Spices",
+        "relationship": "Direct Farm Sourcing"
+      },
+      {
+        "name": "Specialty Paper & Board Mills",
+        "category": "Eco-Friendly Cigarette & FMCG Packaging",
+        "relationship": "In-House & Partner Mills"
+      }
+    ],
+    "downstream_customers": [
+      {
+        "name": "7M+ Retail Kirana & Grocery Outlets",
+        "category": "Cigarettes, Aashirvaad Atta, Sunfeast Biscuits",
+        "relationship": "General Trade Outlets"
+      },
+      {
+        "name": "Modern Trade Chains & Quick-Commerce",
+        "category": "Blinkit, Zepto, DMart FMCG Distribution",
+        "relationship": "Direct Modern Trade"
+      },
+      {
+        "name": "Hospitality & Corporate Event Guests",
+        "category": "ITC Luxury Hotels & Resort Properties",
+        "relationship": "Hospitality Guests"
+      }
+    ]
+  },
+  "LT.NS": {
+    "ticker": "LT.NS",
+    "name": "Larsen & Toubro Limited",
+    "sector": "Engineering & Infrastructure",
+    "upstream_suppliers": [
+      {
+        "ticker": "TATASTEEL.NS",
+        "name": "Tata Steel Ltd",
+        "category": "Structural Steel & TMT Rebars",
+        "relationship": "Core Structural Material"
+      },
+      {
+        "ticker": "ULTRACEMCO.NS",
+        "name": "UltraTech Cement Ltd",
+        "category": "Bulk Cement & Ready-Mix Concrete",
+        "relationship": "Civil Construction Input"
+      },
+      {
+        "ticker": "ABB.NS",
+        "name": "ABB India Limited",
+        "category": "High-Voltage Transformers & Switchgear",
+        "relationship": "Electrical Sub-station Vendor"
+      }
+    ],
+    "downstream_customers": [
+      {
+        "name": "Ministry of Railways & NHAI",
+        "category": "Bullet Train & Expressway Infrastructure",
+        "relationship": "Government EPC Projects"
+      },
+      {
+        "name": "Middle East Energy Corporations (Aramco / ADNOC)",
+        "category": "Offshore Oil & Gas Refineries",
+        "relationship": "Global EPC Contracts"
+      },
+      {
+        "name": "Indian Armed Forces & Nuclear Power Corp",
+        "category": "Defense Pinaka Launchers & Heavy Defense Systems",
+        "relationship": "Strategic Defense EPC"
+      }
+    ]
+  }
+}

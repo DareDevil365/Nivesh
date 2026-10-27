@@ -37,3 +37,10 @@ Gemeni api keys.txt
 *.tsbuildinfo
 .antigravity/
 
+
+# Local browser workspaces, report data and browser test output
+backend/data/
+news-bot/data/
+output/playwright/
+output/research/
+.playwright-cli/

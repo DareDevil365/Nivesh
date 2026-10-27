@@ -1,205 +1,185 @@
 "use client";
-
-import React, { useState, useEffect, useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, ArrowRight, TrendingUp, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
-
-interface SearchResultItem {
-  ticker: string;
-  symbol: string;
-  name: string;
-  sector: string;
-  industry: string;
-}
-
-interface StockSearchInputProps {
+type Result = { ticker: string; name: string; sector: string };
+export default function StockSearchInput({
+  placeholder = "Company or exchange symbol",
+  className = "",
+  onSelectTicker,
+  initialValue = "",
+  buttonText = "Open research",
+}: {
   placeholder?: string;
   className?: string;
   onSelectTicker?: (ticker: string) => void;
   initialValue?: string;
   buttonText?: string;
-}
-
-export default function StockSearchInput({
-  placeholder = "Type symbol or company (e.g. TA for Tata Motors, Tata Steel, Tata Power, TCS)...",
-  className = "",
-  onSelectTicker,
-  initialValue = "",
-  buttonText = "Analyze",
-}: StockSearchInputProps) {
-  const [query, setQuery] = useState(initialValue);
-  const [results, setResults] = useState<SearchResultItem[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState(-1);
+}) {
+  const id = useId();
   const router = useRouter();
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
+  const wrapper = useRef<HTMLDivElement>(null);
+  const [query, setQuery] = useState(initialValue);
+  const [results, setResults] = useState<Result[]>([]);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [selected, setSelected] = useState(-1);
+  const [error, setError] = useState("");
   useEffect(() => {
-    if (!query || query.trim().length < 1) {
-      setResults([]);
-      setIsOpen(false);
-      setSelectedIndex(-1);
+    let active = true;
+    setResults([]);
+    setSelected(-1);
+    setError("");
+    if (!query.trim()) {
+      setOpen(false);
+      setLoading(false);
       return;
     }
-
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
-        const data = await api.get<{ results: SearchResultItem[] }>(
-          `/api/companies/search?q=${encodeURIComponent(query.trim())}`
+        const data = await api.get<{ results: Result[] }>(
+          `/api/companies/search?q=${encodeURIComponent(query.trim())}`,
         );
-        setResults(data.results || []);
-        setIsOpen(true);
-        setSelectedIndex(-1);
-      } catch (err) {
-        // Fallback client lookup for candidate ticker
-        const qUpper = query.trim().toUpperCase();
-        const fallbackTicker = qUpper.endsWith(".NS") || qUpper.endsWith(".BO") ? qUpper : `${qUpper}.NS`;
-        setResults([
-          { ticker: fallbackTicker, symbol: qUpper, name: `${qUpper} (NSE Listed)`, sector: "NSE Equity", industry: "Real-time Live Fetch" }
-        ]);
-        setIsOpen(true);
-        setSelectedIndex(-1);
+        if (active) {
+          setResults(data.results);
+          setOpen(true);
+        }
+      } catch (e) {
+        if (active) {
+          setError((e as Error).message);
+          setOpen(true);
+        }
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
-    }, 150);
-
-    return () => clearTimeout(timer);
+    }, 250);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
   }, [query]);
-
-  // Handle click outside to close dropdown
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    const outside = (event: MouseEvent) => {
+      if (wrapper.current && !wrapper.current.contains(event.target as Node))
+        setOpen(false);
+    };
+    document.addEventListener("mousedown", outside);
+    return () => document.removeEventListener("mousedown", outside);
   }, []);
-
-  const handleSelect = (ticker: string) => {
-    setIsOpen(false);
-    setQuery(ticker.replace(".NS", "").replace(".BO", ""));
-    if (onSelectTicker) {
-      onSelectTicker(ticker);
-    } else {
-      router.push(`/stock/${ticker}`);
-    }
+  const choose = (ticker: string) => {
+    setOpen(false);
+    setQuery("");
+    if (onSelectTicker) onSelectTicker(ticker);
+    else router.push(`/stock/${encodeURIComponent(ticker)}`);
   };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!isOpen || results.length === 0) return;
-
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setSelectedIndex((prev) => (prev < results.length - 1 ? prev + 1 : 0));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setSelectedIndex((prev) => (prev > 0 ? prev - 1 : results.length - 1));
-    } else if (e.key === "Enter" && selectedIndex >= 0 && selectedIndex < results.length) {
-      e.preventDefault();
-      handleSelect(results[selectedIndex].ticker);
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
     if (!query.trim()) return;
-    
-    if (selectedIndex >= 0 && selectedIndex < results.length) {
-      handleSelect(results[selectedIndex].ticker);
+    if (results.length) {
+      choose(results[selected >= 0 ? selected : 0].ticker);
       return;
     }
-
-    let ticker = query.trim().toUpperCase();
-    if (!ticker.endsWith(".NS") && !ticker.endsWith(".BO")) {
-      ticker = `${ticker}.NS`;
+    const symbol = query.trim().toUpperCase();
+    if (!/^[A-Z0-9&][A-Z0-9&.\-]{0,29}$/.test(symbol)) {
+      setError("Choose a matching company or enter a valid exchange symbol.");
+      setOpen(true);
+      return;
     }
-    handleSelect(ticker);
+    choose(
+      symbol.endsWith(".NS") || symbol.endsWith(".BO")
+        ? symbol
+        : `${symbol}.NS`,
+    );
   };
-
   return (
-    <div ref={dropdownRef} className={`relative w-full ${className}`}>
-      <form onSubmit={handleSubmit} className="flex gap-2 w-full">
-        <div className="relative flex-1">
-          <input
-            type="text"
-            placeholder={placeholder}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onFocus={() => query.trim().length >= 1 && setIsOpen(true)}
-            onKeyDown={handleKeyDown}
-            className="w-full bg-bg border border-border rounded-lg pl-9 pr-9 py-2.5 text-xs sm:text-sm text-neutralText placeholder:text-mutedText focus:outline-none focus:border-primary transition-colors font-sans"
-          />
-          <Search className="w-4 h-4 text-mutedText absolute left-3 top-3" />
-          {loading && (
-            <Loader2 className="w-4 h-4 text-primary absolute right-3 top-3 animate-spin" />
-          )}
-        </div>
+    <div ref={wrapper} className={`relative ${className}`}>
+      <form onSubmit={submit} className="flex gap-2">
+        <input
+          role="combobox"
+          aria-label="Search company or symbol"
+          aria-expanded={open}
+          aria-controls={`${id}-results`}
+          aria-autocomplete="list"
+          aria-activedescendant={
+            selected >= 0 ? `${id}-option-${selected}` : undefined
+          }
+          maxLength={60}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => query.trim() && setOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              setOpen(false);
+              return;
+            }
+            if (!results.length) return;
+            if (e.key === "ArrowDown") {
+              e.preventDefault();
+              setSelected((i) => (i + 1) % results.length);
+              setOpen(true);
+            }
+            if (e.key === "ArrowUp") {
+              e.preventDefault();
+              setSelected((i) => (i <= 0 ? results.length - 1 : i - 1));
+              setOpen(true);
+            }
+          }}
+          placeholder={placeholder}
+          className="w-full min-w-0 bg-bg border border-border rounded-lg px-3 py-2.5 text-xs sm:text-sm"
+        />
         {buttonText && (
           <button
             type="submit"
-            className="bg-primary hover:bg-primary/90 text-white font-medium px-4 sm:px-5 py-2.5 rounded-lg text-xs sm:text-sm transition-colors flex items-center gap-1.5 shrink-0 shadow"
+            disabled={!query.trim()}
+            className="bg-primary text-white rounded-lg px-4 py-2 text-xs font-semibold shrink-0 disabled:opacity-40"
           >
-            {buttonText} <ArrowRight className="w-4 h-4" />
+            {buttonText}
           </button>
         )}
       </form>
-
-      {/* Typeahead Dropdown list */}
-      {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-1.5 bg-surface border border-border rounded-lg shadow-2xl z-50 overflow-hidden max-h-80 overflow-y-auto animate-in fade-in">
-          {results.length > 0 ? (
-            <div className="divide-y divide-border/60">
-              <div className="px-3 py-1.5 bg-bg/50 text-[10px] uppercase tracking-wider text-mutedText font-semibold flex justify-between items-center">
-                <span>Matching Equities</span>
-                <span>{results.length} matches</span>
-              </div>
-              {results.map((item, idx) => {
-                const isSelected = idx === selectedIndex;
-                return (
-                  <div
-                    key={item.ticker}
-                    onClick={() => handleSelect(item.ticker)}
-                    onMouseEnter={() => setSelectedIndex(idx)}
-                    className={`p-3 cursor-pointer transition-colors flex items-center justify-between group ${
-                      isSelected ? "bg-primary/10 border-l-2 border-primary" : "hover:bg-bg/80"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className={`w-7 h-7 rounded flex items-center justify-center font-bold text-xs transition-colors ${
-                        isSelected ? "bg-primary text-white" : "bg-primary/20 text-positive group-hover:bg-primary group-hover:text-white"
-                      }`}>
-                        <TrendingUp className="w-3.5 h-3.5" />
-                      </div>
-                      <div>
-                        <div className="font-heading font-bold text-xs sm:text-sm text-neutralText group-hover:text-primary transition-colors">
-                          {item.name}
-                        </div>
-                        <div className="text-[11px] text-mutedText flex items-center gap-1.5">
-                          <span className="font-mono text-positive font-semibold">{item.symbol}</span>
-                          <span>•</span>
-                          <span>{item.sector}</span>
-                          <span>•</span>
-                          <span className="text-[10px]">{item.industry}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded bg-bg text-mutedText border border-border group-hover:border-primary/40">
-                      {item.ticker}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="p-4 text-center text-xs text-mutedText">
-              No matching NSE symbol found. Press enter to search live.
-            </div>
+      {open && (
+        <div className="absolute z-50 top-full mt-2 left-0 right-0 bg-surface border border-border rounded-lg shadow-xl max-h-72 overflow-y-auto">
+          <ul
+            id={`${id}-results`}
+            role="listbox"
+            aria-label="Matching companies"
+          >
+            {results.map((r, i) => (
+              <li
+                key={r.ticker}
+                id={`${id}-option-${i}`}
+                role="option"
+                aria-selected={selected === i}
+              >
+                <button
+                  type="button"
+                  onClick={() => choose(r.ticker)}
+                  onMouseEnter={() => setSelected(i)}
+                  className={`w-full text-left p-3 border-b border-border text-xs ${selected === i ? "bg-primary/15" : "hover:bg-bg"}`}
+                >
+                  <strong className="text-positive">{r.ticker}</strong>
+                  <p className="text-neutralText mt-1">{r.name}</p>
+                  <span className="text-mutedText text-[10px]">{r.sector}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          {loading && (
+            <p className="p-3 text-xs text-mutedText" role="status">
+              Searching…
+            </p>
+          )}
+          {error && (
+            <p className="p-3 text-xs text-amber-300" role="status">
+              {error}
+            </p>
+          )}
+          {!loading && !error && !results.length && (
+            <p className="p-3 text-xs text-mutedText">
+              No verified matches. You can enter an exchange symbol to try it
+              directly.
+            </p>
           )}
         </div>
       )}

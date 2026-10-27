@@ -1,0 +1,7 @@
+# Independent bot only: no frontend, market-data packages or running web server.
+fastapi==0.134.0
+pydantic==2.13.5
+httpx==0.28.1
+python-dotenv==1.2.2
+redis==8.1.0
+beautifulsoup4==4.14.3
